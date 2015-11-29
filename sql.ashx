@@ -150,7 +150,13 @@ public class SqlHandler : IHttpHandler
                 {
                     // add all parameters
                     foreach (var parameterName in context.Request.Form.AllKeys)
-                        command.Parameters.AddWithValue(parameterName, context.Request.Form[parameterName]);
+                    {
+                        var parameterValue = context.Request.Form[parameterName];
+                        if (string.IsNullOrEmpty(parameterValue))
+                            command.Parameters.AddWithValue(parameterName, DBNull.Value);
+                        else
+                            command.Parameters.AddWithValue(parameterName, parameterValue);
+                    }
 
                     // execute the query
                     commandNumber++;
