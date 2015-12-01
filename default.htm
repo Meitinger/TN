@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de" data-ng-app="tn" data-ng-controller="MainController as main">
+<html lang="de" data-ng-app="tn">
 <!--
     Copyright (C) 2015, Manuel Meitinger
 
@@ -128,6 +128,7 @@
                     // store internal flags
                     var state = SqlState.PendingApproval;
                     var error = null;
+                    var lastExecuteTime= null;
                     var allowError = args.allowError == true;
                     var singleSet = forceSingleSet || args.singleSet == true;
 
@@ -136,6 +137,7 @@
                         // set the state and reset the error
                         state = SqlState.Execute;
                         error = null;
+                        lastExecuteTime = new Date();
                         $http(config).then(
 	                        function (response) {
 	                            // parse the reponse data
@@ -223,6 +225,7 @@
                         abortable: allowError,
                         getState: function () { return state; },
                         getError: function () { return error; },
+                        getLastExecuteTime: function () { return lastExecuteTime; },
                         approve: function () {
                             if (state != SqlState.PendingApproval)
                                 throw new InvalidOperationException('Der Befehl ist nicht im Überprüfungsmodus.');
@@ -307,63 +310,85 @@
             })
             .factory('table', function (sql, notify) {
                 return function (name, filter) {
-
+                	
                 };
                 //.refresh()
                 //.columns
                 //.rows{'9':{$State: $Error: {Text:'',Foreign:true,Column:''}}}
             })
-            .controller('MainController', function ($scope, sql) {
-            	$scope.log = sql.commands;
-                sql.query({
-                    description: 'Einrichtung abfragen',
-                    command: 'SELECT * FROM Einrchtung WHERE ID = @ID',
-                    parameters: { 'ID': 2 },
-                    allowError: true,
-                    allowReview: true
-                }).then(
-                    function (records) {
-                    
-                    },
-                    function (error) {
-                    }
-                );
+            .controller('SqlController', function (sql) {
+            	this.service = sql;
+            	this.limit = 10;
+            	this.limitOptions = [10, 50, 100, 500, 1000];
+            	this.offset = 0;
+            })
+            .controller('MainController', function ($scope, $window, sql) {
+            	$scope.Math = $window.Math;
+            	this.test = 'init';
+            	this.exec = function() {
+            	    sql.query({
+	                    description: 'Einrichtung abfragen',
+	                    command: 'SELECT * FROM Einrchtung WHERE ID = @ID',
+	                    parameters: { 'ID': 2 },
+	                    allowError: true,
+	                    allowReview: true
+	                }).then(
+	                    function (records) {
+	                    
+	                    },
+	                    function (error) {
+	                    }
+	                );
+                };
             });
     -->
     </script>
 </head>
-<body>
+<body data-ng-controller="MainController as main">
 	<nav class="uk-navbar uk-navbar-attached">
 	</nav>
-	<div class="uk-container">
-	<div class="uk-grid">
-    <div class="uk-panel uk-overflow-container">
+	<button class="uk-button" data-ng-click="main.exec()">Abfrage</button>
+    <div class="uk-panel uk-panel-box uk-overflow-container" data-ng-controller="SqlController as sql">
         <h3 class="uk-panel-title">Datenbanklog</h3>
         <table class="uk-table uk-table-hover uk-table-condensed">
         	<thead>
         		<tr>
         			<th>Status</th>
         			<th>Beschreibung</th>
+        			<th>Letzte Ausführung</th>
         			<th>Fehler</th>
         			<th>Aktion</th>
         		</tr>
         	</thead>
         	<tbody>
-        		<tr data-ng-repeat="command in log" data-uk-tooltip="data-uk-tooltip" title="{{command.sql}}">
-        			<td>
+        		<tr data-ng-repeat="command in sql.service.commands | orderBy: '$index':true | limitTo: sql.limit : sql.offset" data-uk-tooltip="data-uk-tooltip" title="{{command.sql}}">
+        			<td data-ng-switch="command.getState()">
+        				<div class="uk-badge" data-ng-switch-when="0">Warten auf Genehmigung</div>
+        				<div class="uk-badge" data-ng-switch-when="1">Wird ausgeführt</div>
+        				<div class="uk-badge uk-badge-warning" data-ng-switch-when="2">Fehler</div>
+        				<div class="uk-badge uk-badge-success" data-ng-switch-when="3">Abgeschlossen</div>
+        				<div class="uk-badge uk-badge-danger" data-ng-switch-when="4">Abgebrochen</div>
+        				<div class="uk-badge uk-badge-danger" data-ng-switch-when="5">Fehlgeschlagen</div>
         			</td>
         			<td><span>{{command.description}}</span></td>
+        			<td><span>{{command.getLastExecuteTime() | date: 'medium'}}</span></td>
         			<td><span>{{command.getError()}}</span></td>
         			<td>
-        				<button class="uk-button uk-button-mini uk-button-success" ng-disabled="command.getState() != 0" data-ng-click="command.approve()">Genehmigen</button>
-        				<button class="uk-button uk-button-mini uk-button-primary" ng-disabled="command.getState() != 2" data-ng-click="command.retry()">Wiederholen</button>
-        				<button class="uk-button uk-button-mini uk-button-danger" ng-disabled="command.getState() != 2 || !command.abortable" data-ng-click="command.abort()">Abbrechen</button>
+        				<button class="uk-button uk-button-mini uk-button-success" data-ng-disabled="command.getState() != 0" data-ng-click="command.approve()">Genehmigen</button>
+        				<button class="uk-button uk-button-mini uk-button-primary" data-ng-disabled="command.getState() != 2" data-ng-click="command.retry()">Wiederholen</button>
+        				<button class="uk-button uk-button-mini uk-button-danger" data-ng-disabled="command.getState() != 2 || !command.abortable" data-ng-click="command.abort()">Abbrechen</button>
         			</td>
         		</tr>
         	</tbody>
         </table>
+        <form class="uk-form">
+	        <button class="uk-button" data-ng-class="sql.service.reviewCommands ? 'uk-active' : ''" data-ng-click="sql.service.reviewCommands = !sql.service.reviewCommands">Abfragen genehmigen <span data-ng-class="sql.service.reviewCommands ? 'uk-text-success' : 'uk-text-danger'">{{sql.service.reviewCommands ? 'AN' : 'AUS'}}</span></button>
+        	<div class="uk-button-group">
+	        	<button class="uk-button" data-ng-disabled="sql.offset == 0" data-ng-click="sql.offset = Math.max(0, Math.floor(sql.offset/sql.limit)-1) * sql.limit"><i class="uk-icon-angle-double-left"></i> Neuere</button>
+	    		<button class="uk-button" data-ng-disabled="sql.offset + sql.limit &gt;= sql.service.commands.length" data-ng-click="sql.offset = sql.offset + sql.limit">Ältere <i class="uk-icon-angle-double-right"></i></button>
+	    	</div>
+	    	<select data-ng-model="sql.limit" data-ng-options="limit as limit for limit in sql.limitOptions"></select>
+    	</form>
     </div>
-    </div>
-    </div>
-</body>
+  </body>
 </html>
