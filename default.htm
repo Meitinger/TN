@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de" data-ng-app="tn" data-ng-controller="MainController">
+<html lang="de" data-ng-app="tn" data-ng-controller="MainController as main">
 <!--
     Copyright (C) 2015, Manuel Meitinger
 
@@ -22,10 +22,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Trainee</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.23.0/css/uikit.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.23.0/css/components/tooltip.min.css" />
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.23.0/js/uikit.min.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.7/angular.min.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular-i18n/1.4.7/angular-locale_de.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.23.0/js/components/tooltip.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.7/angular.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular-i18n/1.4.7/angular-locale_de.js"></script>
     <script type="text/javascript">
     <!--
         'use strict';
@@ -71,6 +73,8 @@
 
         // SQL service
             .service('sql', function ($q, $http, SqlState) {
+                var svc = this;
+
                 // bindable fields
                 this.commands = [];
                 this.reviewCommands = false;
@@ -79,6 +83,9 @@
                 var reader = function (args, forceSingleSet, parser) {
                     if (!angular.isObject(args) || !angular.isString(args.description) || !angular.isString(args.command) || angular.isDefined(args.parameters) && !angular.isObject(args.parameters))
                         throw new ArgumentException('Die Argumente für die Abfrage sind ungültig.', 'args');
+
+                    // create the deferred object
+                    var deferred = $q.defer();
 
                     // create the http config object
                     var config = {
@@ -158,24 +165,24 @@
 
 	                                // check if the response is an error
 	                                else if (angular.isObject(data)) {
-	                                	success = false;
-	                                	// ensure a complete error object
-	                                	if (!angular.isNumber(data.CommandNumber) || !angular.isString(data.Message))
-	                                		throw new InvalidDataException('Ein ungültiges oder unvollständiges Fehlerobjekt wurde zurückgegeben.');
-	                                	// check if this is a managed error
-	                                	var match = data.Message.match(/^\[TN\]()?$/);
-	                                	if (!match || !allowError) {
-	                                		state = SqlState.HasError;
-	                                		error = match ? match[1] : data.Message;
-	                                		return;
-	                                	}
-	                                	// replace the data with a proper error object
-	                                	data = {
-	                                		statement: data.CommandNumber;
-	                                		message: match[1],
-	                                		table: match[2],
-	                                		column: match[3]
-	                                	};
+	                                    success = false;
+	                                    // ensure a complete error object
+	                                    if (!angular.isNumber(data.CommandNumber) || !angular.isString(data.Message))
+	                                        throw new InvalidDataException('Ein ungültiges oder unvollständiges Fehlerobjekt wurde zurückgegeben.');
+	                                    // check if this is a managed error
+	                                    var match = data.Message.match(/^(.*?)\s\[TN\](?:\[(.+?)\](?:\[(.+?)\])?)?$/);
+	                                    if (!match || !allowError) {
+	                                        state = SqlState.HasError;
+	                                        error = match ? match[1] : data.Message;
+	                                        return;
+	                                    }
+	                                    // replace the data with a proper error object
+	                                    data = {
+	                                        statement: data.CommandNumber,
+	                                        message: match[1],
+	                                        table: match[2],
+	                                        column: match[3]
+	                                    };
 	                                }
 
 	                                // otherwise throw an error
@@ -210,7 +217,7 @@
                     };
 
                     // push the command object
-                    this.commands.push(Object.freeze({
+                    svc.commands.push({
                         description: args.description,
                         sql: args.command.replace(/\b@(\w+)\b/g, function (match, name) { return args.parameters[name]; }),
                         abortable: allowError,
@@ -231,16 +238,16 @@
                                 throw new InvalidOperationException('Der Befehl kann nicht abgebrochen werden.');
                             state = SqlState.Aborted;
                             deferred.reject({
-                            	statement: 0,
-                            	message:'Der Vorgang wurde abgebrochen.',
-                            	table: null,
-                            	column: null
-                           	});
+                                statement: 0,
+                                message: 'Der Vorgang wurde abgebrochen.',
+                                table: null,
+                                column: null
+                            });
                         }
-                    }));
+                    });
 
                     // execute the command if no review is necessary
-                    if (!this.reviewCommands || !args.allowReview)
+                    if (!svc.reviewCommands || !args.allowReview)
                         execute();
 
                     // return the promise
@@ -275,23 +282,22 @@
                     });
                 };
                 this.batch = function (args) {
-                    return reader(args, false,  function (data) {
-                    	var changeCase = function(rs){
-                    		return {
-                    	  		recordsAffected: rs.RecordsAffected,
-                    			records: rs.Records
-                    		};
-                    	};
-                    	if (angular.isArray(data))
-                    	{
-                    		angular.forEach(data, function(value,key,obj){
-                    			obj[key] = changeCase(value);
-                    		});
-                    	}
-                    	else
-                    		data = changeCase(data);
-                    	return data;
-					});
+                    return reader(args, false, function (data) {
+                        var changeCase = function (rs) {
+                            return {
+                                recordsAffected: rs.RecordsAffected,
+                                records: rs.Records
+                            };
+                        };
+                        if (angular.isArray(data)) {
+                            angular.forEach(data, function (value, key, obj) {
+                                obj[key] = changeCase(value);
+                            });
+                        }
+                        else
+                            data = changeCase(data);
+                        return data;
+                    });
                 };
             })
 
@@ -308,22 +314,56 @@
                 //.rows{'9':{$State: $Error: {Text:'',Foreign:true,Column:''}}}
             })
             .controller('MainController', function ($scope, sql) {
-                sql.nonQuery({
-                    description: "sd",
-                    command: "UPDATE ...",
-                    parameters: [],
+            	$scope.log = sql.commands;
+                sql.query({
+                    description: 'Einrichtung abfragen',
+                    command: 'SELECT * FROM Einrchtung WHERE ID = @ID',
+                    parameters: { 'ID': 2 },
                     allowError: true,
                     allowReview: true
                 }).then(
-                    function (recordsAffected) {
+                    function (records) {
+                    
                     },
-                     function (message, table, column) {
-                     }
+                    function (error) {
+                    }
                 );
             });
     -->
     </script>
 </head>
 <body>
+	<nav class="uk-navbar uk-navbar-attached">
+	</nav>
+	<div class="uk-container">
+	<div class="uk-grid">
+    <div class="uk-panel uk-overflow-container">
+        <h3 class="uk-panel-title">Datenbanklog</h3>
+        <table class="uk-table uk-table-hover uk-table-condensed">
+        	<thead>
+        		<tr>
+        			<th>Status</th>
+        			<th>Beschreibung</th>
+        			<th>Fehler</th>
+        			<th>Aktion</th>
+        		</tr>
+        	</thead>
+        	<tbody>
+        		<tr data-ng-repeat="command in log" data-uk-tooltip="data-uk-tooltip" title="{{command.sql}}">
+        			<td>
+        			</td>
+        			<td><span>{{command.description}}</span></td>
+        			<td><span>{{command.getError()}}</span></td>
+        			<td>
+        				<button class="uk-button uk-button-mini uk-button-success" ng-disabled="command.getState() != 0" data-ng-click="command.approve()">Genehmigen</button>
+        				<button class="uk-button uk-button-mini uk-button-primary" ng-disabled="command.getState() != 2" data-ng-click="command.retry()">Wiederholen</button>
+        				<button class="uk-button uk-button-mini uk-button-danger" ng-disabled="command.getState() != 2 || !command.abortable" data-ng-click="command.abort()">Abbrechen</button>
+        			</td>
+        		</tr>
+        	</tbody>
+        </table>
+    </div>
+    </div>
+    </div>
 </body>
 </html>
