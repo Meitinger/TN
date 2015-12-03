@@ -41,6 +41,9 @@ public class NotifyHandler : IHttpHandler
         long lastClientId;
         if (!long.TryParse(lastEventId, NumberStyles.Integer, CultureInfo.InvariantCulture, out lastClientId))
             throw new ArgumentException(new FormatException().Message, "lastEventId");
+        lock (waitLock)
+            if (lastClientId < -1 || lastClientId > lastServerId)
+                throw new ArgumentOutOfRangeException("lastEventId");
 
         // set the output encoding
         context.Response.ContentType = "application/json";
@@ -48,86 +51,96 @@ public class NotifyHandler : IHttpHandler
 
         // prepare the connection
         using (var connection = new SqlConnection(ConfigurationManager.ConnectionStrings["tn"].ConnectionString))
-        using (var command = new SqlCommand("SELECT [ID], Zeile.value('local-name((/*)[1])','sysname') AS [Table], Zeile.value('(/*/ID)[1]','int') AS [Row] FROM dbo.Version WHERE ID > @ID", connection))
         {
-            command.Parameters.AddWithValue("ID", lastClientId);
-
-            // check if we need to wait
+            // intialize the return variables and determine what to do
             long newLastServerId;
             var results = new DataTable();
-            var doWaitHere = false;
-            lock (waitLock)
+            if (lastClientId == -1)
             {
-                // only do something special if we know there are no newer records
-                if (lastServerId <= lastClientId)
-                {
-                    // if we're not waiting wait here, otherwise wait for the waiting client
-                    if (!isWaiting)
-                    {
-                        isWaiting = true;
-                        doWaitHere = true;
-                    }
-                    else
-                        Monitor.Wait(waitLock);
-                }
-            }
-            try
-            {
-                // open the connection and add the notification if necessary
+                // query the latest id only
                 connection.Open();
-                if (doWaitHere)
-                    command.Notification = new System.Data.Sql.SqlNotificationRequest(Guid.NewGuid().ToString(), "Service=SqlDependencyService", Timeout);
-
-                // execute the query
-                using (var reader = command.ExecuteReader())
-                    results.Load(reader);
-
-                // check if we need to wait
-                if (results.Rows.Count == 0)
-                {
-
-                    // return if we can't wait (this can only happen if events have been deleted)
-                    if (!doWaitHere)
-                        return;
-
-                    // wait for a message and return if we've reached the timeout instead
-                    using (var waitCommand = new SqlCommand("WAITFOR (RECEIVE CAST(message_body AS XML) FROM SqlDependencyQueue), TIMEOUT " + Timeout, connection))
-                    {
-                        waitCommand.CommandTimeout = Timeout / 500;
-                        using (var reader = waitCommand.ExecuteReader())
-                            if (!reader.HasRows)
-                                return;
-                    }
-
-                    // remove the notification and run the query again
-                    command.Notification = null;
-                    using (var reader = command.ExecuteReader())
-                        results.Load(reader);
-
-                    // give up if we still got nothing (again, this should not happen)
-                    if (results.Rows.Count == 0)
-                        return;
-                }
-
-                // update the last known server id
-                newLastServerId = results.AsEnumerable().Max(r => r.Field<long>("ID"));
-                lock (waitLock)
-                {
-                    if (newLastServerId > lastServerId)
-                        lastServerId = newLastServerId;
-                }
+                using (var lastIdCommand = new SqlCommand("SELECT MAX(ID) FROM dbo.Version", connection))
+                    newLastServerId = (long?)lastIdCommand.ExecuteScalar() ?? 0;
             }
-            finally
+            else
             {
-                // stop waiting and notify all other clients
-                if (doWaitHere)
+                // initialize the version command
+                using (var command = new SqlCommand("SELECT [ID], Zeile.value('local-name((/*)[1])','sysname') AS [Table], Zeile.value('(/*/ID)[1]','int') AS [Row], Zeile.value('(/*/Version)[1]','varbinary(8)') AS [Version] FROM dbo.Version WHERE ID > @ID", connection))
                 {
+                    command.Parameters.AddWithValue("ID", lastClientId);
+
+                    // check if we need to wait
+                    var doWaitHere = false;
                     lock (waitLock)
                     {
-                        isWaiting = false;
-                        Monitor.PulseAll(waitLock);
+                        // only do something special if we know there are no newer records
+                        if (lastClientId == lastServerId)
+                        {
+                            // if we're not waiting wait here, otherwise wait for the waiting client
+                            if (!isWaiting)
+                            {
+                                isWaiting = true;
+                                doWaitHere = true;
+                            }
+                            else
+                                Monitor.Wait(waitLock);
+                        }
+                    }
+                    try
+                    {
+                        // open the connection and add the notification if necessary
+                        connection.Open();
+                        if (doWaitHere)
+                            command.Notification = new System.Data.Sql.SqlNotificationRequest(Guid.NewGuid().ToString(), "Service=SqlDependencyService", Timeout);
+
+                        // execute the query
+                        using (var reader = command.ExecuteReader())
+                            results.Load(reader);
+
+                        // check if we need to wait (also check if we can wait in case events have been deleted)
+                        if (results.Rows.Count == 0 && doWaitHere)
+                        {
+                            // wait for a message and return if we've reached the timeout instead
+                            bool hasEvents;
+                            using (var waitCommand = new SqlCommand("WAITFOR (RECEIVE * FROM SqlDependencyQueue), TIMEOUT " + Timeout, connection))
+                            {
+                                waitCommand.CommandTimeout = Timeout / 500;
+                                using (var reader = waitCommand.ExecuteReader())
+                                    hasEvents = reader.HasRows;
+                            }
+
+                            // remove the notification and run the query again if new events arrived
+                            if (hasEvents)
+                            {
+                                command.Notification = null;
+                                using (var reader = command.ExecuteReader())
+                                    results.Load(reader);
+                            }
+                        }
+
+                        // update the last known server id
+                        newLastServerId = results.Rows.Count > 0 ? results.AsEnumerable().Max(r => r.Field<long>("ID")) : lastClientId;
+                    }
+                    finally
+                    {
+                        // stop waiting and notify all other clients
+                        if (doWaitHere)
+                        {
+                            lock (waitLock)
+                            {
+                                isWaiting = false;
+                                Monitor.PulseAll(waitLock);
+                            }
+                        }
                     }
                 }
+            }
+
+            // update the internal id
+            lock (waitLock)
+            {
+                if (newLastServerId > lastServerId)
+                    lastServerId = newLastServerId;
             }
 
             // notify the client
@@ -135,25 +148,37 @@ public class NotifyHandler : IHttpHandler
             context.Response.Write(newLastServerId.ToString(CultureInfo.InvariantCulture));
             context.Response.Write(",\"Events\":{");
             var isFirstEvent = true;
-            foreach (var group in results.AsEnumerable().GroupBy(r => r.Field<string>("Table"), StringComparer.Ordinal))
+            foreach (var table in results.AsEnumerable().GroupBy(r => r.Field<string>("Table"), StringComparer.Ordinal))
             {
                 if (isFirstEvent)
                     isFirstEvent = false;
                 else
                     context.Response.Write(',');
                 context.Response.Write("\"");
-                context.Response.Write(group.Key);
-                context.Response.Write("\":[");
+                context.Response.Write(table.Key);
+                context.Response.Write("\":{");
                 var isFirstId = true;
-                foreach (var id in group.Select(r => r.Field<int>("Row")).Distinct())
+                foreach (var row in table.GroupBy(r => r.Field<int>("Row")))
                 {
                     if (isFirstId)
                         isFirstId = false;
                     else
                         context.Response.Write(',');
-                    context.Response.Write(id.ToString(CultureInfo.InvariantCulture));
+                    context.Response.Write("\"");
+                    context.Response.Write(row.Key.ToString(CultureInfo.InvariantCulture));
+                    context.Response.Write("\":");
+                    var lastRow = row.Last();
+                    if (!lastRow.IsNull("Version"))
+                    {
+                        context.Response.Write("\"0x");
+                        foreach (var b in lastRow.Field<byte[]>("Version"))
+                            context.Response.Write(b.ToString("X2", CultureInfo.InvariantCulture));
+                        context.Response.Write("\"");
+                    }
+                    else
+                        context.Response.Write("null");
                 }
-                context.Response.Write("]");
+                context.Response.Write("}");
             }
             context.Response.Write("}}");
         }
