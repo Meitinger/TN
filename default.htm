@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de" data-ng-app="tn">
+<html lang="de" data-ng-app="tn" data-ng-controller="MainController as main">
 <!--
     Copyright (C) 2015, Manuel Meitinger
 
@@ -28,367 +28,57 @@
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.23.0/js/components/tooltip.min.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.7/angular.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular-i18n/1.4.7/angular-locale_de.js"></script>
-    <script type="text/javascript">
-    <!--
-        'use strict';
-
-        // define errors
-        function ArgumentException(message, paramName) {
-            this.name = 'ArgumentException';
-            this.message = message || 'Der Wert liegt außerhalb des erwarteten Bereichs.';
-            if (paramName)
-                this.message += '\nParametername: ' + paramName;
-            this.paramName = paramName;
-            this.stack = (new Error()).stack;
-        }
-        ArgumentException.prototype = Object.create(Error.prototype);
-        ArgumentException.prototype.constructor = ArgumentException;
-        function InvalidDataException(message) {
-            this.name = 'InvalidDataException';
-            this.message = message || 'Ungültige Daten beim Decodieren gefunden.';
-            this.stack = (new Error()).stack;
-        }
-        InvalidDataException.prototype = Object.create(Error.prototype);
-        InvalidDataException.prototype.constructor = InvalidDataException;
-        function InvalidOperationException(message) {
-            this.name = 'InvalidOperationException';
-            this.message = message || 'Der Vorgang ist aufgrund des aktuellen Zustands des Objekts ungültig.';
-            this.stack = (new Error()).stack;
-        }
-        InvalidOperationException.prototype = Object.create(Error.prototype);
-        InvalidOperationException.prototype.constructor = InvalidOperationException;
-
-        // define angular module
-        angular.module('tn', [])
-
-        // SQL states
-            .constant('SqlState', {
-                PendingApproval: 0,
-                Execute: 1,
-                HasError: 2,
-                Completed: 3,
-                Aborted: 4,
-                Failed: 5
-            })
-
-        // SQL service
-            .service('sql', function ($q, $http, SqlState) {
-                var svc = this;
-
-                // bindable fields
-                this.commands = [];
-                this.reviewCommands = false;
-
-                // reader helper function
-                var reader = function (args, forceSingleSet, parser) {
-                    if (!angular.isObject(args) || !angular.isString(args.description) || !angular.isString(args.command) || angular.isDefined(args.parameters) && !angular.isObject(args.parameters))
-                        throw new ArgumentException('Die Argumente für die Abfrage sind ungültig.', 'args');
-
-                    // create the deferred object
-                    var deferred = $q.defer();
-
-                    // create the http config object
-                    var config = {
-                        method: 'GET',
-                        url: 'sql.ashx',
-                        params: { q: args.command }
-                    };
-                    if (angular.isDefined(args.parameters)) {
-                        // type-check and encode the parameters
-                        var encodedParameters = [];
-                        for (var name in args.parameters) {
-                            var value = args.parameters[name];
-                            switch (typeof value) {
-                                case 'number':
-                                    value = value.toString();
-                                    break;
-                                case 'boolean':
-                                    value = value ? '1' : '0';
-                                    break;
-                                case 'string':
-                                    value = encodeURIComponent(value);
-                                    break;
-                                default:
-                                    if (value !== null)
-                                        throw new ArgumentException('Die Abfrage hat ungültige Parameter.', 'args');
-                                    value = '';
-                                    break;
-                            }
-                            encodedParameters.push(encodeURIComponent(name) + '=' + encodeURIComponent(value));
-                        }
-                        // update the http config
-                        jQuery.extend(config, {
-                            method: 'POST',
-                            data: encodedParameters.join('&'),
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            transformRequest: angular.identity
-                        });
-                    }
-
-                    // store internal flags
-                    var state = SqlState.PendingApproval;
-                    var error = null;
-                    var lastExecuteTime= null;
-                    var allowError = args.allowError == true;
-                    var singleSet = forceSingleSet || args.singleSet == true;
-
-                    // query helper
-                    var execute = function () {
-                        // set the state and reset the error
-                        state = SqlState.Execute;
-                        error = null;
-                        lastExecuteTime = new Date();
-                        $http(config).then(
-	                        function (response) {
-	                            // parse the reponse data
-	                            var success = true;
-	                            var data = response.data;
-	                            try {
-	                                // check if the response include records
-	                                if (angular.isArray(data)) {
-	                                    // make sure the recordsets are valid
-	                                    angular.forEach(data, function (value, key) {
-	                                        if (!angular.isObject(value) || !angular.isNumber(value.RecordsAffected) || !angular.isArray(value.Records))
-	                                            throw new InvalidDataException('Ungültiges Recorset.');
-	                                        angular.forEach(value.Records, function (value, key) {
-	                                            if (!angular.isObject(value))
-	                                                throw new InvalidDataException('Ungültiger Record.');
-	                                        });
-	                                    });
-	                                    // ensure a single record set if requested
-	                                    if (singleSet) {
-	                                        if (data.length != 1)
-	                                            throw new InvalidDataException('Kein oder mehrere Recordsets wurden zurückgegeben.');
-	                                        data = data[0];
-	                                    }
-	                                    // parse the data
-	                                    data = parser(data);
-	                                }
-
-	                                // check if the response is an error
-	                                else if (angular.isObject(data)) {
-	                                    success = false;
-	                                    // ensure a complete error object
-	                                    if (!angular.isNumber(data.CommandNumber) || !angular.isString(data.Message))
-	                                        throw new InvalidDataException('Ein ungültiges oder unvollständiges Fehlerobjekt wurde zurückgegeben.');
-	                                    // check if this is a managed error
-	                                    var match = data.Message.match(/^(.*?)\s\[TN\](?:\[(.+?)\](?:\[(.+?)\])?)?$/);
-	                                    if (!match || !allowError) {
-	                                        state = SqlState.HasError;
-	                                        error = match ? match[1] : data.Message;
-	                                        return;
-	                                    }
-	                                    // replace the data with a proper error object
-	                                    data = {
-	                                        statement: data.CommandNumber,
-	                                        message: match[1],
-	                                        table: match[2],
-	                                        column: match[3]
-	                                    };
-	                                }
-
-	                                // otherwise throw an error
-	                                else
-	                                    throw new InvalidDataException('Server sendete ungültige Daten.');
-	                            }
-	                            catch (e) {
-	                                // handle invalid data or rethrow otherwise
-	                                if (e instanceof InvalidDataException) {
-	                                    state = SqlState.HasError;
-	                                    error = e.message;
-	                                    return;
-	                                }
-	                                throw e;
-	                            }
-
-	                            // resolve or reject the promise
-	                            if (success) {
-	                                state = SqlState.Completed;
-	                                deferred.resolve(data);
-	                            } else {
-	                                state = SqlState.Failed;
-	                                deferred.reject(data);
-	                            }
-	                        },
-	                        function (response) {
-	                            // set the state and error
-	                            state = SqlState.HasError;
-	                            error = 'Übertragungsfehler: ' + response.statusText;
-	                        }
-	                    );
-                    };
-
-                    // push the command object
-                    svc.commands.push({
-                        description: args.description,
-                        sql: args.command.replace(/\b@(\w+)\b/g, function (match, name) { return args.parameters[name]; }),
-                        abortable: allowError,
-                        getState: function () { return state; },
-                        getError: function () { return error; },
-                        getLastExecuteTime: function () { return lastExecuteTime; },
-                        approve: function () {
-                            if (state != SqlState.PendingApproval)
-                                throw new InvalidOperationException('Der Befehl ist nicht im Überprüfungsmodus.');
-                            execute();
-                        },
-                        retry: function () {
-                            if (state != SqlState.HasError)
-                                throw new InvalidOperationException('Der Befehl kann nicht wiederholt werden.');
-                            execute();
-                        },
-                        abort: function () {
-                            if (state != SqlState.HasError || !allowError)
-                                throw new InvalidOperationException('Der Befehl kann nicht abgebrochen werden.');
-                            state = SqlState.Aborted;
-                            deferred.reject({
-                                statement: 0,
-                                message: 'Der Vorgang wurde abgebrochen.',
-                                table: null,
-                                column: null
-                            });
-                        }
-                    });
-
-                    // execute the command if no review is necessary
-                    if (!svc.reviewCommands || !args.allowReview)
-                        execute();
-
-                    // return the promise
-                    return deferred.promise;
-                };
-
-                // member functions
-                this.scalar = function (args) {
-                    return reader(args, true, function (data) {
-                        if (data.Records.length > 1)
-                            throw new InvalidDataException('Zu viele zurückgegebene Zeilen für einen Skalarwert.');
-                        if (data.Records.length == 0)
-                            return null;
-                        var keys = Object.keys(data.Records[0]);
-                        if (keys != 1)
-                            throw new InvalidDataException('Es muss genaue eine Spalte für einen Skalarwert abgefragt werden.');
-                        return data.Records[0][keys[0]];
-                    });
-                };
-                this.nonQuery = function (args) {
-                    return reader(args, true, function (data) {
-                        if (data.Records.length > 0)
-                            throw new InvalidDataException('Ein abfragefreier SQL-Befehl darf keine Zeilen zurckgeben.');
-                        return data.RecordsAffected;
-                    });
-                };
-                this.query = function (args) {
-                    return reader(args, true, function (data) {
-                        if (data.RecordsAffected > 0)
-                            throw new InvalidDataException('Eine Abfrage darf keine Zeilen ändern.');
-                        return data.Records;
-                    });
-                };
-                this.batch = function (args) {
-                    return reader(args, false, function (data) {
-                        var changeCase = function (rs) {
-                            return {
-                                recordsAffected: rs.RecordsAffected,
-                                records: rs.Records
-                            };
-                        };
-                        if (angular.isArray(data)) {
-                            angular.forEach(data, function (value, key, obj) {
-                                obj[key] = changeCase(value);
-                            });
-                        }
-                        else
-                            data = changeCase(data);
-                        return data;
-                    });
-                };
-            })
-
-        // notify service
-            .service('notify', function (http) {
-
-            })
-            .factory('table', function (sql, notify) {
-                return function (name, filter) {
-                	
-                };
-                //.refresh()
-                //.columns
-                //.rows{'9':{$State: $Error: {Text:'',Foreign:true,Column:''}}}
-            })
-            .controller('SqlController', function (sql) {
-            	this.service = sql;
-            	this.limit = 10;
-            	this.limitOptions = [10, 50, 100, 500, 1000];
-            	this.offset = 0;
-            })
-            .controller('MainController', function ($scope, $window, sql) {
-            	$scope.Math = $window.Math;
-            	this.test = 'init';
-            	this.exec = function() {
-            	    sql.query({
-	                    description: 'Einrichtung abfragen',
-	                    command: 'SELECT * FROM Einrchtung WHERE ID = @ID',
-	                    parameters: { 'ID': 2 },
-	                    allowError: true,
-	                    allowReview: true
-	                }).then(
-	                    function (records) {
-	                    
-	                    },
-	                    function (error) {
-	                    }
-	                );
-                };
-            });
-    -->
-    </script>
+    <script type="text/javascript" src="tn.js"></script>
 </head>
-<body data-ng-controller="MainController as main">
-	<nav class="uk-navbar uk-navbar-attached">
-	</nav>
-	<button class="uk-button" data-ng-click="main.exec()">Abfrage</button>
-    <div class="uk-panel uk-panel-box uk-overflow-container" data-ng-controller="SqlController as sql">
+<body>
+    <nav class="uk-navbar uk-navbar-attached">
+    </nav>
+    <button class="uk-button" data-ng-click="main.exec()">Abfrage</button>
+    <div class="uk-panel uk-panel-box uk-overflow-container" data-ng-controller="LogController as log">
+    	<div data-ng-if="!log.notify.getLastSyncTime() && !log.notify.getError()" class="uk-panel-badge uk-badge">Initialisierung</div>
+        <div data-ng-if="!log.notify.getLastSyncTime() && log.notify.getError()" class="uk-panel-badge uk-badge uk-badge-warning" data-uk-tooltip="data-uk-tooltip" title="Fehler: {{log.notify.getError()}}">Initialisierung (Fehler)</div>
+        <div data-ng-if="log.notify.getLastSyncTime() && !log.notify.getError()" class="uk-panel-badge uk-badge uk-badge-success" data-uk-tooltip="data-uk-tooltip" title="Letzte Synchronisierung: {{(log.notify.getLastSyncTime() | date: 'medium') || 'nie'}}&#x000a;Letzte Änderung: {{(log.notify.getLastEvent() | date: 'medium') || 'noch keine'}}">Synchronisiert</div>
+        <div data-ng-if="log.notify.getLastSyncTime() && log.notify.getError()" class="uk-panel-badge uk-badge uk-badge-danger" title="Fehler: {{log.notify.getError()}}&#x000a;Letzte Synchronisierung: {{(log.notify.getLastSyncTime() | date: 'medium') || 'nie'}}">Synchronisierungsfehler</div>
         <h3 class="uk-panel-title">Datenbanklog</h3>
         <table class="uk-table uk-table-hover uk-table-condensed">
-        	<thead>
-        		<tr>
-        			<th>Status</th>
-        			<th>Beschreibung</th>
-        			<th>Letzte Ausführung</th>
-        			<th>Fehler</th>
-        			<th>Aktion</th>
-        		</tr>
-        	</thead>
-        	<tbody>
-        		<tr data-ng-repeat="command in sql.service.commands | orderBy: '$index':true | limitTo: sql.limit : sql.offset" data-uk-tooltip="data-uk-tooltip" title="{{command.sql}}">
-        			<td data-ng-switch="command.getState()">
-        				<div class="uk-badge" data-ng-switch-when="0">Warten auf Genehmigung</div>
-        				<div class="uk-badge" data-ng-switch-when="1">Wird ausgeführt</div>
-        				<div class="uk-badge uk-badge-warning" data-ng-switch-when="2">Fehler</div>
-        				<div class="uk-badge uk-badge-success" data-ng-switch-when="3">Abgeschlossen</div>
-        				<div class="uk-badge uk-badge-danger" data-ng-switch-when="4">Abgebrochen</div>
-        				<div class="uk-badge uk-badge-danger" data-ng-switch-when="5">Fehlgeschlagen</div>
-        			</td>
-        			<td><span>{{command.description}}</span></td>
-        			<td><span>{{command.getLastExecuteTime() | date: 'medium'}}</span></td>
-        			<td><span>{{command.getError()}}</span></td>
-        			<td>
-        				<button class="uk-button uk-button-mini uk-button-success" data-ng-disabled="command.getState() != 0" data-ng-click="command.approve()">Genehmigen</button>
-        				<button class="uk-button uk-button-mini uk-button-primary" data-ng-disabled="command.getState() != 2" data-ng-click="command.retry()">Wiederholen</button>
-        				<button class="uk-button uk-button-mini uk-button-danger" data-ng-disabled="command.getState() != 2 || !command.abortable" data-ng-click="command.abort()">Abbrechen</button>
-        			</td>
-        		</tr>
-        	</tbody>
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Beschreibung</th>
+                    <th>Letzte Ausführung</th>
+                    <th>Fehler</th>
+                    <th>Aktion</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr data-ng-repeat="command in log.sql.commands | orderBy: '$index':true | limitTo: log.limit : log.offset" data-uk-tooltip="data-uk-tooltip" title="{{command.sql}}">
+                    <td data-ng-switch="command.getState()">
+                        <div class="uk-badge" data-ng-switch-when="0">Warten auf Genehmigung</div>
+                        <div class="uk-badge" data-ng-switch-when="1">Wird ausgeführt</div>
+                        <div class="uk-badge uk-badge-warning" data-ng-switch-when="2">Fehler</div>
+                        <div class="uk-badge uk-badge-success" data-ng-switch-when="3">Abgeschlossen</div>
+                        <div class="uk-badge uk-badge-danger" data-ng-switch-when="4">Abgebrochen</div>
+                        <div class="uk-badge uk-badge-danger" data-ng-switch-when="5">Fehlgeschlagen</div>
+                    </td>
+                    <td><span>{{command.description}}</span></td>
+                    <td><span>{{command.getLastExecuteTime() | date: 'medium'}}</span></td>
+                    <td><span>{{command.getError()}}</span></td>
+                    <td>
+                        <button class="uk-button uk-button-mini uk-button-success" data-ng-disabled="command.getState() != 0" data-ng-click="command.approve()">Genehmigen</button>
+                        <button class="uk-button uk-button-mini uk-button-primary" data-ng-disabled="command.getState() != 2" data-ng-click="command.retry()">Wiederholen</button>
+                        <button class="uk-button uk-button-mini uk-button-danger" data-ng-disabled="command.getState() != 2 || !command.abortable" data-ng-click="command.abort()">Abbrechen</button>
+                    </td>
+                </tr>
+            </tbody>
         </table>
         <form class="uk-form">
-	        <button class="uk-button" data-ng-class="sql.service.reviewCommands ? 'uk-active' : ''" data-ng-click="sql.service.reviewCommands = !sql.service.reviewCommands">Abfragen genehmigen <span data-ng-class="sql.service.reviewCommands ? 'uk-text-success' : 'uk-text-danger'">{{sql.service.reviewCommands ? 'AN' : 'AUS'}}</span></button>
+        	<button class="uk-button" data-ng-class="log.sql.reviewCommands ? 'uk-active' : ''" data-ng-click="log.sql.reviewCommands = !log.sql.reviewCommands">Abfragen genehmigen <span data-ng-class="log.sql.reviewCommands ? 'uk-text-success' : 'uk-text-danger'">{{log.sql.reviewCommands ? 'AN' : 'AUS'}}</span></button>
         	<div class="uk-button-group">
-	        	<button class="uk-button" data-ng-disabled="sql.offset == 0" data-ng-click="sql.offset = Math.max(0, Math.floor(sql.offset/sql.limit)-1) * sql.limit"><i class="uk-icon-angle-double-left"></i> Neuere</button>
-	    		<button class="uk-button" data-ng-disabled="sql.offset + sql.limit &gt;= sql.service.commands.length" data-ng-click="sql.offset = sql.offset + sql.limit">Ältere <i class="uk-icon-angle-double-right"></i></button>
-	    	</div>
-	    	<select data-ng-model="sql.limit" data-ng-options="limit as limit for limit in sql.limitOptions"></select>
-    	</form>
+        	    <button class="uk-button" data-ng-disabled="log.offset == 0" data-ng-click="log.offset = Math.max(0, Math.floor(log.offset/log.limit)-1) * log.limit"><i class="uk-icon-angle-double-left"></i>Neuere</button>
+        	    <button class="uk-button" data-ng-disabled="log.offset + log.limit &gt;= log.sql.commands.length" data-ng-click="log.offset = log.offset + log.limit">Ältere <i class="uk-icon-angle-double-right"></i></button>
+       		</div>
+        	<select data-ng-model="log.limit" data-ng-options="limit as limit for limit in log.limitOptions"></select>
+        </form>
     </div>
-  </body>
+</body>
 </html>
