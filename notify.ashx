@@ -17,6 +17,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
@@ -27,10 +28,74 @@ using System.Web;
 
 public class NotifyHandler : IHttpHandler
 {
-    private const int Timeout = 40000;
-    private static readonly object waitLock = new object();
-    private static bool isWaiting = false;
-    private static long lastServerId = 0;
+    private const int NotificationTimeout = 40; // time a client waits in seconds
+    private const int ReceiveTimeout = 60; // RECEIVE TIMEOUT in seconds
+    private static readonly Dictionary<string, EventWaitHandle> WaitHandles = new Dictionary<string, EventWaitHandle>();
+    private static bool IsRunning = false;
+
+    static void Notify(object unused)
+    {
+        // ensure only one instance is running
+        lock (WaitHandles)
+        {
+            if (IsRunning)
+                return;
+            IsRunning = true;
+        }
+
+        // open a connection and prepare the commands
+        using (var connection = new SqlConnection(ConfigurationManager.ConnectionStrings["tn"].ConnectionString))
+        using (var waitCommand = new SqlCommand("WAITFOR (RECEIVE TOP (1) conversation_handle, CAST(message_body AS xml).value('declare namespace qn=\"http://schemas.microsoft.com/SQL/Notifications/QueryNotification\"; (/qn:QueryNotification/qn:Message)[1]','nvarchar(max)') FROM SqlDependencyQueue), TIMEOUT @Timeout", connection))
+        using (var endCommand = new SqlCommand("END CONVERSATION @Conversation", connection))
+        {
+            connection.Open();
+            var timeoutParam = waitCommand.Parameters.Add("Timeout", SqlDbType.Int);
+            waitCommand.Prepare();
+            var conversationParam = endCommand.Parameters.Add("Conversation", SqlDbType.UniqueIdentifier);
+            endCommand.Prepare();
+
+            // set the timeout
+            waitCommand.CommandTimeout = ReceiveTimeout + ReceiveTimeout / 2;
+            timeoutParam.Value = ReceiveTimeout * 1000;
+
+            // repeat until there are no more waiting requests
+            for (; ; )
+            {
+                lock (WaitHandles)
+                {
+                    if (WaitHandles.Count == 0)
+                    {
+                        IsRunning = false;
+                        break;
+                    }
+                }
+
+                // get the notification message
+                string message;
+                Guid conversation;
+                using (var reader = waitCommand.ExecuteReader())
+                {
+                    if (!reader.Read())
+                        continue;
+                    message = !reader.IsDBNull(1) ? reader.GetString(1) : null;
+                    conversation = reader.GetGuid(0);
+                }
+
+                // get and notify the wait handle
+                if (message != null)
+                {
+                    EventWaitHandle waitHandle;
+                    lock (WaitHandles)
+                        if (WaitHandles.TryGetValue(message, out waitHandle))
+                            waitHandle.Set();
+                }
+
+                // end the conversation
+                conversationParam.Value = conversation;
+                endCommand.ExecuteNonQuery();
+            }
+        }
+    }
 
     public void ProcessRequest(HttpContext context)
     {
@@ -41,144 +106,116 @@ public class NotifyHandler : IHttpHandler
         long lastClientId;
         if (!long.TryParse(lastEventId, NumberStyles.Integer, CultureInfo.InvariantCulture, out lastClientId))
             throw new ArgumentException(new FormatException().Message, "lastEventId");
-        lock (waitLock)
-            if (lastClientId < -1 || lastClientId > lastServerId)
-                throw new ArgumentOutOfRangeException("lastEventId");
+        if (lastClientId < -1)
+            throw new ArgumentOutOfRangeException("lastEventId");
 
         // set the output encoding
         context.Response.ContentType = "application/json";
         context.Response.Charset = "UTF-8";
 
-        // prepare the connection
+        // open the connection
         using (var connection = new SqlConnection(ConfigurationManager.ConnectionStrings["tn"].ConnectionString))
         {
-            // intialize the return variables and determine what to do
-            long newLastServerId;
+            connection.Open();
+
+            // intialize the return variable and determine what to do
             var results = new DataTable();
             if (lastClientId == -1)
             {
                 // query the latest id only
-                connection.Open();
-                using (var lastIdCommand = new SqlCommand("SELECT MAX(ID) FROM dbo.Version", connection))
-                    newLastServerId = (long?)lastIdCommand.ExecuteScalar() ?? 0;
+                using (var command = new SqlCommand("SELECT MAX(ID) FROM dbo.Version", connection))
+                    lastClientId = (long?)command.ExecuteScalar() ?? 0;
             }
             else
             {
-                // initialize the version command
-                using (var command = new SqlCommand("SELECT [ID], Zeile.value('local-name((/*)[1])','sysname') AS [Table], Zeile.value('(/*/ID)[1]','int') AS [Row], Zeile.value('(/*/Version)[1]','varbinary(8)') AS [Version] FROM dbo.Version WHERE ID > @ID", connection))
+                // initialize the version command and wait handle
+                using (var notifyCommand = new SqlCommand("SELECT ID FROM dbo.Version WHERE ID > @ID", connection))
+                using (var eventCommand = new SqlCommand("SELECT ID, Zeile.value('local-name((/*)[1])','sysname') AS [Table], Zeile.value('(/*/ID)[1]','int') AS [Row], Zeile.value('(/*/Version)[1]','varbinary(8)') AS [Version] FROM dbo.Version WHERE ID > @ID ORDER BY ID DESC", connection))
+                using (var waitHandle = new ManualResetEvent(false))
                 {
-                    command.Parameters.AddWithValue("ID", lastClientId);
+                    notifyCommand.Parameters.AddWithValue("ID", lastClientId);
+                    eventCommand.Parameters.AddWithValue("ID", lastClientId);
 
-                    // check if we need to wait
-                    var doWaitHere = false;
-                    lock (waitLock)
-                    {
-                        // only do something special if we know there are no newer records
-                        if (lastClientId == lastServerId)
-                        {
-                            // if we're not waiting wait here, otherwise wait for the waiting client
-                            if (!isWaiting)
-                            {
-                                isWaiting = true;
-                                doWaitHere = true;
-                            }
-                            else
-                                Monitor.Wait(waitLock);
-                        }
-                    }
+                    // add the notification
+                    var messageId = Guid.NewGuid().ToString();
+                    notifyCommand.Notification = new System.Data.Sql.SqlNotificationRequest(messageId, "Service=SqlDependencyService", NotificationTimeout);
+                    lock (WaitHandles)
+                        WaitHandles.Add(messageId, waitHandle);
                     try
                     {
-                        // open the connection and add the notification if necessary
-                        connection.Open();
-                        if (doWaitHere)
-                            command.Notification = new System.Data.Sql.SqlNotificationRequest(Guid.NewGuid().ToString(), "Service=SqlDependencyService", Timeout);
+                        // execute the notification query
+                        bool hasNewEvents;
+                        using (var reader = notifyCommand.ExecuteReader())
+                            hasNewEvents = reader.HasRows;
 
-                        // execute the query
-                        using (var reader = command.ExecuteReader())
-                            results.Load(reader);
-
-                        // check if we need to wait (also check if we can wait in case events have been deleted)
-                        if (results.Rows.Count == 0 && doWaitHere)
+                        // check if no rows were returned
+                        if (!hasNewEvents)
                         {
-                            // wait for a message and return if we've reached the timeout instead
-                            bool hasEvents;
-                            using (var waitCommand = new SqlCommand("WAITFOR (RECEIVE * FROM SqlDependencyQueue), TIMEOUT " + Timeout, connection))
-                            {
-                                waitCommand.CommandTimeout = Timeout / 500;
-                                using (var reader = waitCommand.ExecuteReader())
-                                    hasEvents = reader.HasRows;
-                            }
+                            // ensure the dispatcher is started
+                            if (!IsRunning)
+                                ThreadPool.QueueUserWorkItem(Notify);
 
-                            // remove the notification and run the query again if new events arrived
-                            if (hasEvents)
-                            {
-                                command.Notification = null;
-                                using (var reader = command.ExecuteReader())
-                                    results.Load(reader);
-                            }
+                            // wait for a notification
+                            hasNewEvents = waitHandle.WaitOne(NotificationTimeout * 1000);
                         }
 
-                        // update the last known server id
-                        newLastServerId = results.Rows.Count > 0 ? results.AsEnumerable().Max(r => r.Field<long>("ID")) : lastClientId;
+                        // receive the new events
+                        if (hasNewEvents)
+                        {
+                            using (var reader = eventCommand.ExecuteReader())
+                                results.Load(reader);
+                            if (results.Rows.Count > 0)
+                                lastClientId = results.AsEnumerable().First().Field<long>("ID");
+                        }
                     }
                     finally
                     {
-                        // stop waiting and notify all other clients
-                        if (doWaitHere)
-                        {
-                            lock (waitLock)
-                            {
-                                isWaiting = false;
-                                Monitor.PulseAll(waitLock);
-                            }
-                        }
+                        // remove the notify object
+                        lock (WaitHandles)
+                            WaitHandles.Remove(messageId);
                     }
                 }
-            }
-
-            // update the internal id
-            lock (waitLock)
-            {
-                if (newLastServerId > lastServerId)
-                    lastServerId = newLastServerId;
             }
 
             // notify the client
             context.Response.Write("{\"LastEventId\":");
-            context.Response.Write(newLastServerId.ToString(CultureInfo.InvariantCulture));
+            context.Response.Write(lastClientId.ToString(CultureInfo.InvariantCulture));
             context.Response.Write(",\"Events\":{");
-            var isFirstEvent = true;
-            foreach (var table in results.AsEnumerable().GroupBy(r => r.Field<string>("Table"), StringComparer.Ordinal))
+            if (results.Rows.Count > 0)
             {
-                if (isFirstEvent)
-                    isFirstEvent = false;
-                else
-                    context.Response.Write(',');
-                context.Response.Write("\"");
-                context.Response.Write(table.Key);
-                context.Response.Write("\":{");
-                var isFirstId = true;
-                foreach (var row in table.GroupBy(r => r.Field<int>("Row")))
+                var isFirstEvent = true;
+                foreach (var table in results.AsEnumerable().GroupBy(r => r.Field<string>("Table"), StringComparer.Ordinal))
                 {
-                    if (isFirstId)
-                        isFirstId = false;
+                    if (isFirstEvent)
+                        isFirstEvent = false;
                     else
                         context.Response.Write(',');
                     context.Response.Write("\"");
-                    context.Response.Write(row.Key.ToString(CultureInfo.InvariantCulture));
-                    context.Response.Write("\":");
-                    var lastRow = row.Last();
-                    if (!lastRow.IsNull("Version"))
+                    context.Response.Write(table.Key);
+                    context.Response.Write("\":{");
+                    var isFirstId = true;
+                    foreach (var row in table.GroupBy(r => r.Field<int>("Row")))
                     {
-                        context.Response.Write("\"0x");
-                        foreach (var b in lastRow.Field<byte[]>("Version"))
-                            context.Response.Write(b.ToString("X2", CultureInfo.InvariantCulture));
+                        if (isFirstId)
+                            isFirstId = false;
+                        else
+                            context.Response.Write(',');
                         context.Response.Write("\"");
+                        context.Response.Write(row.Key.ToString(CultureInfo.InvariantCulture));
+                        context.Response.Write("\":");
+                        var latestRow = row.First();
+                        if (!latestRow.IsNull("Version"))
+                        {
+                            context.Response.Write("\"0x");
+                            foreach (var b in latestRow.Field<byte[]>("Version"))
+                                context.Response.Write(b.ToString("X2", CultureInfo.InvariantCulture));
+                            context.Response.Write("\"");
+                        }
+                        else
+                            context.Response.Write("null");
                     }
-                    else
-                        context.Response.Write("null");
+                    context.Response.Write("}");
                 }
-                context.Response.Write("}");
             }
             context.Response.Write("}}");
         }
