@@ -419,6 +419,7 @@ angular.module('tn', ['ngHandsontable'])
             throw new ArgumentException('Der Filter muss eine Zeichenfolge ohne WHERE-Prefix sein.');
 
         // create the variables
+        var nextNewRowId = -1;
         var changedIdsBeforeReady = {};
         var notificationPromise = null;
         var permissions = {};
@@ -426,9 +427,13 @@ angular.module('tn', ['ngHandsontable'])
         var rows = {};
 
         // define a method to index rows
-        var indexData = function (data) {
+        var indexAndCheckData = function (data) {
             var result = {};
             data.forEach(function (entry) {
+                if (!angular.isNumber(entry.$id) || entry.$id < 0)
+                    throw new InvalidDataException('Ungültige ID gefunden.');
+                if (!angular.isString(entry.$version) || !entry.$version.match(/^0x[0-9A-F]{16}$/))
+                    throw new InvalidDataException('Ungültige Version gefunden.');
                 result[entry.$id] = entry;
             });
             return result;
@@ -462,7 +467,7 @@ angular.module('tn', ['ngHandsontable'])
                     command: queryCommand + (filter ? ' AND ' : '\nWHERE ') + 'ID IN (' + requeryIds.join(',') + ')'
                 }).then(function (data) {
                     // merge the changed rows
-                    data = indexData(data);
+                    data = indexAndCheckData(data);
                     requeryIds.forEach(function (id) {
                         if (id in data) {
                             // create inserted or replace updated rows
@@ -552,13 +557,32 @@ angular.module('tn', ['ngHandsontable'])
                     command: queryCommand
                 }).then(function (data) {
                     // set the rows and handle all queued events
-                    rows = indexData(data);
+                    rows = indexAndCheckData(data);
                     var changedIds = changedIdsBeforeReady;
                     changedIdsBeforeReady = null;
                     handleNotifications(queryCommand, changedIds);
                 });
             });
         });
+
+        // helper function for inserting, updating and deleting rows
+        var rowAction = function (id, fn) {
+            // check the id
+            if (!angular.isNumber(id))
+                throw new ArgumentException('Numerischer Wert erwartet.', 'id');
+
+            // create the deferred object
+            var deferred = $q.defer();
+
+            // check if the row exists
+            if (id in rows)
+                fn(rows[id], deferred);
+            else
+                deferred.reject('Die angegebene Zeile existiert nicht oder wurde bereits gelöscht.');
+
+            // return the promise
+            return deferred.promise;
+        }
 
         // return the table object
         return {
@@ -576,6 +600,56 @@ angular.module('tn', ['ngHandsontable'])
             },
             getRowById: function (id) {
                 return rows[id];
+            },
+            newRow: function () {
+                // create and add an empty row
+                var row = {
+                    $id: nextNewRowId--,
+                    $version: null
+                };
+                columns.forEach(function (column) { row[column.name] = null });
+                rows[row.$id] = row;
+            },
+            editRow: function (id) {
+                return rowAction(id, function (row, deferred) {
+                    if (row.$id < 0) {
+                        // insert the new row
+                    }
+                    else {
+                        // update an existing row
+                    }
+                });
+            },
+            deleteRow: function (id) {
+                return rowAction(id, function (row, deferred) {
+                    if (row.$id < 0) {
+                        // remove new lines immediatelly
+                        delete rows[row.$id];
+                        deferred.resolve(row);
+                    }
+                    else {
+                        // remove the row from the database
+                        sql.nonQuery({
+                            command: 'DELETE FROM dbo.' + name + ' WHERE ID = @ID AND Version = @Version',
+                            parameters: {
+                                'ID': row.$id,
+                                'Version': row.$version
+                            },
+                            allowReview: true,
+                            allowError: true
+                        }).then(
+                            function (recordsAffected) {
+                                if (recordsAffected == 0)
+                                    deferred.reject('Die Zeile wurde geändert oder bereits gelöscht.');
+                                else
+                                    deferred.resolve(row);
+                            },
+                            function (error) {
+                                deferred.reject(error.message);
+                            }
+                        );
+                    }
+                });
             }
         };
     };
@@ -589,7 +663,7 @@ angular.module('tn', ['ngHandsontable'])
 })
 .controller('MainController', function ($scope, $window, sql, table) {
     $scope.Math = $window.Math;
-    this.bescheid = table('Einrichtung');
+    this.bescheid = table('Zeitspanne');
     this.test = 'init';
     this.exec = function () {
         alert(JSON.stringify(this.bescheid));
