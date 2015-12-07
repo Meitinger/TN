@@ -196,7 +196,7 @@ angular.module('tn', ['ngHandsontable'])
         // push the command object
         svc.commands.push({
             description: args.description,
-            sql: args.command.replace(/@(\w+)/g, function (match, name) { return '\'' + args.parameters[name] + '\''; }),
+            sql: args.command.replace(/[^@]@(\w+)/g, function (match, name) { return match[0] + '\'' + args.parameters[name] + '\''; }),
             abortable: allowError,
             getState: function () { return state; },
             getError: function () { return error; },
@@ -575,8 +575,20 @@ angular.module('tn', ['ngHandsontable'])
             var deferred = $q.defer();
 
             // check if the row exists
-            if (id in rows)
+            if (id in rows) {
+                var row = rows[id];
+
+                // make sure there is no other action and store this promise
+                if (angular.isDefined(row.$action))
+                    throw new InvalidOperationException('Es ist bereits ein Vorgang bei dieser Zeile aktiv.');
+                row.$action = deferred.promise;
+                row.$action['finally'](function () {
+                    delete row.$action;
+                });
+
+                // run the action
                 fn(rows[id], deferred);
+            }
             else
                 deferred.reject('Die angegebene Zeile existiert nicht oder wurde bereits gelöscht.');
 
@@ -605,18 +617,75 @@ angular.module('tn', ['ngHandsontable'])
                 // create and add an empty row
                 var row = {
                     $id: nextNewRowId--,
-                    $version: null
+                    $version: '0x0000000000000000'
                 };
-                columns.forEach(function (column) { row[column.name] = null });
                 rows[row.$id] = row;
             },
             editRow: function (id) {
                 return rowAction(id, function (row, deferred) {
+                    var handleError = function (error) {
+                        // store the error and reject the promise
+                        row.$error = error;
+                        deferred.reject(error.message);
+                    };
                     if (row.$id < 0) {
                         // insert the new row
+                        var columnsWithValue = columns.filter(function (column) { return column.name in row; });
+                        var parameters = {};
+                        columnsWithValue.forEach(function (column) { parameters[column.name] = row[column.name]; });
+                        sql.batch({
+                            description: 'Zeile in Tabelle ' + name + ' einfügen',
+                            command: 'INSERT INTO dbo.' + name + ' (' + columnsWithValue.map(function (column) { return column.name; }).join(', ') + ')\nVALUES (' + columnsWithValue.map(function (column) { return '@' + column.name; }).join(', ') + ');\nSELECT @@IDENTITY AS [$id];',
+                            parameters: parameters,
+                            allowReview: true,
+                            allowError: true
+                        }).then(
+                            function (batch) {
+                                // check the batch result
+                                if (batch.recordsAffected == 0)
+                                    throw new InvalidOperationException('Die Zeile wurde trotz Erfolg nicht in die Datenbank geschrieben.');
+                                if (batch.records.length == 0 || !angular.isNumeric(batch.records[0].$id))
+                                    throw new InvalidDataException('Die Rückgabewert von @@IDENTITY ist ungültig.');
+
+                                // update the id and index (if not already done by notify)
+                                delete rows[row.$id];
+                                row.$id = batch.records[0].$id;
+                                if (!(row.$id in rows))
+                                    rows[row.$id] = row;
+
+                                // clear the error and resolve the promise
+                                row.$error = null;
+                                deferred.resolve(row);
+                            },
+                            handleError
+                        );
                     }
                     else {
                         // update an existing row
+                        var writableColumnsWithValue = columns.filter(function (column) { return !column.readOnly && column.name in row; });
+                        var parameters = {
+                            'ID': row.$id,
+                            'Version': row.$version
+                        }
+                        writableColumnsWithValue.forEach(function (column) { parameters[column.name] = row[column.name]; });
+                        sql.nonQuery({
+                            description: 'Zeile in Tabelle ' + name + ' ändern',
+                            command: 'UPDATE dbo.' + name + '\nSET ' + writableColumnsWithValue.map(function (column) { return column.name + ' = @' + column.name; }).join(', ') + '\nWHERE ID = @ID AND Version = @Version',
+                            parameters: parameters,
+                            allowReview: true,
+                            allowError: true
+                        }).then(
+                            function (recordsAffected) {
+                                if (recordsAffected != 0) {
+                                    // clear the error and resolve the promise
+                                    row.$error = null;
+                                    deferred.resolve(row);
+                                }
+                                else
+                                    deferred.reject('Die Zeile wurde bereits geändert oder gelöscht.');
+                            },
+                            handleError
+                        );
                     }
                 });
             },
@@ -630,6 +699,7 @@ angular.module('tn', ['ngHandsontable'])
                     else {
                         // remove the row from the database
                         sql.nonQuery({
+                            description: 'Zeile von Tabelle ' + name + ' löschen',
                             command: 'DELETE FROM dbo.' + name + ' WHERE ID = @ID AND Version = @Version',
                             parameters: {
                                 'ID': row.$id,
@@ -639,10 +709,13 @@ angular.module('tn', ['ngHandsontable'])
                             allowError: true
                         }).then(
                             function (recordsAffected) {
-                                if (recordsAffected == 0)
-                                    deferred.reject('Die Zeile wurde geändert oder bereits gelöscht.');
-                                else
+                                // delete the row if successful or reject the promise
+                                if (recordsAffected != 0) {
+                                    delete rows[row.$id];
                                     deferred.resolve(row);
+                                }
+                                else
+                                    deferred.reject('Die Zeile wurde geändert oder bereits gelöscht.');
                             },
                             function (error) {
                                 deferred.reject(error.message);
@@ -663,9 +736,10 @@ angular.module('tn', ['ngHandsontable'])
 })
 .controller('MainController', function ($scope, $window, sql, table) {
     $scope.Math = $window.Math;
-    this.bescheid = table('Zeitspanne');
+
+    this.bescheid = table('Einrichtung');
     this.test = 'init';
     this.exec = function () {
-        alert(JSON.stringify(this.bescheid));
+        this.bescheid.deleteRow(2);
     };
 });
