@@ -1,5 +1,21 @@
 'use strict';
 
+/* Copyright (C) 2015, Manuel Meitinger
+* 
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 2 of the License, or
+* (at your option) any later version.
+* 
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+* 
+* You should have received a copy of the GNU General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 // define errors
 function ArgumentException(message, paramName) {
     this.name = 'ArgumentException';
@@ -122,10 +138,10 @@ angular.module('tn', ['ngHandsontable'])
 	                    // check if the response include records
 	                    if (angular.isArray(data)) {
 	                        // make sure the recordsets are valid
-	                        angular.forEach(data, function (value, key) {
+	                        data.forEach(function (value, key) {
 	                            if (!angular.isObject(value) || !angular.isNumber(value.RecordsAffected) || !angular.isArray(value.Records))
 	                                throw new InvalidDataException('Ungültiges Recorset.');
-	                            angular.forEach(value.Records, function (value, key) {
+	                            value.Records.forEach(function (value, key) {
 	                                if (!angular.isObject(value))
 	                                    throw new InvalidDataException('Ungültiger Record.');
 	                            });
@@ -240,7 +256,7 @@ angular.module('tn', ['ngHandsontable'])
             if (data.Records.length == 0)
                 return null;
             var keys = Object.keys(data.Records[0]);
-            if (keys != 1)
+            if (keys.length != 1)
                 throw new InvalidDataException('Es muss genaue eine Spalte für einen Skalarwert abgefragt werden.');
             return data.Records[0][keys[0]];
         });
@@ -268,7 +284,7 @@ angular.module('tn', ['ngHandsontable'])
                 };
             };
             if (angular.isArray(data)) {
-                angular.forEach(data, function (value, key, obj) {
+                data.forEach(function (value, key, obj) {
                     obj[key] = changeCase(value);
                 });
             }
@@ -293,12 +309,7 @@ angular.module('tn', ['ngHandsontable'])
 
     // define the query function
     var query = function () {
-        var handleError = function (message) {
-            // set the error and reschedule the query
-            error = message;
-            return $timeout(query, 10000);
-        };
-        return $http({
+        $http({
             method: 'GET',
             url: 'notify.ashx',
             params: { lastEventId: lastEventId },
@@ -306,26 +317,37 @@ angular.module('tn', ['ngHandsontable'])
         }).then(
             function (response) {
                 // parse the data
-                var data = response.data;
-                if (!angular.isObject(data))
-                    return handleError('Kein Ereignisobjekt empfangen.');
-                if (!angular.isNumber(data.LastEventId))
-                    return handleError('Rückgabeobjekt enthält keine Ereignisnummer.');
-                if (data.LastEventId < 0)
-                    return handleError('Die Ereignisnummer ist negativ.');
-                if (!angular.isObject(data.Events))
-                    return handleError('Die Ereignissammlung ist ungültig.');
-                for (var sourceName in data.Events) {
-                    var source = data.Events[sourceName];
-                    if (!angular.isObject(source))
-                        return handleError('Die Ereignisquelle ' + sourceName + ' ist kein Objekt.');
-                    for (var id in source) {
-                        if (!id.match(/^[1-9]\d*$/))
-                            return handleError('ID ' + id + ' von Ereignisquelle ' + sourceName + ' ist nicht numerisch.');
-                        var version = source[id];
-                        if (version !== null && !(angular.isString(version) && version.match(/^0x[0-9A-F]{16}$/)))
-                            return handleError('Version von Ereignis ' + id + ' in Quelle ' + sourceName + ' ist ungültig.');
+                try {
+                    var data = response.data;
+                    if (!angular.isObject(data))
+                        throw new InvalidDataException('Kein Ereignisobjekt empfangen.');
+                    if (!angular.isNumber(data.LastEventId))
+                        throw new InvalidDataException('Rückgabeobjekt enthält keine Ereignisnummer.');
+                    if (data.LastEventId < 0)
+                        throw new InvalidDataException('Die Ereignisnummer ist negativ.');
+                    if (!angular.isObject(data.Events))
+                        throw new InvalidDataException('Die Ereignissammlung ist ungültig.');
+                    for (var sourceName in data.Events) {
+                        var source = data.Events[sourceName];
+                        if (!angular.isObject(source))
+                            throw new InvalidDataException('Die Ereignisquelle ' + sourceName + ' ist kein Objekt.');
+                        for (var id in source) {
+                            if (!id.match(/^[1-9]\d*$/))
+                                throw new InvalidDataException('ID ' + id + ' von Ereignisquelle ' + sourceName + ' ist nicht numerisch.');
+                            var version = source[id];
+                            if (version !== null && !(angular.isString(version) && version.match(/^0x[0-9A-F]{16}$/)))
+                                throw new InvalidDataException('Version von Ereignis ' + id + ' in Quelle ' + sourceName + ' ist ungültig.');
+                        }
                     }
+                }
+                catch (e) {
+                    // handle invalid data or rethrow otherwise
+                    if (e instanceof InvalidDataException) {
+                        error = e.message;
+                        $timeout(query, 30000);
+                        return;
+                    }
+                    throw e;
                 }
 
                 // set the last event id and reset the error
@@ -341,14 +363,16 @@ angular.module('tn', ['ngHandsontable'])
                     lastEventTime = new Date();
 
                 // notify the listeners
-                for (var id in notifications)
-                    notifications[id].notify(data.Events);
+                for (var notificationId in notifications)
+                    notifications[notificationId].notify(data.Events);
 
                 // requery
-                return query();
+                query();
             },
 			function (response) {
-			    return handleError('Übertragungsfehler "' + response.statusText + '".');
+			    // there is a network error, try again soon
+			    error = 'Übertragungsfehler: "' + response.statusText + '".';
+			    $timeout(query, 10000);
 			}
 		);
     };
@@ -631,12 +655,12 @@ angular.module('tn', ['ngHandsontable'])
                     if (row.$id < 0) {
                         // insert the new row
                         var columnsWithValue = columns.filter(function (column) { return column.name in row; });
-                        var parameters = {};
-                        columnsWithValue.forEach(function (column) { parameters[column.name] = row[column.name]; });
+                        var insertParameters = {};
+                        columnsWithValue.forEach(function (column) { insertParameters[column.name] = row[column.name]; });
                         sql.batch({
                             description: 'Zeile in Tabelle ' + name + ' einfügen',
                             command: 'INSERT INTO dbo.' + name + ' (' + columnsWithValue.map(function (column) { return column.name; }).join(', ') + ')\nVALUES (' + columnsWithValue.map(function (column) { return '@' + column.name; }).join(', ') + ');\nSELECT @@IDENTITY AS [$id];',
-                            parameters: parameters,
+                            parameters: insertParameters,
                             allowReview: true,
                             allowError: true
                         }).then(
@@ -663,15 +687,15 @@ angular.module('tn', ['ngHandsontable'])
                     else {
                         // update an existing row
                         var writableColumnsWithValue = columns.filter(function (column) { return !column.readOnly && column.name in row; });
-                        var parameters = {
+                        var updateParameters = {
                             'ID': row.$id,
                             'Version': row.$version
                         }
-                        writableColumnsWithValue.forEach(function (column) { parameters[column.name] = row[column.name]; });
+                        writableColumnsWithValue.forEach(function (column) { updateParameters[column.name] = row[column.name]; });
                         sql.nonQuery({
                             description: 'Zeile in Tabelle ' + name + ' ändern',
                             command: 'UPDATE dbo.' + name + '\nSET ' + writableColumnsWithValue.map(function (column) { return column.name + ' = @' + column.name; }).join(', ') + '\nWHERE ID = @ID AND Version = @Version',
-                            parameters: parameters,
+                            parameters: updateParameters,
                             allowReview: true,
                             allowError: true
                         }).then(
@@ -740,6 +764,12 @@ angular.module('tn', ['ngHandsontable'])
     this.bescheid = table('Einrichtung');
     this.test = 'init';
     this.exec = function () {
-        this.bescheid.deleteRow(2);
+        sql.scalar({
+            description: 'testabfrage',
+            command: 'DECLARE @ts timestamp; SET @ts = @timestamp; SELECT @ts;',
+            parameters: { 'timestamp': '0x1234567890ABCDEF' }
+        }).then(function (scalar) {
+            alert(scalar);
+        });
     };
 });

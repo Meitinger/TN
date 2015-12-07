@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data.SqlClient;
 using System.Globalization;
+using System.Linq;
 using System.Reflection;
 using System.Security.Principal;
 using System.Text;
@@ -31,6 +32,7 @@ using System.Xml;
 public class SqlHandler : IHttpHandler
 {
     private static readonly Regex ErrorParser = new Regex(@"^(?<message>.+)\s\[TN\](\[(?<table>.+)\]((?<column>.+))?)?$", RegexOptions.ExplicitCapture);
+    private static readonly Regex BinaryParser = new Regex(@"^0x(?<byte>[0-9A-F]{2})*$", RegexOptions.ExplicitCapture);
 
     private string ToJson(object o)
     {
@@ -152,10 +154,18 @@ public class SqlHandler : IHttpHandler
                     foreach (var parameterName in context.Request.Form.AllKeys)
                     {
                         var parameterValue = context.Request.Form[parameterName];
-                        if (string.IsNullOrEmpty(parameterValue))
-                            command.Parameters.AddWithValue(parameterName, DBNull.Value);
+                        object value;
+                        if (!string.IsNullOrEmpty(parameterValue))
+                        {
+                            var binary = BinaryParser.Match(parameterValue);
+                            if (binary.Success)
+                                value = binary.Groups["byte"].Captures.Cast<Capture>().Select(c => byte.Parse(c.Value, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture)).ToArray();
+                            else
+                                value = parameterValue;
+                        }
                         else
-                            command.Parameters.AddWithValue(parameterName, parameterValue);
+                            value = DBNull.Value;
+                        command.Parameters.AddWithValue(parameterName, value);
                     }
 
                     // execute the query

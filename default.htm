@@ -47,7 +47,7 @@
     <div class="uk-panel uk-panel-box uk-overflow-container" data-ng-controller="LogController as log">
     	<div data-ng-if="!log.notification.getLastSyncTime() && !log.notification.getError()" class="uk-panel-badge uk-badge">Initialisierung</div>
         <div data-ng-if="!log.notification.getLastSyncTime() && log.notification.getError()" class="uk-panel-badge uk-badge uk-badge-warning" data-uk-tooltip="data-uk-tooltip" title="Fehler: {{log.notification.getError()}}">Initialisierung (Fehler)</div>
-        <div data-ng-if="log.notification.getLastSyncTime() && !log.notification.getError()" class="uk-panel-badge uk-badge uk-badge-success" data-uk-tooltip="data-uk-tooltip" title="Letzte Synchronisierung: {{(log.notification.getLastSyncTime() | date: 'medium') || 'nie'}}&#x000a;Letzte Änderung: {{(log.notification.getLastEvent() | date: 'medium') || 'noch keine'}}">Synchronisiert</div>
+        <div data-ng-if="log.notification.getLastSyncTime() && !log.notification.getError()" class="uk-panel-badge uk-badge uk-badge-success" data-uk-tooltip="data-uk-tooltip" title="Letzte Synchronisierung: {{(log.notification.getLastSyncTime() | date: 'medium') || 'nie'}}&#x000a;Letzte Änderung: {{(log.notification.getLastEventTime() | date: 'medium') || 'noch keine'}}">Synchronisiert</div>
         <div data-ng-if="log.notification.getLastSyncTime() && log.notification.getError()" class="uk-panel-badge uk-badge uk-badge-danger" data-uk-tooltip="data-uk-tooltip" title="Fehler: {{log.notification.getError()}}&#x000a;Letzte Synchronisierung: {{(log.notification.getLastSyncTime() | date: 'medium') || 'nie'}}">Synchronisierungsfehler</div>
         <h3 class="uk-panel-title">Datenbanklog</h3>
         <table class="uk-table uk-table-hover uk-table-condensed">
