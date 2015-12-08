@@ -23,34 +23,57 @@ function ArgumentException(message, paramName) {
     if (paramName)
         this.message += '\nParametername: ' + paramName;
     this.paramName = paramName;
-    this.stack = (new Error()).stack;
 }
 ArgumentException.prototype = Object.create(Error.prototype);
 ArgumentException.prototype.constructor = ArgumentException;
 function InvalidDataException(message) {
     this.name = 'InvalidDataException';
     this.message = message || 'Ungültige Daten beim Decodieren gefunden.';
-    this.stack = (new Error()).stack;
 }
 InvalidDataException.prototype = Object.create(Error.prototype);
 InvalidDataException.prototype.constructor = InvalidDataException;
 function InvalidOperationException(message) {
     this.name = 'InvalidOperationException';
     this.message = message || 'Der Vorgang ist aufgrund des aktuellen Zustands des Objekts ungültig.';
-    this.stack = (new Error()).stack;
 }
 InvalidOperationException.prototype = Object.create(Error.prototype);
 InvalidOperationException.prototype.constructor = InvalidOperationException;
 function UnauthorizedAccessException(message) {
     this.name = 'UnauthorizedAccessException';
     this.message = message || 'Es wurde versucht, einen nicht autorisierten Vorgang auszuführen.';
-    this.stack = (new Error()).stack;
 }
 UnauthorizedAccessException.prototype = Object.create(Error.prototype);
 UnauthorizedAccessException.prototype.constructor = UnauthorizedAccessException;
+function ObjectDisposedException(objectName) {
+    this.name = 'ObjectDisposedException';
+    this.message = 'Auf das verworfene Objekt kann nicht zugegriffen werden.';
+    if (objectName) {
+        this.message += '\nObjektname: ' + objectName;
+    }
+    this.objectName = objectName;
+}
+ObjectDisposedException.prototype = Object.create(InvalidOperationException.prototype);
+ObjectDisposedException.prototype.constructor = ObjectDisposedException;
 
 // define angular module
 angular.module('tn', ['ngHandsontable'])
+
+// error handler
+.factory('$exceptionHandler', function () {
+    return function (exception, cause) {
+        var message =
+            '<h1>Jo, des is\' hin...</h1>' +
+            '<p>Es ist ein unerwarteter Fehler aufgetreten.<br/>Die Meldung lautet:</p>' +
+            '<p><b>' + exception.message + '</b></p>';
+        if (cause)
+            message += '<p>Der Fehler wurde verursacht von <b>' + (cause || '(unbekannt)') + '</b></p>';
+        message +=
+            '<hr/>' +
+            '<p><b>Bitte <a href="mailto:administrator@aufbauwerk.com?subject=[tn]%20&amp;body=' + escape(exception.stack) + '">melden</a> Sie den Fehler und laden Sie die Seite <a href="javascript:location.reload(true);">neu</a>.';
+        UIkit.modal.blockUI(message);
+        throw exception;
+    };
+})
 
 // SQL states
 .constant('SqlState', {
@@ -72,7 +95,7 @@ angular.module('tn', ['ngHandsontable'])
 
     // reader helper function
     var reader = function (args, forceSingleSet, parser) {
-        if (!angular.isObject(args) || !angular.isString(args.description) || !angular.isString(args.command) || angular.isDefined(args.parameters) && !angular.isObject(args.parameters))
+        if (!angular.isObject(args) || !angular.isString(args.description) || !angular.isString(args.command) || angular.isDefined(args.parameters) && !angular.isObject(args.parameters) || angular.isDefined(args.cancelOn) && (typeof args.cancelOn != 'Promise'))
             throw new ArgumentException('Die Argumente für die Abfrage sind ungültig.', 'args');
 
         // create the deferred object
@@ -116,6 +139,18 @@ angular.module('tn', ['ngHandsontable'])
             });
         }
 
+        // handle cancellations
+        var cancelled = false;
+        if (args.cancelOn) {
+            config.timeout = args.cancelOn.then(function (reason) {
+                cancelled = true;
+                if (state < SqlState.Completed) {
+                    state = SqlState.Aborted;
+                    error = reason;
+                }
+            });
+        }
+
         // store internal flags
         var state = SqlState.PendingApproval;
         var error = null;
@@ -131,77 +166,63 @@ angular.module('tn', ['ngHandsontable'])
             lastExecuteTime = new Date();
             $http(config).then(
 	            function (response) {
-	                // parse the reponse data
-	                var success = true;
+	                // ensure not cancelled
+	                if (cancelled)
+	                    return;
+
+	                // check if the response include records
 	                var data = response.data;
-	                try {
-	                    // check if the response include records
-	                    if (angular.isArray(data)) {
-	                        // make sure the recordsets are valid
-	                        data.forEach(function (value, key) {
-	                            if (!angular.isObject(value) || !angular.isNumber(value.RecordsAffected) || !angular.isArray(value.Records))
-	                                throw new InvalidDataException('Ungültiges Recorset.');
-	                            value.Records.forEach(function (value, key) {
-	                                if (!angular.isObject(value))
-	                                    throw new InvalidDataException('Ungültiger Record.');
-	                            });
-	                        });
-	                        // ensure a single record set if requested
-	                        if (singleSet) {
-	                            if (data.length != 1)
-	                                throw new InvalidDataException('Kein oder mehrere Recordsets wurden zurückgegeben.');
-	                            data = data[0];
-	                        }
-	                        // parse the data
-	                        data = parser(data);
+	                if (angular.isArray(data)) {
+	                    // make sure the recordsets are valid
+	                    data.forEach(function (value, index) {
+	                        if (!angular.isObject(value) || !angular.isNumber(value.RecordsAffected) || !angular.isArray(value.Records) || value.Records.some(function (value) { return !angular.isObject(value); }))
+	                            throw new InvalidDataException('Recorset #' + index + 'ist ungültig.');
+	                    });
+	                    // ensure a single record set if requested
+	                    if (singleSet) {
+	                        if (data.length != 1)
+	                            throw new InvalidDataException('Kein oder mehrere Recordsets wurden zurückgegeben.');
+	                        data = data[0];
 	                    }
-
-	                    // check if the response is an error
-	                    else if (angular.isObject(data)) {
-	                        success = false;
-	                        // ensure a complete error object
-	                        if (!angular.isNumber(data.CommandNumber) || !angular.isString(data.Message))
-	                            throw new InvalidDataException('Ein ungültiges oder unvollständiges Fehlerobjekt wurde zurückgegeben.');
-	                        // check if this is a managed error
-	                        var match = data.Message.match(/^(.*?)\s\[TN\](?:\[(.+?)\](?:\[(.+?)\])?)?$/);
-	                        if (!match || !allowError) {
-	                            state = SqlState.HasError;
-	                            error = match ? match[1] : data.Message;
-	                            return;
-	                        }
-	                        // replace the data with a proper error object
-	                        data = {
-	                            statement: data.CommandNumber,
-	                            message: match[1],
-	                            table: match[2],
-	                            column: match[3]
-	                        };
-	                    }
-
-	                    // otherwise throw an error
-	                    else
-	                        throw new InvalidDataException('Server sendete ungültige Daten.');
-	                }
-	                catch (e) {
-	                    // handle invalid data or rethrow otherwise
-	                    if (e instanceof InvalidDataException) {
-	                        state = SqlState.HasError;
-	                        error = e.message;
-	                        return;
-	                    }
-	                    throw e;
-	                }
-
-	                // resolve or reject the promise
-	                if (success) {
+	                    // parse the data and resolve the promise
+	                    data = parser(data);
 	                    state = SqlState.Completed;
 	                    deferred.resolve(data);
-	                } else {
+	                }
+
+	                // check if the response is an error
+	                else if (angular.isObject(data)) {
+	                    // ensure a complete error object
+	                    if (!angular.isNumber(data.CommandNumber) || !angular.isString(data.Message))
+	                        throw new InvalidDataException('Ein ungültiges oder unvollständiges Fehlerobjekt wurde zurückgegeben.');
+	                    // check if this is a managed error
+	                    var match = data.Message.match(/^(.*?)\s\[TN\](?:\[(.+?)\](?:\[(.+?)\])?)?$/);
+	                    if (!match || !allowError) {
+	                        state = SqlState.HasError;
+	                        error = 'Datenbankfehler: ' + (match ? match[1] : data.Message);
+	                        return;
+	                    }
+	                    // replace the data with a proper error object
+	                    data = {
+	                        statement: data.CommandNumber,
+	                        message: match[1],
+	                        table: match[2],
+	                        column: match[3]
+	                    };
+	                    // reject the promise
 	                    state = SqlState.Failed;
 	                    deferred.reject(data);
 	                }
+
+	                // otherwise throw an error
+	                else
+	                    throw new InvalidDataException('Server sendete ungültige Daten.');
 	            },
 	            function (response) {
+	                // ensure not cancelled
+	                if (cancelled)
+	                    return;
+
 	                // set the state and error
 	                state = SqlState.HasError;
 	                error = 'Übertragungsfehler: ' + response.statusText;
@@ -283,14 +304,9 @@ angular.module('tn', ['ngHandsontable'])
                     records: rs.Records
                 };
             };
-            if (angular.isArray(data)) {
-                data.forEach(function (value, key, obj) {
-                    obj[key] = changeCase(value);
-                });
-            }
-            else
-                data = changeCase(data);
-            return data;
+            return angular.isArray(data) ?
+                data.map(function (value) { return changeCase(value); }) :
+                changeCase(value);
         });
     };
 })
@@ -316,38 +332,27 @@ angular.module('tn', ['ngHandsontable'])
             timeout: 60000
         }).then(
             function (response) {
-                // parse the data
-                try {
-                    var data = response.data;
-                    if (!angular.isObject(data))
-                        throw new InvalidDataException('Kein Ereignisobjekt empfangen.');
-                    if (!angular.isNumber(data.LastEventId))
-                        throw new InvalidDataException('Rückgabeobjekt enthält keine Ereignisnummer.');
-                    if (data.LastEventId < 0)
-                        throw new InvalidDataException('Die Ereignisnummer ist negativ.');
-                    if (!angular.isObject(data.Events))
-                        throw new InvalidDataException('Die Ereignissammlung ist ungültig.');
-                    for (var sourceName in data.Events) {
-                        var source = data.Events[sourceName];
-                        if (!angular.isObject(source))
-                            throw new InvalidDataException('Die Ereignisquelle ' + sourceName + ' ist kein Objekt.');
-                        for (var id in source) {
-                            if (!id.match(/^[1-9]\d*$/))
-                                throw new InvalidDataException('ID ' + id + ' von Ereignisquelle ' + sourceName + ' ist nicht numerisch.');
-                            var version = source[id];
-                            if (version !== null && !(angular.isString(version) && version.match(/^0x[0-9A-F]{16}$/)))
-                                throw new InvalidDataException('Version von Ereignis ' + id + ' in Quelle ' + sourceName + ' ist ungültig.');
-                        }
+                // check the data
+                var data = response.data;
+                if (!angular.isObject(data))
+                    throw new InvalidDataException('Kein Ereignisobjekt empfangen.');
+                if (!angular.isNumber(data.LastEventId))
+                    throw new InvalidDataException('Rückgabeobjekt enthält keine Ereignisnummer.');
+                if (data.LastEventId < 0)
+                    throw new InvalidDataException('Die Ereignisnummer ist negativ.');
+                if (!angular.isObject(data.Events))
+                    throw new InvalidDataException('Die Ereignissammlung ist ungültig.');
+                for (var sourceName in data.Events) {
+                    var source = data.Events[sourceName];
+                    if (!angular.isObject(source))
+                        throw new InvalidDataException('Die Ereignisquelle ' + sourceName + ' ist kein Objekt.');
+                    for (var id in source) {
+                        if (!id.match(/^[1-9]\d*$/))
+                            throw new InvalidDataException('ID ' + id + ' von Ereignisquelle ' + sourceName + ' ist nicht numerisch.');
+                        var version = source[id];
+                        if (version !== null && !(angular.isString(version) && version.match(/^0x[0-9A-F]{16}$/)))
+                            throw new InvalidDataException('Version von Ereignis ' + id + ' in Quelle ' + sourceName + ' ist ungültig.');
                     }
-                }
-                catch (e) {
-                    // handle invalid data or rethrow otherwise
-                    if (e instanceof InvalidDataException) {
-                        error = e.message;
-                        $timeout(query, 30000);
-                        return;
-                    }
-                    throw e;
                 }
 
                 // set the last event id and reset the error
@@ -371,7 +376,7 @@ angular.module('tn', ['ngHandsontable'])
             },
 			function (response) {
 			    // there is a network error, try again soon
-			    error = 'Übertragungsfehler: "' + response.statusText + '".';
+			    error = response.statusText || "Zeitüberschreitung";
 			    $timeout(query, 10000);
 			}
 		);
@@ -443,12 +448,24 @@ angular.module('tn', ['ngHandsontable'])
             throw new ArgumentException('Der Filter muss eine Zeichenfolge ohne WHERE-Prefix sein.');
 
         // create the variables
+        var disposed = false;
+        var disposedDeferred = $q.defer();
+        var disposedPromise = disposeDeferred.promise;
         var nextNewRowId = -1;
         var changedIdsBeforeReady = {};
         var notificationPromise = null;
         var permissions = {};
         var columns = [];
         var rows = {};
+
+        // wrap a function around a dispose checker
+        var throwIfDisposed = function (fn) {
+            return function () {
+                if (disposed)
+                    throw new ObjectDisposedException('table ' + name);
+                fn.apply(this, arguments);
+            };
+        }
 
         // define a method to index rows
         var indexAndCheckData = function (data) {
@@ -468,7 +485,7 @@ angular.module('tn', ['ngHandsontable'])
             var requeryIds = [];
             for (var id in changedIds) {
                 var version = changedIds[id];
-                if (version == null) {
+                if (version === null) {
                     // check if the row is present
                     if (id in rows)
                         requeryIds.push(id);
@@ -488,7 +505,8 @@ angular.module('tn', ['ngHandsontable'])
             if (requeryIds.length > 0) {
                 sql.query({
                     description: 'Geänderte Zeilen von Tabelle ' + name + ' abfragen',
-                    command: queryCommand + (filter ? ' AND ' : '\nWHERE ') + 'ID IN (' + requeryIds.join(',') + ')'
+                    command: queryCommand + (filter ? ' AND ' : '\nWHERE ') + 'ID IN (' + requeryIds.join(',') + ')',
+                    cancelOn: disposePromise
                 }).then(function (data) {
                     // merge the changed rows
                     data = indexAndCheckData(data);
@@ -510,6 +528,10 @@ angular.module('tn', ['ngHandsontable'])
 
         // initialize the table when ready
         notification.ready(function () {
+            // ensure we're not disposed
+            if (disposed)
+                return;
+
             // query the permissions
             sql.query({
                 description: 'Berechtigungen an Tabelle ' + name + ' abfragen',
@@ -518,7 +540,8 @@ angular.module('tn', ['ngHandsontable'])
                          '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'UPDATE\') AS allowEdit,\n' +
                          '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'DELETE\') AS allowDelete',
                 parameters: { 'Table': 'dbo.' + name },
-                allowError: true
+                allowError: true,
+                cancelOn: disposePromise
             }).then(function (data) {
                 // store the permissions
                 permissions = data;
@@ -548,7 +571,8 @@ angular.module('tn', ['ngHandsontable'])
                          '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'SELECT\',c.name,\'COLUMN\') = 1 AND\n' +
                          '  c.is_computed = 0\n' +
                          'ORDER BY c.column_id',
-                parameters: { 'Table': 'dbo.' + name }
+                parameters: { 'Table': 'dbo.' + name },
+                cancelOn: disposePromise
             }).then(function (data) {
                 // check and store the columns
                 if (data.length == 0)
@@ -578,7 +602,8 @@ angular.module('tn', ['ngHandsontable'])
                 // retrieve the rows
                 sql.query({
                     description: (filter ? 'Gefilterte' : 'Alle') + ' Zeilen von Tabelle ' + name + ' abfragen',
-                    command: queryCommand
+                    command: queryCommand,
+                    cancelOn: disposePromise
                 }).then(function (data) {
                     // set the rows and handle all queued events
                     rows = indexAndCheckData(data);
@@ -622,36 +647,53 @@ angular.module('tn', ['ngHandsontable'])
 
         // return the table object
         return {
-            getColumns: function () {
+            dispose: function () {
+                // dispose the object
+                if (!disposed) {
+                    disposedDeferred.resolve('Tabelle wird nicht mehr verwendet.');
+                    if (notifcationPromise)
+                        notification.cancel(notifcationPromise);
+                    disposed = true;
+                }
+            },
+            getName: throwIfDisposed(function () {
+                return name;
+            }),
+            getColumns: throwIfDisposed(function () {
                 return columns;
-            },
-            getPermissions: function () {
+            }),
+            getPermissions: throwIfDisposed(function () {
                 return permissions;
-            },
-            getRows: function () {
+            }),
+            getRows: throwIfDisposed(function () {
                 var result = [];
                 for (var id in rows)
                     result.push(rows[id]);
                 return result;
-            },
-            getRowById: function (id) {
+            }),
+            getRowById: throwIfDisposed(function (id) {
                 return rows[id];
-            },
-            newRow: function () {
+            }),
+            newRow: throwIfDisposed(function () {
                 // create and add an empty row
                 var row = {
                     $id: nextNewRowId--,
                     $version: '0x0000000000000000'
                 };
                 rows[row.$id] = row;
-            },
-            editRow: function (id) {
+            }),
+            editRow: throwIfDisposed(function (id) {
                 return rowAction(id, function (row, deferred) {
                     var handleError = function (error) {
                         // store the error and reject the promise
                         row.$error = error;
                         deferred.reject(error.message);
                     };
+                    var buildCommand = function (command, id) {
+                        if (filter)
+                            command += ';\nIF NOT EXISTS (SELECT * FROM dbo.' + name + ' WHERE ID = ' + id + ' + AND (' + filter + ')) RAISERROR(\'Der Eintrag entspricht nicht dem Tabellenfilter. [TN][' + name + ']\', 16, 1)';
+                        return command;
+                    }
                     if (row.$id < 0) {
                         // insert the new row
                         var columnsWithValue = columns.filter(function (column) { return column.name in row; });
@@ -659,10 +701,16 @@ angular.module('tn', ['ngHandsontable'])
                         columnsWithValue.forEach(function (column) { insertParameters[column.name] = row[column.name]; });
                         sql.batch({
                             description: 'Zeile in Tabelle ' + name + ' einfügen',
-                            command: 'INSERT INTO dbo.' + name + ' (' + columnsWithValue.map(function (column) { return column.name; }).join(', ') + ')\nVALUES (' + columnsWithValue.map(function (column) { return '@' + column.name; }).join(', ') + ');\nSELECT @@IDENTITY AS [$id];',
+                            command: 'INSERT INTO dbo.' + name + ' (' + columnsWithValue.map(function (column) { return column.name; }).join(', ') + ')\n' +
+                                     'VALUES (' + columnsWithValue.map(function (column) { return '@' + column.name; }).join(', ') + ');\n' +
+                                     'SELECT @@IDENTITY AS [$id]' +
+                                     (filter ? (';\n' +
+                                     'IF NOT EXISTS (SELECT * FROM dbo.' + name + ' WHERE ID = @@IDENTITY AND (' + filter + ')) RAISERROR(\'Der Eintrag entspricht nicht dem Tabellenfilter. [TN][' + name + ']\', 16, 1)'
+                                     ) : ''),
                             parameters: insertParameters,
                             allowReview: true,
-                            allowError: true
+                            allowError: true,
+                            cancelOn: disposePromise
                         }).then(
                             function (batch) {
                                 // check the batch result
@@ -694,10 +742,16 @@ angular.module('tn', ['ngHandsontable'])
                         writableColumnsWithValue.forEach(function (column) { updateParameters[column.name] = row[column.name]; });
                         sql.nonQuery({
                             description: 'Zeile in Tabelle ' + name + ' ändern',
-                            command: 'UPDATE dbo.' + name + '\nSET ' + writableColumnsWithValue.map(function (column) { return column.name + ' = @' + column.name; }).join(', ') + '\nWHERE ID = @ID AND Version = @Version',
+                            command: 'UPDATE dbo.' + name + '\n' +
+                                     'SET ' + writableColumnsWithValue.map(function (column) { return column.name + ' = @' + column.name; }).join(', ') + '\n' +
+                                     'WHERE ID = @ID AND Version = @Version' +
+                                     (filter ? (';\n' +
+                                     'IF @@ROWCOUNT > 0 AND NOT EXISTS (SELECT * FROM dbo.' + name + ' WHERE ID = @ID AND (' + filter + ')) RAISERROR(\'Der Eintrag entspricht nicht dem Tabellenfilter. [TN][' + name + ']\', 16, 1)'
+                                     ) : ''),
                             parameters: updateParameters,
                             allowReview: true,
-                            allowError: true
+                            allowError: true,
+                            cancelOn: disposePromise
                         }).then(
                             function (recordsAffected) {
                                 if (recordsAffected != 0) {
@@ -712,8 +766,8 @@ angular.module('tn', ['ngHandsontable'])
                         );
                     }
                 });
-            },
-            deleteRow: function (id) {
+            }),
+            deleteRow: throwIfDisposed(function (id) {
                 return rowAction(id, function (row, deferred) {
                     if (row.$id < 0) {
                         // remove new lines immediatelly
@@ -730,12 +784,14 @@ angular.module('tn', ['ngHandsontable'])
                                 'Version': row.$version
                             },
                             allowReview: true,
-                            allowError: true
+                            allowError: true,
+                            cancelOn: disposePromise
                         }).then(
                             function (recordsAffected) {
-                                // delete the row if successful or reject the promise
+                                // delete the row if successful (and not done by notify) or reject the promise
                                 if (recordsAffected != 0) {
-                                    delete rows[row.$id];
+                                    if (row.$id in rows)
+                                        delete rows[row.$id];
                                     deferred.resolve(row);
                                 }
                                 else
@@ -747,8 +803,14 @@ angular.module('tn', ['ngHandsontable'])
                         );
                     }
                 });
-            }
+            })
         };
+    };
+})
+.directive('sqlTable', function () {
+    return {
+        restrict: 'E',
+        template: ''
     };
 })
 .controller('LogController', function (sql, notification) {
@@ -758,18 +820,14 @@ angular.module('tn', ['ngHandsontable'])
     this.limitOptions = [10, 50, 100, 500, 1000];
     this.offset = 0;
 })
+.controller('BescheidController', function ($scope, sql, table) {
+    this.tables = [];
+
+})
 .controller('MainController', function ($scope, $window, sql, table) {
     $scope.Math = $window.Math;
-
-    this.bescheid = table('Einrichtung');
     this.test = 'init';
     this.exec = function () {
-        sql.scalar({
-            description: 'testabfrage',
-            command: 'DECLARE @ts timestamp; SET @ts = @timestamp; SELECT @ts;',
-            parameters: { 'timestamp': '0x1234567890ABCDEF' }
-        }).then(function (scalar) {
-            alert(scalar);
-        });
+        throw new InvalidOperationException('bla');
     };
 });
