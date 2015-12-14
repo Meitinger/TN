@@ -124,7 +124,10 @@ public class NotifyHandler : IHttpHandler
             {
                 // query the latest id only
                 using (var command = new SqlCommand("SELECT MAX(ID) FROM dbo.Version", connection))
-                    lastClientId = (long?)command.ExecuteScalar() ?? 0;
+                {
+                    var result = command.ExecuteScalar();
+                    lastClientId = result != DBNull.Value ? (long)result : 0;
+                }
             }
             else
             {
