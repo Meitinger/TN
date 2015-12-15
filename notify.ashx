@@ -112,6 +112,8 @@ public class NotifyHandler : IHttpHandler
         // set the output encoding
         context.Response.ContentType = "application/json";
         context.Response.Charset = "UTF-8";
+        context.Response.Cache.SetCacheability(HttpCacheability.NoCache);
+        context.Response.Cache.SetMaxAge(TimeSpan.Zero);
 
         // open the connection
         using (var connection = new SqlConnection(ConfigurationManager.ConnectionStrings["tn"].ConnectionString))

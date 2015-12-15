@@ -85,6 +85,15 @@ angular.module('tn', ['ngHandsontable'])
     Failed: 5
 })
 
+// DB roles
+.constant('Roles', {
+    JobCoaching: 'Integrationsassistenz',
+    Coaching: 'Training',
+    Management: 'Leitung',
+    Accounting: 'Rechnungswesen',
+    Administration: 'Sekretariat'
+})
+
 // SQL service
 .service('sql', function ($q, $http, SqlState) {
     var svc = this;
@@ -95,7 +104,7 @@ angular.module('tn', ['ngHandsontable'])
 
     // reader helper function
     var reader = function (args, forceSingleSet, parser) {
-        if (!angular.isObject(args) || !angular.isString(args.description) || !angular.isString(args.command) || angular.isDefined(args.parameters) && !angular.isObject(args.parameters) || angular.isDefined(args.cancelOn) && (typeof args.cancelOn != 'Promise'))
+        if (!angular.isObject(args) || !angular.isString(args.description) || !angular.isString(args.command) || angular.isDefined(args.parameters) && !angular.isObject(args.parameters) || angular.isDefined(args.cancelOn) && !(angular.isObject(args.cancelOn) && args.cancelOn instanceof 'Promise'))
             throw new ArgumentException('Die Argumente für die Abfrage sind ungültig.', 'args');
 
         // create the deferred object
@@ -328,7 +337,8 @@ angular.module('tn', ['ngHandsontable'])
         $http({
             method: 'GET',
             url: 'notify.ashx',
-            params: { lastEventId: lastEventId },
+            params: { lastEventId: lastEventId, noCache: (new Date()).valueOf() },
+            cache: false,
             timeout: 60000
         }).then(
             function (response) {
@@ -659,6 +669,9 @@ angular.module('tn', ['ngHandsontable'])
             getName: throwIfDisposed(function () {
                 return name;
             }),
+            getFilter: throwIfDisposed(function () {
+                return filter;
+            }),
             getColumns: throwIfDisposed(function () {
                 return columns;
             }),
@@ -684,16 +697,6 @@ angular.module('tn', ['ngHandsontable'])
             }),
             editRow: throwIfDisposed(function (id) {
                 return rowAction(id, function (row, deferred) {
-                    var handleError = function (error) {
-                        // store the error and reject the promise
-                        row.$error = error;
-                        deferred.reject(error.message);
-                    };
-                    var buildCommand = function (command, id) {
-                        if (filter)
-                            command += ';\nIF NOT EXISTS (SELECT * FROM dbo.' + name + ' WHERE ID = ' + id + ' + AND (' + filter + ')) RAISERROR(\'Der Eintrag entspricht nicht dem Tabellenfilter. [TN][' + name + ']\', 16, 1)';
-                        return command;
-                    }
                     if (row.$id < 0) {
                         // insert the new row
                         var columnsWithValue = columns.filter(function (column) { return column.name in row; });
@@ -726,10 +729,14 @@ angular.module('tn', ['ngHandsontable'])
                                     rows[row.$id] = row;
 
                                 // clear the error and resolve the promise
-                                row.$error = null;
+                                delete row.$error;
                                 deferred.resolve(row);
                             },
-                            handleError
+                            function (error) {
+                                // store the error and reject the promise
+                                row.$error = error;
+                                deferred.reject(error.message);
+                            }
                         );
                     }
                     else {
@@ -756,13 +763,17 @@ angular.module('tn', ['ngHandsontable'])
                             function (recordsAffected) {
                                 if (recordsAffected != 0) {
                                     // clear the error and resolve the promise
-                                    row.$error = null;
+                                    delete row.$error;
                                     deferred.resolve(row);
                                 }
                                 else
                                     deferred.reject('Die Zeile wurde bereits geändert oder gelöscht.');
                             },
-                            handleError
+                            function (error) {
+                                // store the error and reject the promise
+                                row.$error = error;
+                                deferred.reject(error.message);
+                            }
                         );
                     }
                 });
@@ -807,27 +818,234 @@ angular.module('tn', ['ngHandsontable'])
         };
     };
 })
+
+// define the sql table directory
 .directive('sqlTable', function () {
     return {
         restrict: 'E',
         template: ''
     };
 })
+
+// define the log area controller
 .controller('LogController', function (sql, notification) {
+    var ctr = this;
+    var offset = 0;
+
+    // controller variables
     this.sql = sql;
     this.notification = notification;
     this.limit = 10;
     this.limitOptions = [10, 50, 100, 500, 1000];
-    this.offset = 0;
-})
-.controller('BescheidController', function ($scope, sql, table) {
-    this.tables = [];
 
+    // navigation function
+    this.isFirstPage = function () {
+        return offset == 0;
+    };
+    this.isLastPage = function () {
+        return offset + ctr.limit <= sql.commands.length;
+    };
+    this.gotoPreviousPage = function () {
+        offset = Math.max(0, Math.floor(offset / ctr.limit) - 1) * ctr.limit;
+    };
+    this.gotoNextPage = function () {
+        offset += ctr.limit
+    };
 })
-.controller('MainController', function ($scope, $window, sql, table) {
-    $scope.Math = $window.Math;
-    this.test = 'init';
+
+// define the main scope controller
+.controller('MainController', function ($scope, sql, notification, Roles, $q) {
+    // store this
+    var ctr = this;
+
+    // initialize the varibles
+    var tables = {};
+    var primaryFilter = function (role, superRole) {
+        var filter = 'IS_MEMBER(SUSER_SNAME(dbo.Einrichtung.' + role + ')) = 1';
+        if (superRole)
+            filter += " OR IS_MEMBER('" + superRole + "')";
+        return filter;
+    };
+    var secondaryFilter = function (role, superRole) {
+        return 'Einrichtung IN (SELECT ID FROM dbo.Einrichtung WHERE ' + primaryFilter(role, superRole) + ')';
+    };
+    var sections = [
+        {
+            name: 'Trainees und Bescheide',
+            roles: [Roles.Management, Roles.Administration],
+            tables: [
+                {
+                    name: 'Teilnehmer',
+                    lookup: function (row) {
+                        return row.Nachname + ', ' + row.Vorname;
+                    }
+                }, {
+                    name: 'Zeitspanne',
+                    filter: secondaryFilter(Roles.Management, Roles.Administration)
+                }, {
+                    name: 'Bescheid',
+                    filter: secondaryFilter(Roles.Management, Roles.Administration)
+                }, {
+                    name: 'Zeitspanne_Austrittsgrund',
+                    lookup: function (row) {
+                        return row.Bezeichnung;
+                    },
+                    hidden: true
+                }, {
+                    name: 'Bescheid_Typ',
+                    lookup: function (row) {
+                        return row.Bezeichnung;
+                    },
+                    hidden: true
+                }, {
+                    name: 'Einrichtung',
+                    filter: primaryFilter(Roles.Management, Roles.Administration),
+                    lookup: function (row) {
+                        return row.Name;
+                    },
+                    hidden: true
+                }
+            ],
+            tabs: []
+        }, {
+            name: 'Anwesenheiten',
+            roles: [Roles.Coaching, Roles.Administration],
+            tables: [
+                {
+                    name: 'Feiertag',
+                    hidden: true
+                }, {
+                    name: 'Teilnehmer',
+                    hidden: true
+                }, {
+                    name: 'Zeitspanne',
+                    filter: secondaryFilter(Roles.Coaching, Roles.Administration),
+                    hidden: true
+                }, {
+                    name: 'Einrichtung',
+                    filter: primaryFilter(Roles.Coaching, Roles.Administration),
+                    hidden: true
+                }
+            ],
+            tabs: [
+                {
+                    name: 'Teilnehmerliste',
+                    type: 'attendance'
+                }
+            ]
+        }, {
+            name: 'Arbeitserprobungen',
+            roles: [Roles.JobCoaching],
+            tables: [
+                { name: 'Praktikum' },
+                { name: 'Standort' },
+                {
+                    name: 'Teilnehmer',
+                    lookup: function (row) {
+                        return row.Nachname + ', ' + row.Vorname;
+                    },
+                    hidden: true
+                }, {
+                    name: 'Standort_Bereich',
+                    lookup: function (row) {
+                        return row.Code + ' - ' + row.Bezeichnung;
+                    },
+                    hidden: true
+                }, {
+                    name: 'Praktikum_Kategorie',
+                    lookup: function (row) {
+                        return row.Bezeichnung;
+                    },
+                    hidden: true
+                }, {
+                    name: 'Einrichtung',
+                    lookup: function (row) {
+                        return row.Name;
+                    },
+                    hidden: true
+                }
+            ],
+            tabs: []
+        }, {
+            name: 'Planung',
+            roles: [Roles.Management, Roles.Accounting],
+            tables: [
+                {
+                    name: 'Planung',
+                    filter: secondaryFilter(Roles.Management, Roles.Accounting)
+                }, {
+                    name: 'Leistungsart',
+                    lookup: function (row) {
+                        return row.Bezeichnung;
+                    },
+                    hidden: true
+                }, {
+                    name: 'Einrichtung',
+                    filter: primaryFilter(Roles.Management, Roles.Accounting),
+                    lookup: function (row) {
+                        return row.Name;
+                    },
+                    hidden: true
+                }
+            ]
+        }, {
+            name: 'Abrechnung',
+            roles: [Roles.Accounting],
+            tables: [
+                {
+                    name: 'Rechnung',
+                    lookup: function (row) {
+                        return row.$id + " " + row.Bezeichnung;
+                    },
+                    hidden: true
+                }, {
+                    name: 'Teilnehmer',
+                    hidden: true
+                }, {
+                    name: 'Einheit',
+                    lookup: function (row) {
+                        return row.Bezeichnung;
+                    }
+                },
+                { name: 'Leistungsart' },
+                { name: 'Kostensatz' },
+                { name: 'Verrechnungssatz' }
+            ],
+            tabs: []
+        }, {
+            name: 'Systemtabellen',
+            roles: [Roles.Administration],
+            tables: [
+                { name: 'Feiertag' },
+                { name: 'Bescheid_Typ' },
+                { name: 'Praktikum_Kategorie' },
+                { name: 'Standort_Bereich' },
+                { name: 'Zeitspanne_Austrittsgrund' },
+                { name: 'Einrichtung' }
+            ],
+            tabs: []
+        }
+    ];
+
+    var deferred = $q.defer();
+
+    // query the role membership
+    var roleCommand = 'WAITFOR DELAY \'01:00\'; SELECT 1 AS [public]';
+    for (var role in Roles)
+        roleCommand += ', IS_MEMBER(@' + role + ') AS [' + Roles[role] + ']';
+    sql.query({
+        description: 'Rollenmitgliedschaft abfragen',
+        command: roleCommand,
+        parameters: Roles,
+        cancelOn: deferred.promise
+    }).then(function (data) {
+
+    });
+
+    this.lookupReference = function (tableName, rowId) {
+
+    };
     this.exec = function () {
-        throw new InvalidOperationException('bla');
+        deferred.reject('cancelled ohmy');
     };
 });
