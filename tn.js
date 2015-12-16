@@ -121,7 +121,8 @@ angular.module('tn', ['ngHandsontable'])
         var config = {
             method: 'GET',
             url: 'sql.ashx',
-            params: { q: args.command }
+            params: { q: args.command, noCache: (new Date()).valueOf() },
+            cache: false
         };
         if (args.parameters) {
             // type-check and encode the parameters
@@ -450,8 +451,8 @@ angular.module('tn', ['ngHandsontable'])
 
         // create the variables
         var disposed = false;
-        var disposedDeferred = $q.defer();
-        var disposedPromise = disposeDeferred.promise;
+        var disposeDeferred = $q.defer();
+        var disposePromise = disposeDeferred.promise;
         var nextNewRowId = -1;
         var notificationPromise = null;
         var eventsBeforeReady = {};
@@ -659,10 +660,10 @@ angular.module('tn', ['ngHandsontable'])
             dispose: function () {
                 // dispose the object
                 if (!disposed) {
-                    disposedDeferred.resolve('Tabelle wird nicht mehr verwendet.');
-                    if (notifcationPromise) {
-                        notification.cancel(notifcationPromise);
-                        notifcationPromise = null;
+                    disposeDeferred.resolve('Tabelle wird nicht mehr verwendet.');
+                    if (notificationPromise) {
+                        notification.cancel(notificationPromise);
+                        notificationPromise = null;
                     }
                     rowIndex = null;
                     delete table.rows;
@@ -820,14 +821,6 @@ angular.module('tn', ['ngHandsontable'])
     };
 })
 
-// define the sql table directory
-.directive('sqlTable', function () {
-    return {
-        restrict: 'E',
-        template: ''
-    };
-})
-
 // define the log area controller
 .controller('LogController', function (sql, notification) {
     var ctr = this;
@@ -849,36 +842,63 @@ angular.module('tn', ['ngHandsontable'])
 })
 
 // define the main scope controller
-.controller('MainController', function (sql, notification, Roles, $q) {
-    // store this and other states
+.controller('MainController', function (sql, Roles, table) {
+    // store this and initialize the table store
     var ctr = this;
     var tables = {};
-    var nav = -1;
-    var tab = -1;
 
-    // define the accessible variables and functions
+    // define the navigational variables and functions
     this.navs = [];
     this.currentNav = -1;
     this.tabs = [];
     this.currentTab = -1;
     this.gotoNav = function (index) {
-        if (!angular.isNumber(index) || index < 0 || index >= toc.length)
+        if (!angular.isNumber(index) || index < 0 || index >= ctr.navs.length)
             throw new ArgumentException('Ungültiger Navigationsindex.', 'index');
 
         // do nothing if we're already there
         if (index == ctr.currentNav)
             return;
 
+        // rebuild the tables and tabs
+        var oldTables = tables;
+        tables = {};
+        ctr.tabs = toc[index].tabs.slice();
+        toc[index].tables.forEach(function (tableDef) {
+            if (tableDef.name in tables)
+                throw new InvalidOperationException('Die Tabelle "' + tableDef.name + '" wurde in "' + toc[index] + '" mehrfach definiert.');
+
+            // check if the table can be reused
+            if (tableDef.name in oldTables && oldTables[tableDef.name].filter == tableDef.filter) {
+                tables[tableDef.name] = oldTables[tableDef.name];
+                delete oldTables[tableDef.name];
+            }
+            else
+                tables[tableDef.name] = table(tableDef.name, tableDef.filter);
+
+            // add a tab if the table is not hidden
+            if (!tableDef.hidden)
+                ctr.tabs.push({ name: tableDef.name, type: 'table' });
+        });
+
+        // remove old unused tables
+        for (var tableName in oldTables)
+            oldTables[tableName].dispose();
+
+        // set the tab and nav index
+        ctr.currentTab = ctr.tabs.length == 0 ? -1 : 0;
+        ctr.currentNav = index;
     };
     this.gotoTab = function (index) {
-        if (!angular.isNumber(index))
-            throw new ArgumentException('Zahl erwartet.', 'index');
-        return tab == index;
-    };
-    this.lookupReference = function (tableName, rowId) {
+        if (!angular.isNumber(index) || index < 0 || index >= ctr.tabs.length)
+            throw new ArgumentException('Ungültiger Tabulatorindex.', 'index');
 
+        // switch the current tab
+        ctr.currentTab = index;
     };
-    this.exec = function () {
+
+    // define the data functions
+    this.lookupReference = function (tableName, rowId) {
 
     };
 
@@ -902,7 +922,7 @@ angular.module('tn', ['ngHandsontable'])
     var tocPrimaryFilter = function (role, superRole) {
         var filter = 'IS_MEMBER(SUSER_SNAME(dbo.Einrichtung.' + role + ')) = 1';
         if (superRole)
-            filter += " OR IS_MEMBER('" + superRole + "')";
+            filter += " OR IS_MEMBER('" + superRole + "') = 1";
         return filter;
     };
     var tocSecondaryFilter = function (role, superRole) {
@@ -1026,7 +1046,8 @@ angular.module('tn', ['ngHandsontable'])
                     },
                     hidden: true
                 }
-            ]
+            ],
+            tabs: []
         }, {
             name: 'Abrechnung',
             roles: [Roles.Accounting],
