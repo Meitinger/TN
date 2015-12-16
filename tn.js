@@ -104,11 +104,18 @@ angular.module('tn', ['ngHandsontable'])
 
     // reader helper function
     var reader = function (args, forceSingleSet, parser) {
-        if (!angular.isObject(args) || !angular.isString(args.description) || !angular.isString(args.command) || angular.isDefined(args.parameters) && !angular.isObject(args.parameters) || angular.isDefined(args.cancelOn) && !(angular.isObject(args.cancelOn) && args.cancelOn instanceof 'Promise'))
-            throw new ArgumentException('Die Argumente für die Abfrage sind ungültig.', 'args');
-
-        // create the deferred object
+        // create the deferred object and check the parameters
         var deferred = $q.defer();
+        if (!angular.isObject(args))
+            throw new ArgumentException('Ungültige oder fehlende Abfrageargumente.', 'args');
+        if (!angular.isString(args.description))
+            throw new ArgumentException('Keine Abfragebeschreibung gefunden.', 'args');
+        if (!angular.isString(args.command))
+            throw new ArgumentException('Abfragetext fehlt.', 'args');
+        if (angular.isDefined(args.parameters) && !angular.isObject(args.parameters))
+            throw new ArgumentException('Abfrageparametersammlung ist kein Objekt.', 'args');
+        if (angular.isDefined(args.cancelOn) && !(angular.isObject(args.cancelOn) && args.cancelOn instanceof deferred.promise.constructor))
+            throw new ArgumentException('Abbruchsereignis ist kein Promise.', 'args');
 
         // create the http config object
         var config = {
@@ -133,7 +140,7 @@ angular.module('tn', ['ngHandsontable'])
                         break;
                     default:
                         if (value !== null)
-                            throw new ArgumentException('Die Abfrage hat ungültige Parameter.', 'args');
+                            throw new ArgumentException('Der Abfrageparameter "' + name + '" ist ungültig.', 'args');
                         value = '';
                         break;
                 }
@@ -153,26 +160,23 @@ angular.module('tn', ['ngHandsontable'])
         if (args.cancelOn) {
             config.timeout = args.cancelOn.then(function (reason) {
                 cancelled = true;
-                if (state < SqlState.Completed) {
-                    state = SqlState.Aborted;
-                    error = reason;
+                if (command.state < SqlState.Completed) {
+                    command.state = SqlState.Aborted;
+                    command.error = reason;
                 }
             });
         }
 
         // store internal flags
-        var state = SqlState.PendingApproval;
-        var error = null;
-        var lastExecuteTime = null;
         var allowError = !!args.allowError;
         var singleSet = forceSingleSet || !!args.singleSet;
 
         // query helper
         var execute = function () {
             // set the state and reset the error
-            state = SqlState.Execute;
-            error = null;
-            lastExecuteTime = new Date();
+            command.state = SqlState.Execute;
+            delete command.error;
+            command.lastExecuteTime = new Date();
             $http(config).then(
 	            function (response) {
 	                // ensure not cancelled
@@ -195,7 +199,7 @@ angular.module('tn', ['ngHandsontable'])
 	                    }
 	                    // parse the data and resolve the promise
 	                    data = parser(data);
-	                    state = SqlState.Completed;
+	                    command.state = SqlState.Completed;
 	                    deferred.resolve(data);
 	                }
 
@@ -206,9 +210,11 @@ angular.module('tn', ['ngHandsontable'])
 	                        throw new InvalidDataException('Ein ungültiges oder unvollständiges Fehlerobjekt wurde zurückgegeben.');
 	                    // check if this is a managed error
 	                    var match = data.Message.match(/^(.*?)\s\[TN\](?:\[(.+?)\](?:\[(.+?)\])?)?$/);
+	                    command.error = match ?
+                            ('Ungültige Daten: ' + match[1]) :
+                            ('Datenbankfehler: ' + data.Message);
 	                    if (!match || !allowError) {
-	                        state = SqlState.HasError;
-	                        error = 'Datenbankfehler: ' + (match ? match[1] : data.Message);
+	                        command.state = SqlState.HasError;
 	                        return;
 	                    }
 	                    // replace the data with a proper error object
@@ -219,7 +225,7 @@ angular.module('tn', ['ngHandsontable'])
 	                        column: match[3]
 	                    };
 	                    // reject the promise
-	                    state = SqlState.Failed;
+	                    command.state = SqlState.Failed;
 	                    deferred.reject(data);
 	                }
 
@@ -233,34 +239,32 @@ angular.module('tn', ['ngHandsontable'])
 	                    return;
 
 	                // set the state and error
-	                state = SqlState.HasError;
-	                error = 'Übertragungsfehler: ' + response.statusText;
+	                command.state = SqlState.HasError;
+	                command.error = 'Übertragungsfehler: ' + response.statusText;
 	            }
 	        );
         };
 
         // push the command object
-        svc.commands.push({
+        var command = {
             description: args.description,
             sql: args.command.replace(/[^@]@(\w+)/g, function (match, name) { return match[0] + '\'' + args.parameters[name] + '\''; }),
             abortable: allowError,
-            getState: function () { return state; },
-            getError: function () { return error; },
-            getLastExecuteTime: function () { return lastExecuteTime; },
+            state: SqlState.PendingApproval,
             approve: function () {
-                if (state != SqlState.PendingApproval)
+                if (command.state != SqlState.PendingApproval)
                     throw new InvalidOperationException('Der Befehl ist nicht im Überprüfungsmodus.');
                 execute();
             },
             retry: function () {
-                if (state != SqlState.HasError)
+                if (command.state != SqlState.HasError)
                     throw new InvalidOperationException('Der Befehl kann nicht wiederholt werden.');
                 execute();
             },
             abort: function () {
-                if (state != SqlState.HasError || !allowError)
+                if (command.state != SqlState.HasError || !allowError)
                     throw new InvalidOperationException('Der Befehl kann nicht abgebrochen werden.');
-                state = SqlState.Aborted;
+                command.state = SqlState.Aborted;
                 deferred.reject({
                     statement: 0,
                     message: 'Der Vorgang wurde abgebrochen.',
@@ -268,7 +272,8 @@ angular.module('tn', ['ngHandsontable'])
                     column: null
                 });
             }
-        });
+        };
+        svc.commands.push(command);
 
         // execute the command if no review is necessary
         if (!svc.reviewCommands || !args.allowReview)
@@ -326,10 +331,7 @@ angular.module('tn', ['ngHandsontable'])
     // define the global vars
     var nextNotificationId = 0;
     var notifications = {};
-    var error = null;
     var lastEventId = -1;
-    var lastSyncTime = null;
-    var lastEventTime = null;
     var readyEvent = $q.defer();
 
     // define the query function
@@ -367,15 +369,15 @@ angular.module('tn', ['ngHandsontable'])
 
                 // set the last event id and reset the error
                 var first = lastEventId == -1;
-                error = null;
+                delete notification.error;
                 lastEventId = data.LastEventId;
-                lastSyncTime = new Date();
+                notification.lastSyncTime = new Date();
 
                 // notify any readiness listeners or update the event time
                 if (first)
                     readyEvent.resolve();
                 else
-                    lastEventTime = new Date();
+                    notification.lastEventTime = new Date();
 
                 // notify the listeners
                 for (var notificationId in notifications)
@@ -386,7 +388,7 @@ angular.module('tn', ['ngHandsontable'])
             },
 			function (response) {
 			    // there is a network error, try again soon
-			    error = response.statusText || "Zeitüberschreitung";
+			    notification.error = response.statusText || "Zeitüberschreitung";
 			    $timeout(query, 10000);
 			}
 		);
@@ -432,17 +434,6 @@ angular.module('tn', ['ngHandsontable'])
         return promise;
     };
 
-    // define the status functions
-    notification.getError = function () {
-        return error;
-    }
-    notification.getLastSyncTime = function () {
-        return lastSyncTime;
-    }
-    notification.getLastEventTime = function () {
-        return lastEventTime;
-    }
-
     // initialize and return the notification function object
     query();
     return notification;
@@ -462,11 +453,9 @@ angular.module('tn', ['ngHandsontable'])
         var disposedDeferred = $q.defer();
         var disposedPromise = disposeDeferred.promise;
         var nextNewRowId = -1;
-        var changedIdsBeforeReady = {};
         var notificationPromise = null;
-        var permissions = {};
-        var columns = [];
-        var rows = {};
+        var eventsBeforeReady = {};
+        var rowIndex = null;
 
         // wrap a function around a dispose checker
         var throwIfDisposed = function (fn) {
@@ -497,13 +486,13 @@ angular.module('tn', ['ngHandsontable'])
                 var version = changedIds[id];
                 if (version === null) {
                     // check if the row is present
-                    if (id in rows)
+                    if (id in rowIndex)
                         requeryIds.push(id);
                 }
                 else {
                     // check if the version is newer or the row is missing
-                    if (id in rows) {
-                        if (version > rows[id].$version)
+                    if (id in rowIndex) {
+                        if (version > rowIndex[id].$version)
                             requeryIds.push(id);
                     }
                     else
@@ -523,13 +512,23 @@ angular.module('tn', ['ngHandsontable'])
                     requeryIds.forEach(function (id) {
                         if (id in data) {
                             // create inserted or replace updated rows
-                            if (!(id in rows) || data[id].$version > rows[id].$version)
-                                rows[id] = data[id];
+                            if (id in rowIndex) {
+                                if (data[id].$version > rowIndex[id].$version) {
+                                    table.rows[table.rows.indexOf(rowIndex[id])] = data[id];
+                                    rowIndex[id] = data[id];
+                                }
+                            }
+                            else {
+                                rowIndex[id] = data[id];
+                                table.rows.push(rowIndex[id]);
+                            }
                         }
                         else {
                             // remove deleted rows
-                            if (id in rows)
-                                delete rows[id];
+                            if (id in rowIndex) {
+                                table.rows.splice(table.rows.indexOf(rowIndex[id]), 1);
+                                delete rowIndex[id];
+                            }
                         }
                     });
                 });
@@ -554,7 +553,7 @@ angular.module('tn', ['ngHandsontable'])
                 cancelOn: disposePromise
             }).then(function (data) {
                 // store the permissions
-                permissions = data;
+                table.permissions = data;
             });
 
             // query the columns definition
@@ -591,10 +590,10 @@ angular.module('tn', ['ngHandsontable'])
                     throw new InvalidDataException('Die erste sichtbare ' + name + '-Spalte ist nicht "ID".');
                 if (data[data.length - 1].name != 'Version')
                     throw new InvalidDataException('Die letzte sichtbare ' + name + '-Spalte ist nicht "Version".');
-                columns = data.slice(1, -1);
+                table.columns = data.slice(1, -1);
 
                 // create the base command
-                var queryCommand = 'SELECT ' + columns.map(function (column) { return column.name; }).join(', ') + ', ID AS [$id], Version AS [$version]\nFROM dbo.' + name;
+                var queryCommand = 'SELECT ' + table.columns.map(function (column) { return column.name; }).join(', ') + ', ID AS [$id], Version AS [$version]\nFROM dbo.' + name;
                 if (filter)
                     queryCommand += '\nWHERE (' + filter + ')';
 
@@ -602,10 +601,10 @@ angular.module('tn', ['ngHandsontable'])
                 notificationPromise = notification(function (events) {
                     if (name in events) {
                         // handle the event now or queue them for later
-                        if (changedIdsBeforeReady == null)
-                            handleNotifications(queryCommand, events[name]);
+                        if (rowIndex == null)
+                            angular.extend(eventsBeforeReady, events[name]);
                         else
-                            angular.extend(changedIdsBeforeReady, events[name]);
+                            handleNotifications(queryCommand, events[name]);
                     }
                 });
 
@@ -616,10 +615,10 @@ angular.module('tn', ['ngHandsontable'])
                     cancelOn: disposePromise
                 }).then(function (data) {
                     // set the rows and handle all queued events
-                    rows = indexAndCheckData(data);
-                    var changedIds = changedIdsBeforeReady;
-                    changedIdsBeforeReady = null;
-                    handleNotifications(queryCommand, changedIds);
+                    rowIndex = indexAndCheckData(data);
+                    for (var id in rowIndex)
+                        table.rows.push(rowIndex[id]);
+                    handleNotifications(queryCommand, eventsBeforeReady);
                 });
             });
         });
@@ -634,8 +633,8 @@ angular.module('tn', ['ngHandsontable'])
             var deferred = $q.defer();
 
             // check if the row exists
-            if (id in rows) {
-                var row = rows[id];
+            if (id in rowIndex) {
+                var row = rowIndex[id];
 
                 // make sure there is no other action and store this promise
                 if (angular.isDefined(row.$action))
@@ -646,7 +645,7 @@ angular.module('tn', ['ngHandsontable'])
                 });
 
                 // run the action
-                fn(rows[id], deferred);
+                fn(row, deferred);
             }
             else
                 deferred.reject('Die angegebene Zeile existiert nicht oder wurde bereits gelöscht.');
@@ -656,36 +655,27 @@ angular.module('tn', ['ngHandsontable'])
         }
 
         // return the table object
-        return {
+        var table = {
             dispose: function () {
                 // dispose the object
                 if (!disposed) {
                     disposedDeferred.resolve('Tabelle wird nicht mehr verwendet.');
-                    if (notifcationPromise)
+                    if (notifcationPromise) {
                         notification.cancel(notifcationPromise);
+                        notifcationPromise = null;
+                    }
+                    rowIndex = null;
+                    delete table.rows;
                     disposed = true;
                 }
             },
-            getName: throwIfDisposed(function () {
-                return name;
-            }),
-            getFilter: throwIfDisposed(function () {
-                return filter;
-            }),
-            getColumns: throwIfDisposed(function () {
-                return columns;
-            }),
-            getPermissions: throwIfDisposed(function () {
-                return permissions;
-            }),
-            getRows: throwIfDisposed(function () {
-                var result = [];
-                for (var id in rows)
-                    result.push(rows[id]);
-                return result;
-            }),
+            name: name,
+            filter: filter,
+            columns: [],
+            permissions: {},
+            rows: [],
             getRowById: throwIfDisposed(function (id) {
-                return rows[id];
+                return rowIndex[id];
             }),
             newRow: throwIfDisposed(function () {
                 // create and add an empty row
@@ -693,13 +683,14 @@ angular.module('tn', ['ngHandsontable'])
                     $id: nextNewRowId--,
                     $version: '0x0000000000000000'
                 };
-                rows[row.$id] = row;
+                rowIndex[row.$id] = row;
+                table.rows.push(rowIndex[row.$id]);
             }),
             editRow: throwIfDisposed(function (id) {
                 return rowAction(id, function (row, deferred) {
                     if (row.$id < 0) {
                         // insert the new row
-                        var columnsWithValue = columns.filter(function (column) { return column.name in row; });
+                        var columnsWithValue = table.columns.filter(function (column) { return column.name in row; });
                         var insertParameters = {};
                         columnsWithValue.forEach(function (column) { insertParameters[column.name] = row[column.name]; });
                         sql.batch({
@@ -722,11 +713,17 @@ angular.module('tn', ['ngHandsontable'])
                                 if (batch.records.length == 0 || !angular.isNumeric(batch.records[0].$id))
                                     throw new InvalidDataException('Die Rückgabewert von @@IDENTITY ist ungültig.');
 
-                                // update the id and index (if not already done by notify)
-                                delete rows[row.$id];
+                                // update the id and reindex the row (if not already done by a notification)
+                                var oldIndex = table.rows.indexOf(rowIndex[row.$id]);
+                                delete rowIndex[row.$id];
                                 row.$id = batch.records[0].$id;
-                                if (!(row.$id in rows))
-                                    rows[row.$id] = row;
+                                if (row.$id in rowIndex) {
+                                    table.rows.splice(oldIndex, 1);
+                                }
+                                else {
+                                    rowIndex[row.$id] = row;
+                                    table.rows[oldIndex] = rowIndex[row.$id];
+                                }
 
                                 // clear the error and resolve the promise
                                 delete row.$error;
@@ -741,7 +738,7 @@ angular.module('tn', ['ngHandsontable'])
                     }
                     else {
                         // update an existing row
-                        var writableColumnsWithValue = columns.filter(function (column) { return !column.readOnly && column.name in row; });
+                        var writableColumnsWithValue = table.columns.filter(function (column) { return !column.readOnly && column.name in row; });
                         var updateParameters = {
                             'ID': row.$id,
                             'Version': row.$version
@@ -782,7 +779,8 @@ angular.module('tn', ['ngHandsontable'])
                 return rowAction(id, function (row, deferred) {
                     if (row.$id < 0) {
                         // remove new lines immediatelly
-                        delete rows[row.$id];
+                        table.rows.splice(table.rows.indexOf(rowIndex[row.$id]), 1);
+                        delete rowIndex[row.$id];
                         deferred.resolve(row);
                     }
                     else {
@@ -801,8 +799,10 @@ angular.module('tn', ['ngHandsontable'])
                             function (recordsAffected) {
                                 // delete the row if successful (and not done by notify) or reject the promise
                                 if (recordsAffected != 0) {
-                                    if (row.$id in rows)
-                                        delete rows[row.$id];
+                                    if (row.$id in rowIndex) {
+                                        table.rows.splice(table.rows.indexOf(rowIndex[row.$id]), 1);
+                                        delete rowIndex[row.$id];
+                                    }
                                     deferred.resolve(row);
                                 }
                                 else
@@ -816,6 +816,7 @@ angular.module('tn', ['ngHandsontable'])
                 });
             })
         };
+        return table;
     };
 })
 
@@ -830,46 +831,84 @@ angular.module('tn', ['ngHandsontable'])
 // define the log area controller
 .controller('LogController', function (sql, notification) {
     var ctr = this;
-    var offset = 0;
 
     // controller variables
+    this.offset = 0;
     this.sql = sql;
     this.notification = notification;
     this.limit = 10;
     this.limitOptions = [10, 50, 100, 500, 1000];
 
     // navigation function
-    this.isFirstPage = function () {
-        return offset == 0;
+    this.prev = function () {
+        ctr.offset = Math.max(0, Math.floor(ctr.offset / ctr.limit) - 1) * ctr.limit;
     };
-    this.isLastPage = function () {
-        return offset + ctr.limit <= sql.commands.length;
-    };
-    this.gotoPreviousPage = function () {
-        offset = Math.max(0, Math.floor(offset / ctr.limit) - 1) * ctr.limit;
-    };
-    this.gotoNextPage = function () {
-        offset += ctr.limit
+    this.next = function () {
+        ctr.offset += ctr.limit;
     };
 })
 
 // define the main scope controller
-.controller('MainController', function ($scope, sql, notification, Roles, $q) {
-    // store this
+.controller('MainController', function (sql, notification, Roles, $q) {
+    // store this and other states
     var ctr = this;
-
-    // initialize the varibles
     var tables = {};
-    var primaryFilter = function (role, superRole) {
+    var nav = -1;
+    var tab = -1;
+
+    // define the accessible variables and functions
+    this.navs = [];
+    this.currentNav = -1;
+    this.tabs = [];
+    this.currentTab = -1;
+    this.gotoNav = function (index) {
+        if (!angular.isNumber(index) || index < 0 || index >= toc.length)
+            throw new ArgumentException('Ungültiger Navigationsindex.', 'index');
+
+        // do nothing if we're already there
+        if (index == ctr.currentNav)
+            return;
+
+    };
+    this.gotoTab = function (index) {
+        if (!angular.isNumber(index))
+            throw new ArgumentException('Zahl erwartet.', 'index');
+        return tab == index;
+    };
+    this.lookupReference = function (tableName, rowId) {
+
+    };
+    this.exec = function () {
+
+    };
+
+    // query the role membership
+    var roleCommand = 'SELECT 1 AS [public]';
+    for (var role in Roles)
+        roleCommand += ', IS_MEMBER(@' + role + ') AS [' + Roles[role] + ']';
+    sql.query({
+        description: 'Rollenmitgliedschaft abfragen',
+        command: roleCommand,
+        parameters: Roles
+    }).then(function (data) {
+        // filter the toc and build the navigation
+        toc = toc.filter(function (value) { return value.roles.some(function (role) { return data[0][role]; }); });
+        ctr.navs = toc.map(function (value) { return value.name });
+        if (ctr.navs.length == 0)
+            throw new UnauthorizedAccessException('Sie haben keine Berechtigung zum Ausführen dieser Anwendung.');
+    });
+
+    // define the content
+    var tocPrimaryFilter = function (role, superRole) {
         var filter = 'IS_MEMBER(SUSER_SNAME(dbo.Einrichtung.' + role + ')) = 1';
         if (superRole)
             filter += " OR IS_MEMBER('" + superRole + "')";
         return filter;
     };
-    var secondaryFilter = function (role, superRole) {
-        return 'Einrichtung IN (SELECT ID FROM dbo.Einrichtung WHERE ' + primaryFilter(role, superRole) + ')';
+    var tocSecondaryFilter = function (role, superRole) {
+        return 'Einrichtung IN (SELECT ID FROM dbo.Einrichtung WHERE ' + tocPrimaryFilter(role, superRole) + ')';
     };
-    var sections = [
+    var toc = [
         {
             name: 'Trainees und Bescheide',
             roles: [Roles.Management, Roles.Administration],
@@ -881,10 +920,10 @@ angular.module('tn', ['ngHandsontable'])
                     }
                 }, {
                     name: 'Zeitspanne',
-                    filter: secondaryFilter(Roles.Management, Roles.Administration)
+                    filter: tocSecondaryFilter(Roles.Management, Roles.Administration)
                 }, {
                     name: 'Bescheid',
-                    filter: secondaryFilter(Roles.Management, Roles.Administration)
+                    filter: tocSecondaryFilter(Roles.Management, Roles.Administration)
                 }, {
                     name: 'Zeitspanne_Austrittsgrund',
                     lookup: function (row) {
@@ -899,7 +938,7 @@ angular.module('tn', ['ngHandsontable'])
                     hidden: true
                 }, {
                     name: 'Einrichtung',
-                    filter: primaryFilter(Roles.Management, Roles.Administration),
+                    filter: tocPrimaryFilter(Roles.Management, Roles.Administration),
                     lookup: function (row) {
                         return row.Name;
                     },
@@ -919,11 +958,11 @@ angular.module('tn', ['ngHandsontable'])
                     hidden: true
                 }, {
                     name: 'Zeitspanne',
-                    filter: secondaryFilter(Roles.Coaching, Roles.Administration),
+                    filter: tocSecondaryFilter(Roles.Coaching, Roles.Administration),
                     hidden: true
                 }, {
                     name: 'Einrichtung',
-                    filter: primaryFilter(Roles.Coaching, Roles.Administration),
+                    filter: tocPrimaryFilter(Roles.Coaching, Roles.Administration),
                     hidden: true
                 }
             ],
@@ -972,7 +1011,7 @@ angular.module('tn', ['ngHandsontable'])
             tables: [
                 {
                     name: 'Planung',
-                    filter: secondaryFilter(Roles.Management, Roles.Accounting)
+                    filter: tocSecondaryFilter(Roles.Management, Roles.Accounting)
                 }, {
                     name: 'Leistungsart',
                     lookup: function (row) {
@@ -981,7 +1020,7 @@ angular.module('tn', ['ngHandsontable'])
                     hidden: true
                 }, {
                     name: 'Einrichtung',
-                    filter: primaryFilter(Roles.Management, Roles.Accounting),
+                    filter: tocPrimaryFilter(Roles.Management, Roles.Accounting),
                     lookup: function (row) {
                         return row.Name;
                     },
@@ -1026,26 +1065,4 @@ angular.module('tn', ['ngHandsontable'])
             tabs: []
         }
     ];
-
-    var deferred = $q.defer();
-
-    // query the role membership
-    var roleCommand = 'WAITFOR DELAY \'01:00\'; SELECT 1 AS [public]';
-    for (var role in Roles)
-        roleCommand += ', IS_MEMBER(@' + role + ') AS [' + Roles[role] + ']';
-    sql.query({
-        description: 'Rollenmitgliedschaft abfragen',
-        command: roleCommand,
-        parameters: Roles,
-        cancelOn: deferred.promise
-    }).then(function (data) {
-
-    });
-
-    this.lookupReference = function (tableName, rowId) {
-
-    };
-    this.exec = function () {
-        deferred.reject('cancelled ohmy');
-    };
 });

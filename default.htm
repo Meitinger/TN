@@ -19,6 +19,7 @@
 <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta http-equiv="Cache-Control" content="no-cache" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Trainee</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.23.0/css/uikit.min.css" />
@@ -35,60 +36,63 @@
 </head>
 <body>
     <nav class="uk-navbar uk-navbar-attached">
+        <ul class="uk-navbar-nav">
+            <li class="uk-hidden-small" data-ng-class="main.currentNav == $index ? 'uk-active' : ''" data-ng-repeat="nav in main.navs"><a href="" data-ng-click="main.gotoNav($index)">{{nav}}</a></li>
+        </ul>
     </nav>
-    <div>
-    	<hot-table 
-        
-           datarows="main.bescheid.getRows()"
-           height="300"
-           width="700"></hot-table>
+    <div class="uk-block uk-block-primary" data-ng-if="main.currentNav > -1">
+        <ul class="uk-tab" data-uk-tab="">
+            <li data-ng-class="main.currentTab == $index ? 'uk-active' : ''" data-ng-repeat="tab in main.tabs"><a href="" data-ng-click="main.gotoTab($index)">{{tab}}</a></li>
+        </ul>
     </div>
-    <button class="uk-button" data-ng-click="main.exec()">Abfrage</button>
-    <div class="uk-panel uk-panel-box uk-overflow-container" data-ng-controller="LogController as log">
-    	<div data-ng-if="!log.notification.getLastSyncTime() && !log.notification.getError()" class="uk-panel-badge uk-badge">Initialisierung</div>
-        <div data-ng-if="!log.notification.getLastSyncTime() && log.notification.getError()" class="uk-panel-badge uk-badge uk-badge-warning" data-uk-tooltip="data-uk-tooltip" title="Fehler: {{log.notification.getError()}}">Initialisierung (Fehler)</div>
-        <div data-ng-if="log.notification.getLastSyncTime() && !log.notification.getError()" class="uk-panel-badge uk-badge uk-badge-success" data-uk-tooltip="data-uk-tooltip" title="Letzte Synchronisierung: {{(log.notification.getLastSyncTime() | date: 'medium') || 'nie'}}&#x000a;Letzte Änderung: {{(log.notification.getLastEventTime() | date: 'medium') || 'noch keine'}}">Synchronisiert</div>
-        <div data-ng-if="log.notification.getLastSyncTime() && log.notification.getError()" class="uk-panel-badge uk-badge uk-badge-danger" data-uk-tooltip="data-uk-tooltip" title="Fehler: {{log.notification.getError()}}&#x000a;Letzte Synchronisierung: {{(log.notification.getLastSyncTime() | date: 'medium') || 'nie'}}">Synchronisierungsfehler</div>
-        <h3 class="uk-panel-title">Datenbanklog</h3>
-        <table class="uk-table uk-table-hover uk-table-condensed">
-            <thead>
-                <tr>
-                    <th>Status</th>
-                    <th>Beschreibung</th>
-                    <th>Letzte Ausführung</th>
-                    <th>Fehler</th>
-                    <th>Aktion</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr data-ng-repeat="command in log.sql.commands | orderBy: '$index':true | limitTo: log.limit : log.offset" data-uk-tooltip="data-uk-tooltip" title="{{command.sql}}">
-                    <td data-ng-switch="command.getState()">
-                        <div class="uk-badge" data-ng-switch-when="0">Warten auf Genehmigung</div>
-                        <div class="uk-badge" data-ng-switch-when="1">Wird ausgeführt</div>
-                        <div class="uk-badge uk-badge-warning" data-ng-switch-when="2">Fehler</div>
-                        <div class="uk-badge uk-badge-success" data-ng-switch-when="3">Abgeschlossen</div>
-                        <div class="uk-badge uk-badge-danger" data-ng-switch-when="4">Abgebrochen</div>
-                        <div class="uk-badge uk-badge-danger" data-ng-switch-when="5">Fehlgeschlagen</div>
-                    </td>
-                    <td><span>{{command.description}}</span></td>
-                    <td><span>{{command.getLastExecuteTime() | date: 'medium'}}</span></td>
-                    <td><span>{{command.getError()}}</span></td>
-                    <td>
-                        <button class="uk-button uk-button-mini uk-button-success" data-ng-disabled="command.getState() != 0" data-ng-click="command.approve()">Genehmigen</button>
-                        <button class="uk-button uk-button-mini uk-button-primary" data-ng-disabled="command.getState() != 2" data-ng-click="command.retry()">Wiederholen</button>
-                        <button class="uk-button uk-button-mini uk-button-danger" data-ng-disabled="command.getState() != 2 || !command.abortable" data-ng-click="command.abort()">Abbrechen</button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-        <form class="uk-form">
-        	<button class="uk-button" data-ng-class="log.sql.reviewCommands ? 'uk-active' : ''" data-ng-click="log.sql.reviewCommands = !log.sql.reviewCommands">Abfragen genehmigen <span data-ng-class="log.sql.reviewCommands ? 'uk-text-success' : 'uk-text-danger'">{{log.sql.reviewCommands ? 'AN' : 'AUS'}}</span></button>
-        	<div class="uk-button-group">
-        	    <button class="uk-button" data-ng-disabled="log.offset == 0" data-ng-click="log.offset = Math.max(0, Math.floor(log.offset/log.limit)-1) * log.limit"><i class="uk-icon-angle-double-left"></i>Neuere</button>
-        	    <button class="uk-button" data-ng-disabled="log.offset + log.limit &gt;= log.sql.commands.length" data-ng-click="log.offset = log.offset + log.limit">Ältere <i class="uk-icon-angle-double-right"></i></button>
-       		</div>
-        	<select data-ng-model="log.limit" data-ng-options="limit as limit for limit in log.limitOptions"></select>
-        </form>
+    <button class="uk-button" data-ng-click="main.exec()">Test</button>
+    <div class="uk-block">
+        <div class="uk-panel uk-panel-box uk-overflow-container" data-ng-controller="LogController as log">
+    	    <div data-ng-if="!log.notification.lastSyncTime &amp;&amp; !log.notification.error" class="uk-panel-badge uk-badge">Initialisierung</div>
+            <div data-ng-if="!log.notification.lastSyncTime &amp;&amp; log.notification.error" class="uk-panel-badge uk-badge uk-badge-warning" data-uk-tooltip="data-uk-tooltip" title="Fehler: {{log.notification.error}}">Initialisierung (Fehler)</div>
+            <div data-ng-if="log.notification.lastSyncTime &amp;&amp; !log.notification.error" class="uk-panel-badge uk-badge uk-badge-success" data-uk-tooltip="data-uk-tooltip" title="Letzte Synchronisierung: {{(log.notification.lastSyncTime | date: 'medium') || 'nie'}}&#x000a;Letzte Änderung: {{(log.notification.lastEventTime | date: 'medium') || 'noch keine'}}">Synchronisiert</div>
+            <div data-ng-if="log.notification.lastSyncTime &amp;&amp; log.notification.error" class="uk-panel-badge uk-badge uk-badge-danger" data-uk-tooltip="data-uk-tooltip" title="Fehler: {{log.notification.error}}&#x000a;Letzte Synchronisierung: {{(log.notification.lastSyncTime | date: 'medium') || 'nie'}}">Synchronisierungsfehler</div>
+            <h3 class="uk-panel-title">Datenbanklog</h3>
+            <table class="uk-table uk-table-hover uk-table-condensed">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Beschreibung</th>
+                        <th>Letzte Ausführung</th>
+                        <th>Fehler</th>
+                        <th>Aktion</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-ng-repeat="command in log.sql.commands | orderBy: '$index':true | limitTo: log.limit : log.offset" data-uk-tooltip="data-uk-tooltip" title="{{command.sql}}">
+                        <td data-ng-switch="command.state">
+                            <div class="uk-badge" data-ng-switch-when="0">Warten auf Genehmigung</div>
+                            <div class="uk-badge" data-ng-switch-when="1">Wird ausgeführt</div>
+                            <div class="uk-badge uk-badge-warning" data-ng-switch-when="2">Fehler</div>
+                            <div class="uk-badge uk-badge-success" data-ng-switch-when="3">Abgeschlossen</div>
+                            <div class="uk-badge uk-badge-danger" data-ng-switch-when="4">Abgebrochen</div>
+                            <div class="uk-badge uk-badge-danger" data-ng-switch-when="5">Fehlgeschlagen</div>
+                        </td>
+                        <td><span>{{command.description}}</span></td>
+                        <td><span>{{(command.lastExecuteTime | date: 'medium') || '(noch nie)'}}</span></td>
+                        <td><span>{{command.error}}</span></td>
+                        <td>
+                            <button class="uk-button uk-button-mini uk-button-success" data-ng-disabled="command.state != 0" data-ng-click="command.approve()">Genehmigen</button>
+                            <button class="uk-button uk-button-mini uk-button-primary" data-ng-disabled="command.state != 2" data-ng-click="command.retry()">Wiederholen</button>
+                            <button class="uk-button uk-button-mini uk-button-danger" data-ng-disabled="command.state != 2 || !command.abortable" data-ng-click="command.abort()">Abbrechen</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <form class="uk-form">
+        	    <button class="uk-button" data-ng-class="log.sql.reviewCommands ? 'uk-active' : ''" data-ng-click="log.sql.reviewCommands = !log.sql.reviewCommands">Abfragen genehmigen <span data-ng-class="log.sql.reviewCommands ? 'uk-text-success' : 'uk-text-danger'">{{log.sql.reviewCommands ? 'AN' : 'AUS'}}</span></button>
+        	    <div class="uk-button-group">
+        	        <button class="uk-button" data-ng-disabled="log.offset &lt;= 0" data-ng-click="log.prev()"><i class="uk-icon-angle-double-left"></i>Neuere</button>
+        	        <button class="uk-button" data-ng-disabled="log.offset + log.limit &gt;= log.sql.commands.length" data-ng-click="log.next()">Ältere <i class="uk-icon-angle-double-right"></i></button>
+       		    </div>
+        	    <select data-ng-model="log.limit" data-ng-options="limit as limit for limit in log.limitOptions"></select>
+            </form>
+        </div>
     </div>
 </body>
 </html>
