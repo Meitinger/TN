@@ -139,6 +139,9 @@ angular.module('tn', ['ngHandsontable'])
                     case 'string':
                         value = encodeURIComponent(value);
                         break;
+                    case 'date':
+                        value = value.toISOString();
+                        break;
                     default:
                         if (value !== null)
                             throw new ArgumentException('Der Abfrageparameter "' + name + '" ist ungültig.', 'args');
@@ -147,6 +150,7 @@ angular.module('tn', ['ngHandsontable'])
                 }
                 encodedParameters.push(encodeURIComponent(name) + '=' + encodeURIComponent(value));
             }
+
             // update the http config
             angular.extend(config, {
                 method: 'POST',
@@ -187,17 +191,32 @@ angular.module('tn', ['ngHandsontable'])
 	                // check if the response include records
 	                var data = response.data;
 	                if (angular.isArray(data)) {
-	                    // make sure the recordsets are valid
+	                    // make sure the recordsets are valid and convert date objects
 	                    data.forEach(function (value, index) {
 	                        if (!angular.isObject(value) || !angular.isNumber(value.RecordsAffected) || !angular.isArray(value.Records) || value.Records.some(function (value) { return !angular.isObject(value); }))
 	                            throw new InvalidDataException('Recorset #' + index + 'ist ungültig.');
+	                        value.Records.forEach(function (record) {
+	                            for (var name in record) {
+	                                var value = record[name];
+	                                if (angular.isString(value)) {
+	                                    var match = value.match(/^(\d\d\d\d)-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)\.(\d\d\d)Z$/);
+	                                    if (match) {
+	                                        record[name] = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6]), Number(match[7])));
+	                                        if (record[name].toISOString() != value)
+	                                            throw new InvalidDataException('Ungültiger Datumswert zurückgegeben.');
+	                                    }
+	                                }
+	                            }
+	                        });
 	                    });
+
 	                    // ensure a single record set if requested
 	                    if (singleSet) {
 	                        if (data.length != 1)
 	                            throw new InvalidDataException('Kein oder mehrere Recordsets wurden zurückgegeben.');
 	                        data = data[0];
 	                    }
+
 	                    // parse the data and resolve the promise
 	                    data = parser(data);
 	                    command.state = SqlState.Completed;
@@ -209,6 +228,7 @@ angular.module('tn', ['ngHandsontable'])
 	                    // ensure a complete error object
 	                    if (!angular.isNumber(data.CommandNumber) || !angular.isString(data.Message))
 	                        throw new InvalidDataException('Ein ungültiges oder unvollständiges Fehlerobjekt wurde zurückgegeben.');
+
 	                    // check if this is a managed error
 	                    var match = data.Message.match(/^(.*?)\s\[TN\](?:\[(.+?)\](?:\[(.+?)\])?)?$/);
 	                    command.error = match ?
@@ -218,6 +238,7 @@ angular.module('tn', ['ngHandsontable'])
 	                        command.state = SqlState.HasError;
 	                        return;
 	                    }
+
 	                    // replace the data with a proper error object
 	                    data = {
 	                        statement: data.CommandNumber,
@@ -225,6 +246,7 @@ angular.module('tn', ['ngHandsontable'])
 	                        table: match[2],
 	                        column: match[3]
 	                    };
+
 	                    // reject the promise
 	                    command.state = SqlState.Failed;
 	                    deferred.reject(data);
@@ -480,6 +502,7 @@ angular.module('tn', ['ngHandsontable'])
             return result;
         }
 
+        // helper function to update changed rows
         var handleNotifications = function (queryCommand, changedIds) {
             // get all ids that have to be requeried
             var requeryIds = [];
@@ -535,94 +558,6 @@ angular.module('tn', ['ngHandsontable'])
                 });
             }
         };
-
-        // initialize the table when ready
-        notification.ready(function () {
-            // ensure we're not disposed
-            if (disposed)
-                return;
-
-            // query the permissions
-            sql.query({
-                description: 'Berechtigungen an Tabelle ' + name + ' abfragen',
-                command: 'SELECT\n' +
-                         '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'INSERT\') AS allowNew,\n' +
-                         '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'UPDATE\') AS allowEdit,\n' +
-                         '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'DELETE\') AS allowDelete',
-                parameters: { 'Table': 'dbo.' + name },
-                allowError: true,
-                cancelOn: disposePromise
-            }).then(function (data) {
-                // store the permissions
-                table.permissions = data;
-            });
-
-            // query the columns definition
-            sql.query({
-                description: 'Spaltendefinition von Tabelle ' + name + ' abfragen',
-                command: 'SELECT\n' +
-                         '  c.column_id AS id,\n' +
-                         '  c.name,\n' +
-                         '  t.name AS type,\n' +
-                         '  c.max_length AS maxLength,\n' +
-                         '  c.precision,\n' +
-                         '  c.scale,\n' +
-                         '  CASE WHEN c.is_nullable = 1 THEN 0 ELSE 1 END AS required,\n' +
-                         '  CASE WHEN HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'UPDATE\',c.name,\'COLUMN\') = 1 THEN 0 ELSE 1 END AS readOnly,\n' +
-                         '  OBJECT_NAME(f.referenced_object_id) AS [references]\n' +
-                         'FROM\n' +
-                         '  sys.columns AS c\n' +
-                         '  JOIN\n' +
-                         '  sys.types AS t ON c.user_type_id = t.user_type_id\n' +
-                         '  LEFT OUTER JOIN\n' +
-                         '  sys.foreign_key_columns AS f ON f.parent_object_id = c.object_id AND f.parent_column_id = c.column_id\n' +
-                         'WHERE\n' +
-                         '  c.object_id = OBJECT_ID(@Table) AND\n' +
-                         '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'SELECT\',c.name,\'COLUMN\') = 1 AND\n' +
-                         '  c.is_computed = 0\n' +
-                         'ORDER BY c.column_id',
-                parameters: { 'Table': 'dbo.' + name },
-                cancelOn: disposePromise
-            }).then(function (data) {
-                // check and store the columns
-                if (data.length == 0)
-                    throw new UnauthorizedAccessException('Keine sichtbaren Spalten in Tabelle ' + name + '.');
-                if (data[0].name != 'ID')
-                    throw new InvalidDataException('Die erste sichtbare ' + name + '-Spalte ist nicht "ID".');
-                if (data[data.length - 1].name != 'Version')
-                    throw new InvalidDataException('Die letzte sichtbare ' + name + '-Spalte ist nicht "Version".');
-                table.columns = data.slice(1, -1);
-
-                // create the base command
-                var queryCommand = 'SELECT ' + table.columns.map(function (column) { return column.name; }).join(', ') + ', ID AS [$id], Version AS [$version]\nFROM dbo.' + name;
-                if (filter)
-                    queryCommand += '\nWHERE (' + filter + ')';
-
-                // register a notification for database events
-                notificationPromise = notification(function (events) {
-                    if (name in events) {
-                        // handle the event now or queue them for later
-                        if (rowIndex == null)
-                            angular.extend(eventsBeforeReady, events[name]);
-                        else
-                            handleNotifications(queryCommand, events[name]);
-                    }
-                });
-
-                // retrieve the rows
-                sql.query({
-                    description: (filter ? 'Gefilterte' : 'Alle') + ' Zeilen von Tabelle ' + name + ' abfragen',
-                    command: queryCommand,
-                    cancelOn: disposePromise
-                }).then(function (data) {
-                    // set the rows and handle all queued events
-                    rowIndex = indexAndCheckData(data);
-                    for (var id in rowIndex)
-                        table.rows.push(rowIndex[id]);
-                    handleNotifications(queryCommand, eventsBeforeReady);
-                });
-            });
-        });
 
         // helper function for inserting, updating and deleting rows
         var rowAction = function (id, fn) {
@@ -817,35 +752,205 @@ angular.module('tn', ['ngHandsontable'])
                 });
             })
         };
+
+        // initialize the table when ready
+        notification.ready(function () {
+            // ensure we're not disposed
+            if (disposed)
+                return;
+
+            // query the permissions
+            sql.query({
+                description: 'Berechtigungen an Tabelle ' + name + ' abfragen',
+                command: 'SELECT\n' +
+                        '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'INSERT\') AS allowNew,\n' +
+                        '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'UPDATE\') AS allowEdit,\n' +
+                        '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'DELETE\') AS allowDelete',
+                parameters: { 'Table': 'dbo.' + name },
+                allowError: true,
+                cancelOn: disposePromise
+            }).then(function (data) {
+                // store the permissions
+                table.permissions = data;
+            });
+
+            // query the columns definition
+            sql.query({
+                description: 'Spaltendefinition von Tabelle ' + name + ' abfragen',
+                command: 'SELECT\n' +
+                        '  c.column_id AS id,\n' +
+                        '  c.name,\n' +
+                        '  t.name AS type,\n' +
+                        '  c.max_length AS maxLength,\n' +
+                        '  c.precision,\n' +
+                        '  c.scale,\n' +
+                        '  CASE WHEN c.is_nullable = 1 THEN 0 ELSE 1 END AS required,\n' +
+                        '  CASE WHEN HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'UPDATE\',c.name,\'COLUMN\') = 1 THEN 0 ELSE 1 END AS readOnly,\n' +
+                        '  OBJECT_NAME(f.referenced_object_id) AS [references]\n' +
+                        'FROM\n' +
+                        '  sys.columns AS c\n' +
+                        '  JOIN\n' +
+                        '  sys.types AS t ON c.user_type_id = t.user_type_id\n' +
+                        '  LEFT OUTER JOIN\n' +
+                        '  sys.foreign_key_columns AS f ON f.parent_object_id = c.object_id AND f.parent_column_id = c.column_id\n' +
+                        'WHERE\n' +
+                        '  c.object_id = OBJECT_ID(@Table) AND\n' +
+                        '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'SELECT\',c.name,\'COLUMN\') = 1 AND\n' +
+                        '  c.is_computed = 0\n' +
+                        'ORDER BY c.column_id',
+                parameters: { 'Table': 'dbo.' + name },
+                cancelOn: disposePromise
+            }).then(function (data) {
+                // check and store the columns
+                if (data.length == 0)
+                    throw new UnauthorizedAccessException('Keine sichtbaren Spalten in Tabelle ' + name + '.');
+                if (data[0].name != 'ID')
+                    throw new InvalidDataException('Die erste sichtbare ' + name + '-Spalte ist nicht "ID".');
+                if (data[data.length - 1].name != 'Version')
+                    throw new InvalidDataException('Die letzte sichtbare ' + name + '-Spalte ist nicht "Version".');
+                table.columns = data.slice(1, -1);
+
+                // create the base command
+                var queryCommand = 'SELECT ' + table.columns.map(function (column) { return column.name; }).join(', ') + ', ID AS [$id], Version AS [$version]\nFROM dbo.' + name;
+                if (filter)
+                    queryCommand += '\nWHERE (' + filter + ')';
+
+                // register a notification for database events
+                notificationPromise = notification(function (events) {
+                    if (name in events) {
+                        // handle the event now or queue them for later
+                        if (rowIndex == null)
+                            angular.extend(eventsBeforeReady, events[name]);
+                        else
+                            handleNotifications(queryCommand, events[name]);
+                    }
+                });
+
+                // retrieve the rows
+                sql.query({
+                    description: (filter ? 'Gefilterte' : 'Alle') + ' Zeilen von Tabelle ' + name + ' abfragen',
+                    command: queryCommand,
+                    cancelOn: disposePromise
+                }).then(function (data) {
+                    // set the rows and handle all queued events
+                    rowIndex = indexAndCheckData(data);
+                    for (var id in rowIndex)
+                        table.rows.push(rowIndex[id]);
+                    handleNotifications(queryCommand, eventsBeforeReady);
+                });
+            });
+        });
+
+        // return the table object
         return table;
     };
 })
 
-// define the log area controller
-.controller('LogController', function (sql, notification) {
+// define global functions
+.service('globals', function (table) {
+    var tables = {};
+    var lookups = {};
+    var globals = {
+        loadTables: function (definitions) {
+            // store the old tables and reset the maps
+            var oldTables = tables;
+            tables = {};
+            lookups = {};
+
+            // build the new maps
+            definitions.forEach(function (definition) {
+                if (definition.name in tables)
+                    throw new InvalidOperationException('Die Tabelle "' + definition.name + '" wurde versucht mehrfach zu laden.');
+
+                // check if the table can be reused
+                if (definition.name in oldTables && oldTables[definition.name].filter == definition.filter) {
+                    tables[definition.name] = oldTables[definition.name];
+                    delete oldTables[definition.name];
+                }
+                else
+                    tables[definition.name] = table(definition.name, definition.filter);
+
+                // add the lookup
+                if (definition.lookup)
+                    lookups[definition.name] = definition.lookup;
+            });
+
+            // remove old unused tables
+            for (var tableName in oldTables)
+                oldTables[tableName].dispose();
+        },
+        lookupReference: function (tableName, rowId) {
+            // check the arguments
+            if (!angular.isString(tableName))
+                throw new ArgumentException('Tabellenname erwartet.', 'tableName');
+            if (!angular.isNumeric(rowId))
+                throw new ArgumentException('Numerische ID erwartet.', 'tableName');
+            if (!(tableName in tables))
+                throw new ArgumentException('Die Tabelle "' + tableName + '" ist nicht eingeladen.', 'tableName');
+            if (!(tableName in lookups))
+                throw new ArgumentException('Für die Tabelle "' + tableName + '" ist kein Lookup definiert.', 'tableName');
+
+            // try to get the row
+            var row = tables[tableName].getRowById(rowId);
+            return row ? lookups[tableName](row) : '(' + tableName + ' #' + rowId + ' fehlt)';
+        },
+        primaryFilter: function (role, superRole) {
+            var filter = 'IS_MEMBER(SUSER_SNAME(' + role + ')) = 1';
+            if (superRole)
+                filter += " OR IS_MEMBER('" + superRole + "') = 1";
+            return filter;
+        },
+        secondaryFilter: function (role, superRole) {
+            return 'Einrichtung IN (SELECT ID FROM dbo.Einrichtung WHERE ' + globals.primaryFilter(role, superRole) + ')';
+        }
+    };
+    return globals;
+})
+
+// define the trainee attendance controller
+.controller('AttendanceController', function (sql, table, Roles, globals) {
     var ctr = this;
 
+    this.year = new Date().getFullYear();
+    this.month = new Date().getMonth() + 1;
+
+    this.tage = []; // Zeispanne => Tag => State
+    this.zeitspannen = null;
+
+    this.cleanup = function () {
+        if (this.zeitspannen) {
+            this.zeitspannen.dispose();
+            this.zeitspannen = null;
+        }
+    };
+    this.update = function () {
+        ctr.cleanup();
+        var begin = '\'' + new Date(Date.UTC(ctr.year, ctr.month - 1, 1)).toISOString() + '\'';
+        var end = '\'' + new Date(Date.UTC(ctr.year, ctr.month, 0)).toISOString() + '\'';
+        ctr.tage = Array(new Date(ctr.year, ctr.month, 0).getDay());
+        for (var i = 0; i < ctr.tage.length; i++)
+            ctr.tage[i] = {};
+        var fmtDate = function (date) { return '\'' + date.toISOString() + '\''; };
+        ctr.zeitspannen = table('Zeitspanne', 'Eintritt <= ' + end + ' AND (Austritt IS NULL OR Austritt >= ' + begin + ') AND (' + globals.secondaryFilter(Roles.Coaching, Roles.Administration) + ')');
+    };
+
+    // show the current month
+    ctr.update();
+})
+
+// define the log area controller
+.controller('LogController', function (sql, notification, SqlState) {
     // controller variables
-    this.offset = 0;
     this.sql = sql;
     this.notification = notification;
-    this.limit = 10;
-    this.limitOptions = [10, 50, 100, 500, 1000];
-
-    // navigation function
-    this.prev = function () {
-        ctr.offset = Math.max(0, Math.floor(ctr.offset / ctr.limit) - 1) * ctr.limit;
-    };
-    this.next = function () {
-        ctr.offset += ctr.limit;
+    this.filter = function (command) {
+        return command.state != SqlState.Completed || (new Date()).valueOf() - command.lastExecuteTime < 60000;
     };
 })
 
 // define the main scope controller
-.controller('MainController', function (sql, Roles, table) {
-    // store this and initialize the table store
+.controller('MainController', function (sql, Roles, globals) {
     var ctr = this;
-    var tables = {};
 
     // define the navigational variables and functions
     this.navs = [];
@@ -860,30 +965,15 @@ angular.module('tn', ['ngHandsontable'])
         if (index == ctr.currentNav)
             return;
 
-        // rebuild the tables and tabs
-        var oldTables = tables;
-        tables = {};
+        // load the tables and build the tabs
+        ctr.tabs = [];
+        globals.loadTables(toc[index].tables);
         ctr.tabs = toc[index].tabs.slice();
-        toc[index].tables.forEach(function (tableDef) {
-            if (tableDef.name in tables)
-                throw new InvalidOperationException('Die Tabelle "' + tableDef.name + '" wurde in "' + toc[index] + '" mehrfach definiert.');
-
-            // check if the table can be reused
-            if (tableDef.name in oldTables && oldTables[tableDef.name].filter == tableDef.filter) {
-                tables[tableDef.name] = oldTables[tableDef.name];
-                delete oldTables[tableDef.name];
-            }
-            else
-                tables[tableDef.name] = table(tableDef.name, tableDef.filter);
-
+        toc[index].tables.forEach(function (table) {
             // add a tab if the table is not hidden
-            if (!tableDef.hidden)
-                ctr.tabs.push({ name: tableDef.name, type: 'table' });
+            if (!table.hidden)
+                ctr.tabs.push({ name: table.name, type: 'table' });
         });
-
-        // remove old unused tables
-        for (var tableName in oldTables)
-            oldTables[tableName].dispose();
 
         // set the tab and nav index
         ctr.currentTab = ctr.tabs.length == 0 ? -1 : 0;
@@ -897,37 +987,29 @@ angular.module('tn', ['ngHandsontable'])
         ctr.currentTab = index;
     };
 
-    // define the data functions
-    this.lookupReference = function (tableName, rowId) {
-
-    };
-
     // query the role membership
-    var roleCommand = 'SELECT 1 AS [public]';
-    for (var role in Roles)
-        roleCommand += ', IS_MEMBER(@' + role + ') AS [' + Roles[role] + ']';
-    sql.query({
-        description: 'Rollenmitgliedschaft abfragen',
-        command: roleCommand,
-        parameters: Roles
-    }).then(function (data) {
-        // filter the toc and build the navigation
-        toc = toc.filter(function (value) { return value.roles.some(function (role) { return data[0][role]; }); });
-        ctr.navs = toc.map(function (value) { return value.name });
-        if (ctr.navs.length == 0)
-            throw new UnauthorizedAccessException('Sie haben keine Berechtigung zum Ausführen dieser Anwendung.');
-    });
+    var initialize = function () {
+        var roleCommand = 'SELECT 1 AS [public]';
+        for (var role in Roles)
+            roleCommand += ', IS_MEMBER(@' + role + ') AS [' + Roles[role] + ']';
+        sql.query({
+            description: 'Rollenmitgliedschaft abfragen',
+            command: roleCommand,
+            parameters: Roles
+        }).then(function (data) {
+            // filter the toc and build the navigation
+            //toc = toc.filter(function (value) { return value.roles.some(function (role) { return data[0][role]; }); });
+            ctr.navs = toc.map(function (value) { return value.name });
+            if (ctr.navs.length == 0)
+                throw new UnauthorizedAccessException('Sie haben keine Berechtigung zum Ausführen dieser Anwendung.');
+
+            // select the nav if there is only one
+            if (ctr.navs.length == 1)
+                ctr.gotoNav(0);
+        });
+    };
 
     // define the content
-    var tocPrimaryFilter = function (role, superRole) {
-        var filter = 'IS_MEMBER(SUSER_SNAME(dbo.Einrichtung.' + role + ')) = 1';
-        if (superRole)
-            filter += " OR IS_MEMBER('" + superRole + "') = 1";
-        return filter;
-    };
-    var tocSecondaryFilter = function (role, superRole) {
-        return 'Einrichtung IN (SELECT ID FROM dbo.Einrichtung WHERE ' + tocPrimaryFilter(role, superRole) + ')';
-    };
     var toc = [
         {
             name: 'Trainees und Bescheide',
@@ -940,10 +1022,10 @@ angular.module('tn', ['ngHandsontable'])
                     }
                 }, {
                     name: 'Zeitspanne',
-                    filter: tocSecondaryFilter(Roles.Management, Roles.Administration)
+                    filter: globals.secondaryFilter(Roles.Management, Roles.Administration)
                 }, {
                     name: 'Bescheid',
-                    filter: tocSecondaryFilter(Roles.Management, Roles.Administration)
+                    filter: globals.secondaryFilter(Roles.Management, Roles.Administration)
                 }, {
                     name: 'Zeitspanne_Austrittsgrund',
                     lookup: function (row) {
@@ -958,7 +1040,7 @@ angular.module('tn', ['ngHandsontable'])
                     hidden: true
                 }, {
                     name: 'Einrichtung',
-                    filter: tocPrimaryFilter(Roles.Management, Roles.Administration),
+                    filter: globals.primaryFilter(Roles.Management, Roles.Administration),
                     lookup: function (row) {
                         return row.Name;
                     },
@@ -971,18 +1053,17 @@ angular.module('tn', ['ngHandsontable'])
             roles: [Roles.Coaching, Roles.Administration],
             tables: [
                 {
-                    name: 'Feiertag',
-                    hidden: true
-                }, {
                     name: 'Teilnehmer',
-                    hidden: true
-                }, {
-                    name: 'Zeitspanne',
-                    filter: tocSecondaryFilter(Roles.Coaching, Roles.Administration),
+                    lookup: function (row) {
+                        return row.Nachname + ', ' + row.Vorname;
+                    },
                     hidden: true
                 }, {
                     name: 'Einrichtung',
-                    filter: tocPrimaryFilter(Roles.Coaching, Roles.Administration),
+                    filter: globals.primaryFilter(Roles.Coaching, Roles.Administration),
+                    lookup: function (row) {
+                        return row.Name;
+                    },
                     hidden: true
                 }
             ],
@@ -1031,7 +1112,7 @@ angular.module('tn', ['ngHandsontable'])
             tables: [
                 {
                     name: 'Planung',
-                    filter: tocSecondaryFilter(Roles.Management, Roles.Accounting)
+                    filter: globals.secondaryFilter(Roles.Management, Roles.Accounting)
                 }, {
                     name: 'Leistungsart',
                     lookup: function (row) {
@@ -1040,7 +1121,7 @@ angular.module('tn', ['ngHandsontable'])
                     hidden: true
                 }, {
                     name: 'Einrichtung',
-                    filter: tocPrimaryFilter(Roles.Management, Roles.Accounting),
+                    filter: globals.primaryFilter(Roles.Management, Roles.Accounting),
                     lookup: function (row) {
                         return row.Name;
                     },
@@ -1086,4 +1167,5 @@ angular.module('tn', ['ngHandsontable'])
             tabs: []
         }
     ];
+    initialize();
 });
