@@ -40,37 +40,40 @@
             <li class="uk-hidden-small" data-ng-class="main.currentNav == $index ? 'uk-active' : ''" data-ng-repeat="nav in main.navs"><a data-ng-click="main.gotoNav($index)">{{nav}}</a></li>
         </ul>
     </nav>
-    <div data-ng-repeat="tab in main.tabs" data-ng-show="main.currentTab == $index" data-ng-switch="tab.type">
-        <form class="uk-form" data-ng-switch-when="attendance" data-ng-controller="AttendanceController as atn">
-            <select data-ng-model="atn.year" data-ng-change="atn.update()" data-ng-options="year as year for year in [2015]"></select> 
-            <select data-ng-model="atn.month" data-ng-change="atn.update()" data-ng-options="month as month for month in [1,2,3,4,5,6,7,8,9,10,11,12]"></select> 
-            <table class="uk-table uk-table-hover uk-table-condensed">
-                <thead>
-                    <tr>
-                        <th>Standort</th>
-                        <th>Teilnehmer</th>
-                        <th data-ng-repeat="tag in atn.tage">{{(Date(atn.year, atn.month-1, $index+1)) | date: 'short'}}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr data-ng-repeat="zeitspanne in atn.zeitspannen.rows">
-                        <td>{{zeitspanne.Einrichtung}}</td>
-                        <td>{{zeitspanne.Teilnehmer}}</td>
-                    </tr>
-                </tbody>
-            </table>
-        </form>
+    <div style="box-sizing:border-box; height:calc(70vh - 77px);">
+        <div data-ng-repeat="tab in main.tabs" data-ng-show="main.currentTab == $index" data-ng-switch="tab.type">
+            <form class="uk-form" data-ng-switch-when="attendance" data-ng-controller="AttendanceController as atn">
+                <div style="text-align:center;">
+                    <button class="uk-button" data-ng-click="atn.prevWeek()"><i class="uk-icon-angle-double-left"> Vorige Woche</i></button>
+                    <span>{{atn.monday | date: 'shortDate'}}</span> - <span>{{atn.sunday | date: 'shortDate'}}</span>
+                    <button class="uk-button" data-ng-disabled="atn.monday &gt;= atn.maxMonday" data-ng-click="atn.nextWeek()">Nächste Woche <i class="uk-icon-angle-double-right"></i></button>
+                </div>
+                <hot-table datarows="atn.rows" width="atn.width" height="(atn.height * 0.7) - 107">
+                     <hot-column data="Einrichtung" title="'Einrichtung'" read-only></hot-column>
+                     <hot-column data="Teilnehmer" title="'Teilnehmer'" read-only></hot-column>
+                     <hot-column data="$days.1" title="'Montag'" renderer="atn.renderer"></hot-column>
+                     <hot-column data="$days.2" title="'Dienstag'" renderer="atn.renderer"></hot-column>
+                     <hot-column data="$days.3" title="'Mittwoch'" renderer="atn.renderer"></hot-column>
+                     <hot-column data="$days.4" title="'Donnerstag'" renderer="atn.renderer"></hot-column>
+                     <hot-column data="$days.5" title="'Freitag'" renderer="atn.renderer"></hot-column>
+                     <hot-column data="$days.6" title="'Samstag'" renderer="atn.renderer"></hot-column>
+                     <hot-column data="$days.0" title="'Sonntag'" renderer="atn.renderer"></hot-column>
+                </hot-table>
+            </form>
+        </div>
     </div>
-    <ul class="uk-tab uk-tab-bottom" data-uk-tab="" data-ng-if="main.currentNav &gt; -1">
-        <li data-ng-class="main.currentTab == $index ? 'uk-active' : ''" data-ng-repeat="tab in main.tabs"><a data-ng-click="main.gotoTab($index)">{{tab.name}}</a></li>
-    </ul>
-    <div class="uk-panel uk-panel-box" data-ng-controller="LogController as log">
+    <div style="height:36px">
+        <ul class="uk-tab uk-tab-bottom" data-uk-tab="" data-ng-if="main.currentNav &gt; -1">
+            <li data-ng-class="main.currentTab == $index ? 'uk-active' : ''" data-ng-repeat="tab in main.tabs"><a data-ng-click="main.gotoTab($index)">{{tab.name}}</a></li>
+        </ul>
+    </div>
+    <div class="uk-panel uk-panel-box" data-ng-controller="LogController as log" style="box-sizing: border-box; height:30vh;">
     	<div data-ng-if="!log.notification.lastSyncTime &amp;&amp; !log.notification.error" class="uk-panel-badge uk-badge">Initialisierung</div>
         <div data-ng-if="!log.notification.lastSyncTime &amp;&amp; log.notification.error" class="uk-panel-badge uk-badge uk-badge-warning" data-uk-tooltip="data-uk-tooltip" title="Fehler: {{log.notification.error}}">Initialisierung (Fehler)</div>
         <div data-ng-if="log.notification.lastSyncTime &amp;&amp; !log.notification.error" class="uk-panel-badge uk-badge uk-badge-success" data-uk-tooltip="data-uk-tooltip" title="Letzte Synchronisierung: {{(log.notification.lastSyncTime | date: 'medium') || 'nie'}}&#x000a;Letzte Änderung: {{(log.notification.lastEventTime | date: 'medium') || 'noch keine'}}">Synchronisiert</div>
         <div data-ng-if="log.notification.lastSyncTime &amp;&amp; log.notification.error" class="uk-panel-badge uk-badge uk-badge-danger" data-uk-tooltip="data-uk-tooltip" title="Fehler: {{log.notification.error}}&#x000a;Letzte Synchronisierung: {{(log.notification.lastSyncTime | date: 'medium') || 'nie'}}">Synchronisierungsfehler</div>
         <h3 class="uk-panel-title">Datenbanklog</h3>
-        <div class="uk-overflow-container" style="max-height:300px;">
+        <div class="uk-overflow-container" style="box-sizing: border-box; height:calc(30vh - 100px);">
             <table class="uk-table uk-table-hover uk-table-condensed">
                 <thead>
                     <tr>

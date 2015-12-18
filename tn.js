@@ -91,7 +91,7 @@ angular.module('tn', ['ngHandsontable'])
     Coaching: 'Training',
     Management: 'Leitung',
     Accounting: 'Rechnungswesen',
-    Administration: 'Sekretariat'
+    Administration: 'Systemadministrator'//'Sekretariat'
 })
 
 // SQL service
@@ -99,8 +99,8 @@ angular.module('tn', ['ngHandsontable'])
     var svc = this;
 
     // bindable fields
-    this.commands = [];
-    this.reviewCommands = false;
+    svc.commands = [];
+    svc.reviewCommands = false;
 
     // reader helper function
     var reader = function (args, forceSingleSet, parser) {
@@ -307,7 +307,7 @@ angular.module('tn', ['ngHandsontable'])
     };
 
     // member functions
-    this.scalar = function (args) {
+    svc.scalar = function (args) {
         return reader(args, true, function (data) {
             if (data.Records.length > 1)
                 throw new InvalidDataException('Zu viele zurückgegebene Zeilen für einen Skalarwert.');
@@ -319,21 +319,21 @@ angular.module('tn', ['ngHandsontable'])
             return data.Records[0][keys[0]];
         });
     };
-    this.nonQuery = function (args) {
+    svc.nonQuery = function (args) {
         return reader(args, true, function (data) {
             if (data.Records.length > 0)
                 throw new InvalidDataException('Ein abfragefreier SQL-Befehl darf keine Zeilen zurckgeben.');
             return data.RecordsAffected;
         });
     };
-    this.query = function (args) {
+    svc.query = function (args) {
         return reader(args, true, function (data) {
             if (data.RecordsAffected > 0)
                 throw new InvalidDataException('Eine Abfrage darf keine Zeilen ändern.');
             return data.Records;
         });
     };
-    this.batch = function (args) {
+    svc.batch = function (args) {
         return reader(args, false, function (data) {
             var changeCase = function (rs) {
                 return {
@@ -478,16 +478,24 @@ angular.module('tn', ['ngHandsontable'])
         var nextNewRowId = -1;
         var notificationPromise = null;
         var eventsBeforeReady = {};
-        var rowIndex = null;
+        var rowIndex = {};
+        var changeListeners = [];
 
         // wrap a function around a dispose checker
         var throwIfDisposed = function (fn) {
             return function () {
                 if (disposed)
                     throw new ObjectDisposedException('table ' + name);
-                fn.apply(this, arguments);
+                return fn.apply(this, arguments);
             };
         }
+
+        // call all row listeners
+        var callback = function (oldRow, newRow) {
+            changeListeners.forEach(function (fn) {
+                fn.call(table, oldRow, newRow);
+            });
+        };
 
         // define a method to index rows
         var indexAndCheckData = function (data) {
@@ -536,22 +544,28 @@ angular.module('tn', ['ngHandsontable'])
                     requeryIds.forEach(function (id) {
                         if (id in data) {
                             // create inserted or replace updated rows
+                            var newRow = data[id];
                             if (id in rowIndex) {
-                                if (data[id].$version > rowIndex[id].$version) {
-                                    table.rows[table.rows.indexOf(rowIndex[id])] = data[id];
-                                    rowIndex[id] = data[id];
+                                var oldRow = rowIndex[id];
+                                if (newRow.$version > oldRow.$version) {
+                                    table.rows[table.rows.indexOf(oldRow)] = newRow;
+                                    rowIndex[id] = newRow;
+                                    callback(oldRow, newRow);
                                 }
                             }
                             else {
-                                rowIndex[id] = data[id];
-                                table.rows.push(rowIndex[id]);
+                                table.rows.push(newRow);
+                                rowIndex[id] = newRow;
+                                callback(null, newRow);
                             }
                         }
                         else {
                             // remove deleted rows
                             if (id in rowIndex) {
-                                table.rows.splice(table.rows.indexOf(rowIndex[id]), 1);
+                                var row = rowIndex[id];
+                                table.rows.splice(table.rows.indexOf(row), 1);
                                 delete rowIndex[id];
+                                callback(row, null);
                             }
                         }
                     });
@@ -610,7 +624,18 @@ angular.module('tn', ['ngHandsontable'])
             columns: [],
             permissions: {},
             rows: [],
+            rowChange: throwIfDisposed(function (fn) {
+                if (!angular.isFunction(fn))
+                    throw new ArgumentException('Callbackfunktion erwartet.', 'fn');
+
+                // add the listener
+                changeListeners.push(fn);
+            }),
             getRowById: throwIfDisposed(function (id) {
+                if (!angular.isNumber(id))
+                    throw new ArgumentException('Zeilen ID erwartet.', 'id');
+
+                // return the row at the index
                 return rowIndex[id];
             }),
             newRow: throwIfDisposed(function () {
@@ -619,8 +644,9 @@ angular.module('tn', ['ngHandsontable'])
                     $id: nextNewRowId--,
                     $version: '0x0000000000000000'
                 };
+                table.rows.push(row);
                 rowIndex[row.$id] = row;
-                table.rows.push(rowIndex[row.$id]);
+                callback(null, row);
             }),
             editRow: throwIfDisposed(function (id) {
                 return rowAction(id, function (row, deferred) {
@@ -646,19 +672,21 @@ angular.module('tn', ['ngHandsontable'])
                                 // check the batch result
                                 if (batch.recordsAffected == 0)
                                     throw new InvalidOperationException('Die Zeile wurde trotz Erfolg nicht in die Datenbank geschrieben.');
-                                if (batch.records.length == 0 || !angular.isNumeric(batch.records[0].$id))
+                                if (batch.records.length == 0 || !angular.isNumber(batch.records[0].$id))
                                     throw new InvalidDataException('Die Rückgabewert von @@IDENTITY ist ungültig.');
 
-                                // update the id and reindex the row (if not already done by a notification)
-                                var oldIndex = table.rows.indexOf(rowIndex[row.$id]);
+                                // delete the temporary row and remember its index
+                                var oldIndex = table.rows.indexOf(row);
+                                table.rows.splice(oldIndex, 1);
                                 delete rowIndex[row.$id];
+                                callback(row, null);
+
+                                // update the id and reindex the row (if not done by an event already)
                                 row.$id = batch.records[0].$id;
-                                if (row.$id in rowIndex) {
-                                    table.rows.splice(oldIndex, 1);
-                                }
-                                else {
+                                if (!(row.$id in rowIndex)) {
+                                    table.rows.splice(oldIndex, 0, row)
                                     rowIndex[row.$id] = row;
-                                    table.rows[oldIndex] = rowIndex[row.$id];
+                                    callback(null, row);
                                 }
 
                                 // clear the error and resolve the promise
@@ -695,6 +723,10 @@ angular.module('tn', ['ngHandsontable'])
                         }).then(
                             function (recordsAffected) {
                                 if (recordsAffected != 0) {
+                                    // notify the listeners if the current row is still the same
+                                    if (row.$id in rowIndex && rowIndex[row.$id] === row)
+                                        callback(row, row);
+
                                     // clear the error and resolve the promise
                                     delete row.$error;
                                     deferred.resolve(row);
@@ -715,8 +747,9 @@ angular.module('tn', ['ngHandsontable'])
                 return rowAction(id, function (row, deferred) {
                     if (row.$id < 0) {
                         // remove new lines immediatelly
-                        table.rows.splice(table.rows.indexOf(rowIndex[row.$id]), 1);
+                        table.rows.splice(table.rows.indexOf(row), 1);
                         delete rowIndex[row.$id];
+                        callback(row, null);
                         deferred.resolve(row);
                     }
                     else {
@@ -733,11 +766,13 @@ angular.module('tn', ['ngHandsontable'])
                             cancelOn: disposePromise
                         }).then(
                             function (recordsAffected) {
-                                // delete the row if successful (and not done by notify) or reject the promise
+                                // delete the row if successful (and not done by notify), otherwise reject the promise
                                 if (recordsAffected != 0) {
                                     if (row.$id in rowIndex) {
-                                        table.rows.splice(table.rows.indexOf(rowIndex[row.$id]), 1);
+                                        var currentRow = rowIndex[row.$id]; // NOTE: the row might have changed, so get the current one
+                                        table.rows.splice(table.rows.indexOf(currentRow), 1);
                                         delete rowIndex[row.$id];
+                                        callback(currentRow, null);
                                     }
                                     deferred.resolve(row);
                                 }
@@ -771,7 +806,7 @@ angular.module('tn', ['ngHandsontable'])
                 cancelOn: disposePromise
             }).then(function (data) {
                 // store the permissions
-                table.permissions = data;
+                angular.extend(table.permissions, data[0]);
             });
 
             // query the columns definition
@@ -808,7 +843,8 @@ angular.module('tn', ['ngHandsontable'])
                     throw new InvalidDataException('Die erste sichtbare ' + name + '-Spalte ist nicht "ID".');
                 if (data[data.length - 1].name != 'Version')
                     throw new InvalidDataException('Die letzte sichtbare ' + name + '-Spalte ist nicht "Version".');
-                table.columns = data.slice(1, -1);
+                for (var i = 1; i < data.length - 1; i++)
+                    table.columns.push(data[i]);
 
                 // create the base command
                 var queryCommand = 'SELECT ' + table.columns.map(function (column) { return column.name; }).join(', ') + ', ID AS [$id], Version AS [$version]\nFROM dbo.' + name;
@@ -818,8 +854,8 @@ angular.module('tn', ['ngHandsontable'])
                 // register a notification for database events
                 notificationPromise = notification(function (events) {
                     if (name in events) {
-                        // handle the event now or queue them for later
-                        if (rowIndex == null)
+                        // queue events for later if not ready or handle them now
+                        if (eventsBeforeReady)
                             angular.extend(eventsBeforeReady, events[name]);
                         else
                             handleNotifications(queryCommand, events[name]);
@@ -832,11 +868,16 @@ angular.module('tn', ['ngHandsontable'])
                     command: queryCommand,
                     cancelOn: disposePromise
                 }).then(function (data) {
-                    // set the rows and handle all queued events
-                    rowIndex = indexAndCheckData(data);
-                    for (var id in rowIndex)
-                        table.rows.push(rowIndex[id]);
+                    // add the rows and handle all queued events
+                    data = indexAndCheckData(data);
+                    for (var id in data) {
+                        var newRow = data[id];
+                        table.rows.push(newRow);
+                        rowIndex[id] = newRow;
+                        callback(null, newRow);
+                    }
                     handleNotifications(queryCommand, eventsBeforeReady);
+                    eventsBeforeReady = null;
                 });
             });
         });
@@ -883,7 +924,7 @@ angular.module('tn', ['ngHandsontable'])
             // check the arguments
             if (!angular.isString(tableName))
                 throw new ArgumentException('Tabellenname erwartet.', 'tableName');
-            if (!angular.isNumeric(rowId))
+            if (!angular.isNumber(rowId))
                 throw new ArgumentException('Numerische ID erwartet.', 'tableName');
             if (!(tableName in tables))
                 throw new ArgumentException('Die Tabelle "' + tableName + '" ist nicht eingeladen.', 'tableName');
@@ -892,7 +933,7 @@ angular.module('tn', ['ngHandsontable'])
 
             // try to get the row
             var row = tables[tableName].getRowById(rowId);
-            return row ? lookups[tableName](row) : '(' + tableName + ' #' + rowId + ' fehlt)';
+            return row ? (lookups[tableName](row)) : ('(' + tableName + ' #' + rowId + ' fehlt)');
         },
         primaryFilter: function (role, superRole) {
             var filter = 'IS_MEMBER(SUSER_SNAME(' + role + ')) = 1';
@@ -908,42 +949,114 @@ angular.module('tn', ['ngHandsontable'])
 })
 
 // define the trainee attendance controller
-.controller('AttendanceController', function (sql, table, Roles, globals) {
+.controller('AttendanceController', function ($scope, $window, sql, table, Roles, globals) {
     var ctr = this;
+    var today = new Date();
+    var map = {};
+    var zeitspanne = null;
+    var anwesenheit = null;
 
-    this.year = new Date().getFullYear();
-    this.month = new Date().getMonth() + 1;
+    today.setMonth(today.getMonth() - 1);
 
-    this.tage = []; // Zeispanne => Tag => State
-    this.zeitspannen = null;
+    // store the window width and height
+    var resize = function () {
+        ctr.width = $window.innerWidth;
+        ctr.height = $window.innerHeight;
+    }
 
-    this.cleanup = function () {
-        if (this.zeitspannen) {
-            this.zeitspannen.dispose();
-            this.zeitspannen = null;
+    // cleanup helper function
+    var cleanup = function () {
+        map = {};
+        if (zeitspanne) {
+            zeitspanne.dispose();
+            zeitspanne = null;
+        }
+        if (anwesenheit) {
+            anwesenheit.dispose();
+            anwesenheit = null;
         }
     };
-    this.update = function () {
-        ctr.cleanup();
-        var begin = '\'' + new Date(Date.UTC(ctr.year, ctr.month - 1, 1)).toISOString() + '\'';
-        var end = '\'' + new Date(Date.UTC(ctr.year, ctr.month, 0)).toISOString() + '\'';
-        ctr.tage = Array(new Date(ctr.year, ctr.month, 0).getDay());
-        for (var i = 0; i < ctr.tage.length; i++)
-            ctr.tage[i] = {};
-        var fmtDate = function (date) { return '\'' + date.toISOString() + '\''; };
-        ctr.zeitspannen = table('Zeitspanne', 'Eintritt <= ' + end + ' AND (Austritt IS NULL OR Austritt >= ' + begin + ') AND (' + globals.secondaryFilter(Roles.Coaching, Roles.Administration) + ')');
+
+    // refresh the view
+    var update = function (incWeek) {
+        var ensureMap = function (id) {
+            if (!(id in map))
+                map[id] = {};
+            return map[id];
+        }
+
+        // dispose old tables and maps
+        cleanup();
+
+        // adjust the dates and create the query parameters
+        ctr.monday = new Date(ctr.monday.valueOf() + (incWeek * 7 * 24 * 60 * 60 * 1000));
+        ctr.sunday = new Date(ctr.sunday.valueOf() + (incWeek * 7 * 24 * 60 * 60 * 1000));
+        var begin = '\'' + new Date(Date.UTC(ctr.monday.getFullYear(), ctr.monday.getMonth(), ctr.monday.getDate())).toISOString() + '\'';
+        var end = '\'' + new Date(Date.UTC(ctr.sunday.getFullYear(), ctr.sunday.getMonth(), ctr.sunday.getDate())).toISOString() + '\'';
+
+        // fetch all Zeitspannen in the given range and append the week to the row
+        zeitspanne = table('Zeitspanne', 'Eintritt <= ' + end + ' AND (Austritt IS NULL OR Austritt >= ' + begin + ') AND (' + globals.secondaryFilter(Roles.Coaching, Roles.Administration) + ')');
+        zeitspanne.rowChange(function (oldRow, newRow) {
+            if (newRow && newRow.$id > -1)
+                newRow.$days = ensureMap(newRow.$id);
+        });
+        ctr.rows = zeitspanne.rows;
+
+        // fetch all Anwesenheiten in the range and map them to a Zeitspanne
+        anwesenheit = table('Anwesenheit', 'Datum BETWEEN ' + begin + ' AND ' + end);
+        anwesenheit.rowChange(function (oldRow, newRow) {
+            if (oldRow && oldRow.$id > -1) {
+                delete map[oldRow.Zeitspanne][oldRow.Datum.getDay()];
+            }
+            if (newRow && newRow.$id > -1) {
+                ensureMap(newRow.Zeitspanne)[newRow.Datum.getDay()] = newRow;
+            }
+        });
     };
 
-    // show the current month
-    ctr.update();
+    // define the date variables and functions
+    ctr.monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay() + 6) % 7));
+    ctr.sunday = new Date(ctr.monday.valueOf() + (6 * 26 * 60 * 60 * 1000));
+    ctr.maxMonday = new Date(ctr.monday.valueOf() + (2 * 4 * 7 * 60 * 60 * 1000));
+    ctr.prevWeek = function () {
+        update(-1);
+    };
+    ctr.nextWeek = function () {
+        console.log(JSON.stringify(ctr.rows));
+        update(1);
+    };
+    ctr.renderer = function (instance, td, row, col, prop, value, cellProperties) {
+        td.innerText = value ? "yes" : "no";
+    };
+
+    // define the bound variables
+    ctr.columns = [];
+    ctr.rows = [];
+    ctr.width = 0;
+    ctr.height = 0;
+
+    // hook the resize handler
+    angular.element($window).on('resize', function () {
+        $scope.$apply(resize);
+    });
+
+    // make sure the tables get cleaned up
+    $scope.$on('$destroy', function () {
+        cleanup();
+    });
+
+    // resize the table and show the current month
+    resize();
+    update(0);
 })
 
 // define the log area controller
 .controller('LogController', function (sql, notification, SqlState) {
+    var ctr = this;
     // controller variables
-    this.sql = sql;
-    this.notification = notification;
-    this.filter = function (command) {
+    ctr.sql = sql;
+    ctr.notification = notification;
+    ctr.filter = function (command) {
         return command.state != SqlState.Completed || (new Date()).valueOf() - command.lastExecuteTime < 60000;
     };
 })
@@ -953,11 +1066,11 @@ angular.module('tn', ['ngHandsontable'])
     var ctr = this;
 
     // define the navigational variables and functions
-    this.navs = [];
-    this.currentNav = -1;
-    this.tabs = [];
-    this.currentTab = -1;
-    this.gotoNav = function (index) {
+    ctr.navs = [];
+    ctr.currentNav = -1;
+    ctr.tabs = [];
+    ctr.currentTab = -1;
+    ctr.gotoNav = function (index) {
         if (!angular.isNumber(index) || index < 0 || index >= ctr.navs.length)
             throw new ArgumentException('Ungültiger Navigationsindex.', 'index');
 
@@ -979,7 +1092,7 @@ angular.module('tn', ['ngHandsontable'])
         ctr.currentTab = ctr.tabs.length == 0 ? -1 : 0;
         ctr.currentNav = index;
     };
-    this.gotoTab = function (index) {
+    ctr.gotoTab = function (index) {
         if (!angular.isNumber(index) || index < 0 || index >= ctr.tabs.length)
             throw new ArgumentException('Ungültiger Tabulatorindex.', 'index');
 
@@ -998,7 +1111,7 @@ angular.module('tn', ['ngHandsontable'])
             parameters: Roles
         }).then(function (data) {
             // filter the toc and build the navigation
-            //toc = toc.filter(function (value) { return value.roles.some(function (role) { return data[0][role]; }); });
+            toc = toc.filter(function (value) { return value.roles.some(function (role) { return data[0][role]; }); });
             ctr.navs = toc.map(function (value) { return value.name });
             if (ctr.navs.length == 0)
                 throw new UnauthorizedAccessException('Sie haben keine Berechtigung zum Ausführen dieser Anwendung.');
