@@ -19,7 +19,6 @@
 <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta http-equiv="Cache-Control" content="no-cache" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Trainee</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.23.0/css/uikit.min.css" />
@@ -28,17 +27,17 @@
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.23.0/js/uikit.min.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.23.0/js/components/tooltip.min.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.8/angular.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular-i18n/1.4.8/angular-locale_de.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/0.20.2/handsontable.full.js"></script>
-    <script type="text/javascript" src="ngHandsontable.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.8/angular.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular-i18n/1.4.8/angular-locale_de.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/0.20.2/handsontable.full.min.js"></script>
     <script type="text/javascript" src="tn.js"></script>
 </head>
 <body>
     <nav class="uk-navbar uk-navbar-attached">
-        <ul class="uk-navbar-nav">
-            <li class="uk-hidden-small" data-ng-class="main.currentNav == $index ? 'uk-active' : ''" data-ng-repeat="nav in main.navs"><a data-ng-click="main.gotoNav($index)">{{nav}}</a></li>
+        <ul class="uk-navbar-nav uk-hidden-small">
+            <li data-ng-class="main.currentNav == $index ? 'uk-active' : ''" data-ng-repeat="nav in main.navs"><a data-ng-click="main.gotoNav($index)">{{nav}}</a></li>
         </ul>
+        <a class="uk-navbar-toggle uk-visible-small" href="#nav-offcanvas" data-uk-offcanvas=""></a>
     </nav>
     <div style="box-sizing:border-box; height:calc(70vh - 77px);">
         <div data-ng-repeat="tab in main.tabs" data-ng-show="main.currentTab == $index" data-ng-switch="tab.type">
@@ -50,24 +49,14 @@
                             <button class="uk-button"><span>{{atn.monday | date: 'shortDate'}}</span> - <span>{{atn.sunday | date: 'shortDate'}}</span></button>
                             <div class="uk-dropdown uk-dropdown-small">
                                 <ul class="uk-nav uk-nav-dropdown">
-                                    <li><a data-ng-repeat="week in atn.quickAccess" data-ng-click="atn.updateWeek(week.offset)"><span>{{week.monday | date: 'shortDate'}}</span> - <span>{{week.sunday | date: 'shortDate'}}</span></a></li>
+                                    <li><a data-ng-repeat="week in atn.weeks" data-ng-click="atn.updateWeek(week.offset)"><span>{{week.monday | date: 'shortDate'}}</span> - <span>{{week.sunday | date: 'shortDate'}}</span></a></li>
                                 </ul>
                             </div>
                         </div>
                         <button class="uk-button" data-ng-disabled="atn.monday &gt;= atn.maxMonday" data-ng-click="atn.updateWeek(1)">Nächste Woche <i class="uk-icon-angle-double-right"></i></button>
                     </div>
                 </div>
-                <hot-table datarows="atn.rows" width="atn.width" height="(atn.height * 0.7) - 107">
-                     <hot-column data="Einrichtung" title="'Einrichtung'" read-only></hot-column>
-                     <hot-column data="Teilnehmer" title="'Teilnehmer'" read-only></hot-column>
-                     <hot-column data="$days.1" title="'Montag'" renderer="atn.renderer"></hot-column>
-                     <hot-column data="$days.2" title="'Dienstag'" renderer="atn.renderer"></hot-column>
-                     <hot-column data="$days.3" title="'Mittwoch'" renderer="atn.renderer"></hot-column>
-                     <hot-column data="$days.4" title="'Donnerstag'" renderer="atn.renderer"></hot-column>
-                     <hot-column data="$days.5" title="'Freitag'" renderer="atn.renderer"></hot-column>
-                     <hot-column data="$days.6" title="'Samstag'" renderer="atn.renderer"></hot-column>
-                     <hot-column data="$days.0" title="'Sonntag'" renderer="atn.renderer"></hot-column>
-                </hot-table>
+                <div id="attendance"></div>
             </form>
         </div>
     </div>
@@ -116,6 +105,13 @@
             </table>
         </div>
         <button class="uk-button" data-ng-class="log.sql.reviewCommands ? 'uk-active' : ''" data-ng-click="log.sql.reviewCommands = !log.sql.reviewCommands">Abfragen genehmigen <span data-ng-class="log.sql.reviewCommands ? 'uk-text-success' : 'uk-text-danger'">{{log.sql.reviewCommands ? 'AN' : 'AUS'}}</span></button>
+    </div>
+    <div class="uk-offcanvas" id="nav-offcanvas">
+        <div class="uk-offcanvas-bar">
+            <ul class="uk-nav uk-nav-offcanvas">
+                <li data-ng-class="main.currentNav == $index ? 'uk-active' : ''" data-ng-repeat="nav in main.navs"><a data-ng-click="main.gotoNav($index)">{{nav}}</a></li>
+            </ul>
+        </div>
     </div>
 </body>
 </html>
