@@ -958,6 +958,11 @@ angular.module('tn', ['ngHandsontable'])
 
     today.setMonth(today.getMonth() - 1);
 
+    // get the next sunday
+    var sundayFromMonday = function (monday) {
+        return new Date(monday.valueOf() + (6 * 24 * 60 * 60 * 1000));
+    };
+
     // store the window width and height
     var resize = function () {
         ctr.width = $window.innerWidth;
@@ -966,6 +971,7 @@ angular.module('tn', ['ngHandsontable'])
 
     // cleanup helper function
     var cleanup = function () {
+        ctr.quickAccess = [];
         map = {};
         if (zeitspanne) {
             zeitspanne.dispose();
@@ -977,8 +983,11 @@ angular.module('tn', ['ngHandsontable'])
         }
     };
 
-    // refresh the view
-    var update = function (incWeek) {
+    // define the date variables and functions
+    ctr.monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay() + 6) % 7));
+    ctr.sunday = sundayFromMonday(ctr.monday);
+    ctr.maxMonday = new Date(ctr.monday.valueOf() + (2 * 7 * 24 * 60 * 60 * 1000));
+    ctr.updateWeek = function (incWeek) {
         var ensureMap = function (id) {
             if (!(id in map))
                 map[id] = {};
@@ -990,9 +999,18 @@ angular.module('tn', ['ngHandsontable'])
 
         // adjust the dates and create the query parameters
         ctr.monday = new Date(ctr.monday.valueOf() + (incWeek * 7 * 24 * 60 * 60 * 1000));
-        ctr.sunday = new Date(ctr.sunday.valueOf() + (incWeek * 7 * 24 * 60 * 60 * 1000));
+        ctr.sunday = sundayFromMonday(ctr.monday);
         var begin = '\'' + new Date(Date.UTC(ctr.monday.getFullYear(), ctr.monday.getMonth(), ctr.monday.getDate())).toISOString() + '\'';
         var end = '\'' + new Date(Date.UTC(ctr.sunday.getFullYear(), ctr.sunday.getMonth(), ctr.sunday.getDate())).toISOString() + '\'';
+
+        // populate the quick access menu
+        for (var monday = new Date(ctr.monday.valueOf() - (8 * 7 * 24 * 60 * 60 * 1000)), week = 0; week < 12 && monday <= ctr.maxMonday; monday = new Date(monday.valueOf() + (7 * 24 * 60 * 60 * 1000)), week++) {
+            ctr.quickAccess.push({
+                monday: monday,
+                sunday: sundayFromMonday(monday),
+                offset: week - 8
+            });
+        }
 
         // fetch all Zeitspannen in the given range and append the week to the row
         zeitspanne = table('Zeitspanne', 'Eintritt <= ' + end + ' AND (Austritt IS NULL OR Austritt >= ' + begin + ') AND (' + globals.secondaryFilter(Roles.Coaching, Roles.Administration) + ')');
@@ -1014,17 +1032,7 @@ angular.module('tn', ['ngHandsontable'])
         });
     };
 
-    // define the date variables and functions
-    ctr.monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay() + 6) % 7));
-    ctr.sunday = new Date(ctr.monday.valueOf() + (6 * 26 * 60 * 60 * 1000));
-    ctr.maxMonday = new Date(ctr.monday.valueOf() + (2 * 4 * 7 * 60 * 60 * 1000));
-    ctr.prevWeek = function () {
-        update(-1);
-    };
-    ctr.nextWeek = function () {
-        console.log(JSON.stringify(ctr.rows));
-        update(1);
-    };
+    // define renderers
     ctr.renderer = function (instance, td, row, col, prop, value, cellProperties) {
         td.innerText = value ? "yes" : "no";
     };
@@ -1032,6 +1040,7 @@ angular.module('tn', ['ngHandsontable'])
     // define the bound variables
     ctr.columns = [];
     ctr.rows = [];
+    ctr.quickAccess = [];
     ctr.width = 0;
     ctr.height = 0;
 
@@ -1047,7 +1056,7 @@ angular.module('tn', ['ngHandsontable'])
 
     // resize the table and show the current month
     resize();
-    update(0);
+    ctr.updateWeek(0);
 })
 
 // define the log area controller
