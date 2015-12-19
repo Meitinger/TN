@@ -39,24 +39,22 @@
         </ul>
         <a class="uk-navbar-toggle uk-visible-small" href="#nav-offcanvas" data-uk-offcanvas=""></a>
     </nav>
-    <div style="box-sizing:border-box; height:calc(70vh - 77px);">
+    <div style="height:calc(70vh - 77px);">
         <div data-ng-repeat="tab in main.tabs" data-ng-show="main.currentTab == $index" data-ng-switch="tab.type">
             <form class="uk-form" data-ng-switch-when="attendance" data-ng-controller="AttendanceController as atn">
-                <div style="white-space:nowrap; text-align:right;">
-                    <div class="uk-button-group">
-                        <button class="uk-button" data-ng-click="atn.updateWeek(-1)"><i class="uk-icon-angle-double-left"> Vorige Woche</i></button>
-                        <div class="uk-button-dropdown" data-uk-dropdown>
-                            <button class="uk-button"><span>{{atn.monday | date: 'shortDate'}}</span> - <span>{{atn.sunday | date: 'shortDate'}}</span></button>
-                            <div class="uk-dropdown uk-dropdown-small">
-                                <ul class="uk-nav uk-nav-dropdown">
-                                    <li><a data-ng-repeat="week in atn.weeks" data-ng-click="atn.updateWeek(week.offset)"><span>{{week.monday | date: 'shortDate'}}</span> - <span>{{week.sunday | date: 'shortDate'}}</span></a></li>
-                                </ul>
-                            </div>
+                <div style="width:100%; white-space:nowrap;">
+                    <button class="uk-button" data-ng-click="atn.updateWeek(-1)" style="width:30%;"><i class="uk-icon-angle-double-left"></i> Vorige Woche</button>
+                    <div class="uk-button-dropdown" style="width:calc(40% - 8px);" data-uk-dropdown>
+                        <button class="uk-button" style="width:100%;">KW <span>{{atn.monday | date: 'w'}}</span>: <span>{{atn.monday | date: 'shortDate'}}</span> - <span>{{atn.sunday | date: 'shortDate'}}</span></button>
+                        <div class="uk-dropdown uk-dropdown-small">
+                            <ul class="uk-nav uk-nav-dropdown">
+                                <li><a data-ng-repeat="week in atn.weeks" data-ng-click="atn.updateWeek(week.offset)">KW <span>{{week.monday | date: 'w'}}</span>: <span>{{week.monday | date: 'shortDate'}}</span> - <span>{{week.sunday | date: 'shortDate'}}</span></a></li>
+                            </ul>
                         </div>
-                        <button class="uk-button" data-ng-disabled="atn.monday &gt;= atn.maxMonday" data-ng-click="atn.updateWeek(1)">Nächste Woche <i class="uk-icon-angle-double-right"></i></button>
                     </div>
+                    <button class="uk-button" data-ng-disabled="atn.monday &gt;= atn.maxMonday" data-ng-click="atn.updateWeek(1)" style="width:30%;">Nächste Woche <i class="uk-icon-angle-double-right"></i></button>
                 </div>
-                <div id="attendance"></div>
+                <div id="attendance" style="width:100%; height:calc(70vh - 107px); overflow:hidden;"></div>
             </form>
         </div>
     </div>
@@ -71,7 +69,7 @@
         <div data-ng-if="log.notification.lastSyncTime &amp;&amp; !log.notification.error" class="uk-panel-badge uk-badge uk-badge-success" data-uk-tooltip="data-uk-tooltip" title="Letzte Synchronisierung: {{(log.notification.lastSyncTime | date: 'medium') || 'nie'}}&#x000a;Letzte Änderung: {{(log.notification.lastEventTime | date: 'medium') || 'noch keine'}}">Synchronisiert</div>
         <div data-ng-if="log.notification.lastSyncTime &amp;&amp; log.notification.error" class="uk-panel-badge uk-badge uk-badge-danger" data-uk-tooltip="data-uk-tooltip" title="Fehler: {{log.notification.error}}&#x000a;Letzte Synchronisierung: {{(log.notification.lastSyncTime | date: 'medium') || 'nie'}}">Synchronisierungsfehler</div>
         <h3 class="uk-panel-title">Datenbanklog</h3>
-        <div class="uk-overflow-container" style="box-sizing: border-box; height:calc(30vh - 100px);">
+        <div class="uk-overflow-container" style="height:calc(30vh - 100px);">
             <table class="uk-table uk-table-hover uk-table-condensed">
                 <thead>
                     <tr>

@@ -397,10 +397,10 @@ angular.module('tn', [])
                 lastEventId = data.LastEventId;
                 notification.lastSyncTime = new Date();
 
-                // notify any readiness listeners or update the event time
+                // notify any readiness listeners and update the event time
                 if (first)
                     readyEvent.resolve();
-                else
+                if (Object.keys(data.Events).length > 0)
                     notification.lastEventTime = new Date();
 
                 // notify the listeners
@@ -982,14 +982,13 @@ angular.module('tn', [])
             // remove the table if it is destroyed
             if (hotWasAdded) {
                 hotInstance.addHook('afterDestroy', function () {
-                    var redrawTables = redraws[tableName];
-                    var hotIndex = redrawTables.indexOf(hotInstance);
+                    var hotIndex = redraws[tableName].indexOf(hotInstance);
                     if (hotIndex > -1)
-                        redrawTables.splice(hotIndex, 1);
+                        redraws[tableName].splice(hotIndex, 1);
                 });
             }
 
-            // create the renderer function
+            // create the lookup function
             var table = tables[tableName];
             var lookup = lookups[tableName];
             return function (row) {
@@ -1009,13 +1008,16 @@ angular.module('tn', [])
 
     // define the data and table variables
     var map = {};
+    var holidays = {};
     var zeitspanne = null;
     var anwesenheit = null;
+    var feiertag = null;
 
     // cleanup helper function
     var cleanup = function () {
         ctr.weeks = [];
         map = {};
+        holidays = {};
         readyTables = 0;
         if (hot) {
             hot.destroy();
@@ -1029,6 +1031,10 @@ angular.module('tn', [])
             anwesenheit.dispose();
             anwesenheit = null;
         }
+        if (feiertag) {
+            feiertag.dispose();
+            feiertag = null;
+        }
     };
 
     // get the next sunday
@@ -1039,43 +1045,94 @@ angular.module('tn', [])
     // handson table variable and build function
     var hot = null;
     var readyTables = 0;
-    var appendHotSize = function (obj) {
-        obj.width = window.innerWidth;
-        obj.height = window.innerHeight * 0.7 - 107;
-        return obj;
+    var dayRenderer = function (instance, td, row, col, prop, value, cellProperties) {
+        // set the background color depending on the day
+        td.style.backgroundColor =
+            (((col - 1) % 7) in holidays) ? '#ffcccc' :
+            col == 7 ? '#ccffcc' :
+            col == 8 ? '#ffffcc' :
+            '#ffffff';
+
+        // use stripes to indicate readonly days
+        td.style.backgroundImage = cellProperties.readOnly ? 'repeating-linear-gradient(-45deg, transparent, transparent 5px, #ccc 5px, #ccc 6px)' : 'none';
+
+
+        td.innerText = value ? (value.Vormittags + '/' + value.Nachmittags + '/' + value.Nachts + '/' + value.Zusatz) : (cellProperties.readOnly ? '' : '-');
     };
-    window.addEventListener('resize', function () {
-        if (hot) {
-            hot.updateSettings(appendHotSize({}));
-        }
-    });
+    var handleHotChange = function (changes, source) {
+        console.log(JSON.stringify(changes));
+        return false;
+    };
     var createHotIfReady = function () {
-        if (++readyTables < 2)
+        // ensure Anwesenheit, Zeitspanne and Feiertag are loaded
+        if (++readyTables < 3)
             return;
-        var headers = ["Einrichtung", "Teilnehmer"];
-        for (var day = ctr.monday; day <= ctr.sunday; day = new Date(day.valueOf() + (24 * 60 * 60 * 1000)))
-            headers.push($filter('date')(day, 'EEEE, d.M.'));
+
+        // create the table object
         hot = new Handsontable(document.getElementById('attendance'));
-        hot.updateSettings(appendHotSize({
+        hot.updateSettings({
             data: zeitspanne.rows,
-            colHeaders: headers,
+            colHeaders: function (col) {
+                switch (col) {
+                    case 0: return 'Einrichtung';
+                    case 1: return 'Teilnehmer';
+                    default:
+                        // return either the holiday name or the formatted day string
+                        var day = (col - 1) % 7;
+                        if (day in holidays)
+                            return holidays[day].Name;
+                        day = ctr.monday.getTime() + ((col - 2) * (24 * 60 * 60 * 1000));
+                        return $filter('date')(day, 'EEE, d.M.');
+                }
+            },
+            manualColumnResize: true,
+            colWidths: [100, 240, 120, 120, 120, 120, 120, 120, 120],
+            rowHeights: 21,
+            columnSorting: true,
+            beforeChange: handleHotChange,
+            cells: function (row, col, prop) {
+                // mark days outside the Zeitspanne as readonly
+                var cellProperties = {};
+                if (col > 1) {
+                    var day = ctr.monday.getTime() + ((col - 2) * (24 * 60 * 60 * 1000));
+                    var sqlRow = hot.getSourceDataAtRow(row);
+                    cellProperties.readOnly = day < sqlRow.Eintritt.getTime() || sqlRow.Austritt && day > sqlRow.Austritt.getTime();
+                }
+                return cellProperties;
+            },
             columns: [
                 {
                     data: globals.getReferencedData(hot, 'Einrichtung'),
-                    readOnly: true
+                    readOnly: true,
+                    sortIndicator: true
                 }, {
                     data: globals.getReferencedData(hot, 'Teilnehmer'),
-                    readOnly: true
-                },
-                { data: '$Anwesenheit.1' },
-                { data: '$Anwesenheit.2' },
-                { data: '$Anwesenheit.3' },
-                { data: '$Anwesenheit.4' },
-                { data: '$Anwesenheit.5' },
-                { data: '$Anwesenheit.6' },
-                { data: '$Anwesenheit.0' }
+                    readOnly: true,
+                    sortIndicator: true
+                }, {
+                    data: '$Anwesenheit.1',
+                    renderer: dayRenderer
+                }, {
+                    data: '$Anwesenheit.2',
+                    renderer: dayRenderer
+                }, {
+                    data: '$Anwesenheit.3',
+                    renderer: dayRenderer
+                }, {
+                    data: '$Anwesenheit.4',
+                    renderer: dayRenderer
+                }, {
+                    data: '$Anwesenheit.5',
+                    renderer: dayRenderer
+                }, {
+                    data: '$Anwesenheit.6',
+                    renderer: dayRenderer
+                }, {
+                    data: '$Anwesenheit.0',
+                    renderer: dayRenderer
+                }
             ]
-        }));
+        });
     };
 
     // define the date variables and functions
@@ -1120,7 +1177,7 @@ angular.module('tn', [])
             if (oldRow)
                 map[oldRow.$id].visible = false;
             if (newRow)
-                newRow.$Anwesenheiten = ensureMap(newRow.$id, true);
+                newRow.$Anwesenheit = ensureMap(newRow.$id, true);
             if (hot)
                 hot.render();
         });
@@ -1148,6 +1205,19 @@ angular.module('tn', [])
                 hot.render();
         });
         anwesenheit.ready(createHotIfReady);
+
+        // query all holidays in the interval
+        feiertag = table('Feiertag', 'Datum BETWEEN ' + begin + ' AND ' + end);
+        feiertag.rowChange(function (oldRow, newRow) {
+            // update the holidays map
+            if (oldRow && holidays[oldRow.Datum.getDay()] === oldRow)
+                delete holidays[oldRow.Datum.getDay()];
+            if (newRow)
+                holidays[newRow.Datum.getDay()] = newRow;
+            if (hot)
+                hot.render();
+        });
+        feiertag.ready(createHotIfReady);
     };
 
     // make sure the tables get cleaned up
