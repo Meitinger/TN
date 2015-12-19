@@ -1046,18 +1046,17 @@ angular.module('tn', [])
     var hot = null;
     var readyTables = 0;
     var dayRenderer = function (instance, td, row, col, prop, value, cellProperties) {
-        // set the background color depending on the day
-        td.style.backgroundColor =
-            (((col - 1) % 7) in holidays) ? '#ffcccc' :
-            col == 7 ? '#ccffcc' :
-            col == 8 ? '#ffffcc' :
-            '#ffffff';
-
-        // use stripes to indicate readonly days
-        td.style.backgroundImage = cellProperties.readOnly ? 'repeating-linear-gradient(-45deg, transparent, transparent 5px, #ccc 5px, #ccc 6px)' : 'none';
-
-
-        td.innerText = value ? (value.Vormittags + '/' + value.Nachmittags + '/' + value.Nachts + '/' + value.Zusatz) : (cellProperties.readOnly ? '' : '-');
+        var hours = '00';
+        var minutes = '00';
+        if (value) {
+            hours = value.getHours();
+            if (hours < 10)
+                hours = '0' + hours;
+            minutes = value.getMinutes();
+            if (minutes < 10)
+                minutes = '0' + minutes;
+        }
+        Handsontable.renderers.TextRenderer.call(this, instance, td, row, col, prop, hours + ':' + minutes, cellProperties);
     };
     var handleHotChange = function (changes, source) {
         console.log(JSON.stringify(changes));
@@ -1086,49 +1085,77 @@ angular.module('tn', [])
                 }
             },
             manualColumnResize: true,
-            colWidths: [100, 240, 120, 120, 120, 120, 120, 120, 120],
             rowHeights: 21,
             columnSorting: true,
             beforeChange: handleHotChange,
             cells: function (row, col, prop) {
-                // mark days outside the Zeitspanne as readonly
+                // return the cell properties
                 var cellProperties = {};
                 if (col > 1) {
+                    cellProperties.className = 'atn';
+
+                    // mark days outside the Zeitspanne as readonly
                     var day = ctr.monday.getTime() + ((col - 2) * (24 * 60 * 60 * 1000));
                     var sqlRow = hot.getSourceDataAtRow(row);
                     cellProperties.readOnly = day < sqlRow.Eintritt.getTime() || sqlRow.Austritt && day > sqlRow.Austritt.getTime();
+
+                    // set the additional class names
+                    if (cellProperties.readOnly)
+                        cellProperties.className += ' atn-invalid';
+                    day = (col - 1) % 7;
+                    if (day in holidays)
+                        cellProperties.className += ' atn-holday';
+                    else if (col == 7)
+                        cellProperties.className += ' atn-saturday';
+                    else if (col == 8)
+                        cellProperties.className += ' atn-sunday';
+                    if (day in sqlRow.$Anwesenheit) {
+                        var value = sqlRow.$Anwesenheit[day];
+                        cellProperties.className += ' atn-' + Number(value.Vormittags) + Number(value.Nachmittags) + Number(value.Nachts);
+                    }
+                    else if (!cellProperties.readOnly)
+                        cellProperties.className += ' atn-000';
                 }
                 return cellProperties;
             },
             columns: [
                 {
                     data: globals.getReferencedData(hot, 'Einrichtung'),
+                    width: 100,
                     readOnly: true,
                     sortIndicator: true
                 }, {
                     data: globals.getReferencedData(hot, 'Teilnehmer'),
+                    width: 240,
                     readOnly: true,
                     sortIndicator: true
                 }, {
-                    data: '$Anwesenheit.1',
+                    data: '$Anwesenheit.1.Zusatz',
+                    width: 120,
                     renderer: dayRenderer
                 }, {
-                    data: '$Anwesenheit.2',
+                    data: '$Anwesenheit.2.Zusatz',
+                    width: 120,
                     renderer: dayRenderer
                 }, {
-                    data: '$Anwesenheit.3',
+                    data: '$Anwesenheit.3.Zusatz',
+                    width: 120,
                     renderer: dayRenderer
                 }, {
-                    data: '$Anwesenheit.4',
+                    data: '$Anwesenheit.4.Zusatz',
+                    width: 120,
                     renderer: dayRenderer
                 }, {
-                    data: '$Anwesenheit.5',
+                    data: '$Anwesenheit.5.Zusatz',
+                    width: 120,
                     renderer: dayRenderer
                 }, {
-                    data: '$Anwesenheit.6',
+                    data: '$Anwesenheit.6.Zusatz',
+                    width: 120,
                     renderer: dayRenderer
                 }, {
-                    data: '$Anwesenheit.0',
+                    data: '$Anwesenheit.0.Zusatz',
+                    width: 120,
                     renderer: dayRenderer
                 }
             ]
