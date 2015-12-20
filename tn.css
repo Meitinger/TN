@@ -1,21 +1,31 @@
-td.atn { padding-left: 42px;
-         background-repeat: no-repeat;
-         background-position: 2px 2px; }
-td.atn-invalid { background-image: repeating-linear-gradient(
-                    -45deg,
-                    transparent,
-                    transparent 5px,
-                    #ccc 5px,
-                    #ccc 6px);
-                 background-position:right top; }
-td.atn-holiday { background-color: #ffcccc; }
-td.atn-saturday { background-color: #ccffcc; }
-td.atn-sunday { background-color: #ffffcc; }
-td.atn-000 { background-image: url(000.png); }
-td.atn-001 { background-image: url(001.png); }
-td.atn-010 { background-image: url(010.png); }
-td.atn-011 { background-image: url(011.png); }
-td.atn-100 { background-image: url(100.png); }
-td.atn-101 { background-image: url(101.png); }
-td.atn-110 { background-image: url(110.png); }
-td.atn-111 { background-image: url(111.png); }
+.handsontable td.atn 
+{
+    padding-left: 42px;
+    background-repeat: no-repeat;
+    background-position: 2px 2px;
+}
+.handsontable td.atn.area
+{
+    background-color: #ccccff;
+}
+.handsontable td.atn-invalid 
+{
+    background-image: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 5px,
+        #ccc 5px,
+        #ccc 6px);
+    background-position: right top;
+}
+.handsontable td.atn-holiday { background-color: #ffcccc; }
+.handsontable td.atn-saturday { background-color: #ccffcc; }
+.handsontable td.atn-sunday { background-color: #ffffcc; }
+.handsontable td.atn-000 { background-image: url(000.png); }
+.handsontable td.atn-001 { background-image: url(001.png); }
+.handsontable td.atn-010 { background-image: url(010.png); }
+.handsontable td.atn-011 { background-image: url(011.png); }
+.handsontable td.atn-100 { background-image: url(100.png); }
+.handsontable td.atn-101 { background-image: url(101.png); }
+.handsontable td.atn-110 { background-image: url(110.png); }
+.handsontable td.atn-111 { background-image: url(111.png); }

@@ -56,23 +56,29 @@ function ObjectDisposedException(objectName) {
 ObjectDisposedException.prototype = Object.create(InvalidOperationException.prototype);
 ObjectDisposedException.prototype.constructor = ObjectDisposedException;
 
+// function that reports an error
+UIkit.modal.error = function (src, msg, trace) {
+    UIkit.modal.blockUI(
+        '<h1>Jo, des is\' hin...</h1>' +
+        '<p>Es ist ein unerwarteter Fehler aufgetreten.<br/>Die Meldung lautet:</p>' +
+        '<p><b>' + msg + '</b></p>' +
+        '<hr/>' +
+        '<p><b>Bitte <a href="mailto:administrator@aufbauwerk.com?subject=[tn]%20' + encodeURIComponent(src) + '&amp;body=' + encodeURIComponent(trace) + '">melden</a> Sie den Fehler und laden Sie die Seite <a href="javascript:location.reload(true);">neu</a>.'
+    );
+};
+
+// unhandled exception handler
+window.onerror = function (msg, url, line) {
+    UIkit.modal.error('window', msg, msg + '\n   at ' + url + ':' + line);
+};
+
 // define angular module
 angular.module('tn', [])
 
 // error handler
 .factory('$exceptionHandler', function () {
     return function (exception, cause) {
-        var message =
-            '<h1>Jo, des is\' hin...</h1>' +
-            '<p>Es ist ein unerwarteter Fehler aufgetreten.<br/>Die Meldung lautet:</p>' +
-            '<p><b>' + exception.message + '</b></p>';
-        if (cause)
-            message += '<p>Der Fehler wurde verursacht von <b>' + (cause || '(unbekannt)') + '</b></p>';
-        message +=
-            '<hr/>' +
-            '<p><b>Bitte <a href="mailto:administrator@aufbauwerk.com?subject=[tn]%20&amp;body=' + encodeURIComponent(exception.stack) + '">melden</a> Sie den Fehler und laden Sie die Seite <a href="javascript:location.reload(true);">neu</a>.';
-        UIkit.modal.blockUI(message);
-        throw exception;
+        UIkit.modal.error('angular', exception.message, exception.stack);
     };
 })
 
@@ -649,12 +655,15 @@ angular.module('tn', [])
                 // return the row at the index
                 return rowIndex[id];
             }),
-            newRow: throwIfDisposed(function () {
-                // create and add an empty row
-                var row = {
-                    $id: nextNewRowId--,
-                    $version: '0x0000000000000000'
-                };
+            newRow: throwIfDisposed(function (row) {
+                if (angular.isDefined(row) && !angular.isObject(row))
+                    throw new ArgumentException('Vorlagenobjekt erwartet.', 'row');
+
+                // create and add a row
+                if (!row)
+                    row = {};
+                row.$id = nextNewRowId--;
+                row.$version = '0x0000000000000000';
                 table.rows.push(row);
                 rowIndex[row.$id] = row;
                 callback(null, row);
@@ -1046,17 +1055,7 @@ angular.module('tn', [])
     var hot = null;
     var readyTables = 0;
     var dayRenderer = function (instance, td, row, col, prop, value, cellProperties) {
-        var hours = '00';
-        var minutes = '00';
-        if (value) {
-            hours = value.getHours();
-            if (hours < 10)
-                hours = '0' + hours;
-            minutes = value.getMinutes();
-            if (minutes < 10)
-                minutes = '0' + minutes;
-        }
-        Handsontable.renderers.TextRenderer.call(this, instance, td, row, col, prop, hours + ':' + minutes, cellProperties);
+        (cellProperties.formattedValueIsHtml ? Handsontable.renderers.HtmlRenderer : Handsontable.renderers.TextRenderer).call(this, instance, td, row, col, prop, cellProperties.formattedValue, cellProperties);
     };
     var handleHotChange = function (changes, source) {
         console.log(JSON.stringify(changes));
@@ -1104,7 +1103,7 @@ angular.module('tn', [])
                         cellProperties.className += ' atn-invalid';
                     day = (col - 1) % 7;
                     if (day in holidays)
-                        cellProperties.className += ' atn-holday';
+                        cellProperties.className += ' atn-holiday';
                     else if (col == 7)
                         cellProperties.className += ' atn-saturday';
                     else if (col == 8)
@@ -1115,47 +1114,68 @@ angular.module('tn', [])
                     }
                     else if (!cellProperties.readOnly)
                         cellProperties.className += ' atn-000';
+
+                    // set the formatted time
+                    if (day in sqlRow.$Anwesenheit) {
+                        var sqlDayRow = sqlRow.$Anwesenheit[day];
+                        var time = sqlDayRow.Zusatz;
+                        var hours = time.getHours();
+                        if (hours < 10)
+                            hours = '0' + hours;
+                        var minutes = time.getMinutes();
+                        if (minutes < 10)
+                            minutes = '0' + minutes;
+                        cellProperties.formattedValue = hours + ':' + minutes;
+                        if (sqlDayRow.$action || sqlDayRow.$error) {
+                            cellProperties.formattedValue += sqlDayRow.$action ?
+                                ' <i class="uk-icon-refresh uk-icon-spin"></i>' :
+                                ' <i class="uk-icon-exclamation-triangle"></i>';
+                            cellProperties.formattedValueIsHtml = true;
+                        }
+                    }
+                    else
+                        cellProperties.formattedValue = cellProperties.readOnly ? '' : '00:00';
                 }
                 return cellProperties;
             },
             columns: [
                 {
                     data: globals.getReferencedData(hot, 'Einrichtung'),
-                    width: 100,
+                    width: 128,
                     readOnly: true,
                     sortIndicator: true
                 }, {
                     data: globals.getReferencedData(hot, 'Teilnehmer'),
-                    width: 240,
+                    width: 256,
                     readOnly: true,
                     sortIndicator: true
                 }, {
-                    data: '$Anwesenheit.1.Zusatz',
-                    width: 120,
+                    data: '$Anwesenheit.1',
+                    width: 100,
                     renderer: dayRenderer
                 }, {
-                    data: '$Anwesenheit.2.Zusatz',
-                    width: 120,
+                    data: '$Anwesenheit.2',
+                    width: 100,
                     renderer: dayRenderer
                 }, {
-                    data: '$Anwesenheit.3.Zusatz',
-                    width: 120,
+                    data: '$Anwesenheit.3',
+                    width: 100,
                     renderer: dayRenderer
                 }, {
-                    data: '$Anwesenheit.4.Zusatz',
-                    width: 120,
+                    data: '$Anwesenheit.4',
+                    width: 100,
                     renderer: dayRenderer
                 }, {
-                    data: '$Anwesenheit.5.Zusatz',
-                    width: 120,
+                    data: '$Anwesenheit.5',
+                    width: 100,
                     renderer: dayRenderer
                 }, {
-                    data: '$Anwesenheit.6.Zusatz',
-                    width: 120,
+                    data: '$Anwesenheit.6',
+                    width: 100,
                     renderer: dayRenderer
                 }, {
-                    data: '$Anwesenheit.0.Zusatz',
-                    width: 120,
+                    data: '$Anwesenheit.0',
+                    width: 100,
                     renderer: dayRenderer
                 }
             ]
@@ -1187,63 +1207,75 @@ angular.module('tn', [])
             });
         }
 
-        // helper function that return (and if necessary creates) a days map
-        var ensureMap = function (id, visible) {
-            if (id in map) {
-                if (visible)
-                    map[id].visible = true;
-            }
-            else
-                map[id] = { visible: visible };
-            return map[id];
-        };
-
         // fetch all Zeitspannen in the given range and append the week to the row
         zeitspanne = table('Zeitspanne', 'Eintritt <= ' + end + ' AND (Austritt IS NULL OR Austritt >= ' + begin + ') AND (' + globals.secondaryFilter(Roles.Coaching, Roles.Administration) + ')');
         zeitspanne.rowChange(function (oldRow, newRow) {
             if (oldRow)
-                map[oldRow.$id].visible = false;
-            if (newRow)
-                newRow.$Anwesenheit = ensureMap(newRow.$id, true);
+                oldRow.$Anwesenheit.visible = false;
+            if (newRow) {
+                if (!(newRow.$id in map))
+                    map[newRow.$id] = { id: newRow.$id };
+                newRow.$Anwesenheit = map[newRow.$id];
+                newRow.$Anwesenheit.visible = true;
+            }
             if (hot)
                 hot.render();
         });
         zeitspanne.ready(createHotIfReady);
 
+        // helper function that creates a change listener
+        var createRowChangeListener = function (getDays, needsRender) {
+            return function (oldRow, newRow) {
+                var render = false;
+
+                // remove old rows
+                if (oldRow) {
+                    var oldDay = oldRow.Datum.getDay();
+                    var oldDays = getDays(oldRow);
+                    if (oldDay in oldDays && oldDays[oldDay].$version <= oldRow.$version) {
+                        delete oldDays[oldDay];
+                        if (needsRender(oldDays))
+                            render = true;
+                    }
+                }
+
+                // add new rows
+                if (newRow) {
+                    var newDay = newRow.Datum.getDay();
+                    var newDays = getDays(newRow);
+                    if (!(newDay in newDays) || newDay in newDays && newDays[newDay].$version <= newRow.$version) {
+                        newDays[newDay] = newRow;
+                        if (needsRender(newDays))
+                            render = true;
+                    }
+                }
+
+                // redraw the hot table if possible and necessary
+                if (hot && render)
+                    hot.render();
+            };
+        };
+
         // fetch all Anwesenheiten in the range and map them to a Zeitspanne
         anwesenheit = table('Anwesenheit', 'Datum BETWEEN ' + begin + ' AND ' + end);
-        anwesenheit.rowChange(function (oldRow, newRow) {
-            var days = null;
-
-            // delete old persisted Anwesenheit
-            if (oldRow && oldRow.$id > -1) {
-                days = map[oldRow.Zeitspanne];
-                delete days[oldRow.Datum.getDay()];
-            }
-
-            // add new persisted Anwesenheit
-            if (newRow && newRow.$id > -1) {
-                days = ensureMap(newRow.Zeitspanne, false);
-                days[newRow.Datum.getDay()] = newRow;
-            }
-
-            // redraw the hot table if the Zeitspanne is visible
-            if (hot && days && days.visible)
-                hot.render();
-        });
+        anwesenheit.rowChange(createRowChangeListener(
+            function (row) {
+                if (!(row.Zeitspanne in map)) {
+                    map[row.Zeitspanne] = {
+                        id: row.Zeitspanne,
+                        visible: false
+                    };
+                }
+                return map[row.Zeitspanne];
+            },
+            function (days) { return days.visible; }));
         anwesenheit.ready(createHotIfReady);
 
         // query all holidays in the interval
         feiertag = table('Feiertag', 'Datum BETWEEN ' + begin + ' AND ' + end);
-        feiertag.rowChange(function (oldRow, newRow) {
-            // update the holidays map
-            if (oldRow && holidays[oldRow.Datum.getDay()] === oldRow)
-                delete holidays[oldRow.Datum.getDay()];
-            if (newRow)
-                holidays[newRow.Datum.getDay()] = newRow;
-            if (hot)
-                hot.render();
-        });
+        feiertag.rowChange(createRowChangeListener(
+            function (row) { return holidays; },
+            function (days) { return true; }));
         feiertag.ready(createHotIfReady);
     };
 
