@@ -322,14 +322,14 @@ angular.module('tn', [])
                 return null;
             var keys = Object.keys(data.Records[0]);
             if (keys.length != 1)
-                throw new InvalidDataException('Es muss genaue eine Spalte für einen Skalarwert abgefragt werden.');
+                throw new InvalidDataException('Es muss genau eine Spalte für einen Skalarwert abgefragt werden.');
             return data.Records[0][keys[0]];
         });
     };
     svc.nonQuery = function (args) {
         return reader(args, true, function (data) {
             if (data.Records.length > 0)
-                throw new InvalidDataException('Ein abfragefreier SQL-Befehl darf keine Zeilen zurckgeben.');
+                throw new InvalidDataException('Ein abfragefreier SQL-Befehl darf keine Zeilen zurückgeben.');
             return data.RecordsAffected;
         });
     };
@@ -387,13 +387,13 @@ angular.module('tn', [])
                 for (var sourceName in data.Events) {
                     var source = data.Events[sourceName];
                     if (!angular.isObject(source))
-                        throw new InvalidDataException('Die Ereignisquelle ' + sourceName + ' ist kein Objekt.');
+                        throw new InvalidDataException('Die Ereignisquelle "' + sourceName + '" ist kein Objekt.');
                     for (var id in source) {
                         if (!id.match(/^[1-9]\d*$/))
-                            throw new InvalidDataException('ID ' + id + ' von Ereignisquelle ' + sourceName + ' ist nicht numerisch.');
+                            throw new InvalidDataException('ID "' + id + '" von Ereignisquelle "' + sourceName + '" ist nicht numerisch.');
                         var version = source[id];
                         if (version !== null && !(angular.isString(version) && version.match(/^0x[0-9A-F]{16}$/)))
-                            throw new InvalidDataException('Version von Ereignis ' + id + ' in Quelle ' + sourceName + ' ist ungültig.');
+                            throw new InvalidDataException('Version von Ereignis #' + id + ' in Quelle "' + sourceName + '" ist ungültig.');
                     }
                 }
 
@@ -472,9 +472,9 @@ angular.module('tn', [])
     return function (name, filter) {
         // check the input arguments
         if (!angular.isString(name) || !name.match(/^\w+$/))
-            throw new ArgumentException('Tabellenname muss ein einfacher Bezeichner sein.', 'name');
+            throw new ArgumentException('Der Tabellenname muss ein einfacher Bezeichner sein.', 'name');
         if (angular.isDefined(filter) && (!angular.isString(filter) || filter.match(/^\s*WHERE(\s+|$)/i)))
-            throw new ArgumentException('Der Filter muss eine Zeichenfolge ohne WHERE-Prefix sein.');
+            throw new ArgumentException('Der Filter muss eine Zeichenfolge ohne WHERE-Prefix sein.', 'filter');
 
         // create the variables
         var disposed = false;
@@ -491,7 +491,7 @@ angular.module('tn', [])
         var throwIfDisposed = function (fn) {
             return function () {
                 if (disposed)
-                    throw new ObjectDisposedException('table ' + name);
+                    throw new ObjectDisposedException('Tabelle ' + name);
                 return fn.apply(this, arguments);
             };
         };
@@ -650,7 +650,7 @@ angular.module('tn', [])
             }),
             getRowById: throwIfDisposed(function (id) {
                 if (!angular.isNumber(id))
-                    throw new ArgumentException('Zeilen ID erwartet.', 'id');
+                    throw new ArgumentException('Numerische Zeilen-ID erwartet.', 'id');
 
                 // return the row at the index
                 return rowIndex[id];
@@ -898,7 +898,7 @@ angular.module('tn', [])
                     }
                     handleNotifications(queryCommand, eventsBeforeReady);
                     eventsBeforeReady = null;
-                    readyEvent.resolve();
+                    readyEvent.resolve(table);
                 });
             });
         });
@@ -924,7 +924,7 @@ angular.module('tn', [])
             // build the new maps
             definitions.forEach(function (definition) {
                 if (definition.name in tables)
-                    throw new InvalidOperationException('Die Tabelle "' + definition.name + '" wurde versucht mehrfach zu laden.');
+                    throw new InvalidOperationException('Die Tabelle ' + definition.name + ' wurde versucht mehrfach zu laden.');
 
                 // check if the table can be reused
                 if (definition.name in oldTables && oldTables[definition.name].filter == definition.filter) {
@@ -967,16 +967,17 @@ angular.module('tn', [])
 
             // register the handson table instance for redraws
             var hotWasAdded = true;
+            var redrawTables = [hotInstance];
             if (tableName in redraws) {
                 // add the hot table if necessary
-                if (redraws[tableName].indexOf(hotInstance) > -1)
+                redrawTables = redraws[tableName];
+                if (redrawTables.indexOf(hotInstance) > -1)
                     hotWasAdded = false;
                 else
-                    redraws[tableName].push(hotInstance);
+                    redrawTables.push(hotInstance);
             }
             else {
                 // create the new callback listener
-                var redrawTables = [hotInstance];
                 redraws[tableName] = redrawTables;
                 tables[tableName].rowChange(function (oldRow, newRow) {
                     // render all hot tables if a persisted row has changed
@@ -991,9 +992,7 @@ angular.module('tn', [])
             // remove the table if it is destroyed
             if (hotWasAdded) {
                 hotInstance.addHook('afterDestroy', function () {
-                    var hotIndex = redraws[tableName].indexOf(hotInstance);
-                    if (hotIndex > -1)
-                        redraws[tableName].splice(hotIndex, 1);
+                    redrawTables.splice(redrawTables.indexOf(hotInstance), 1);
                 });
             }
 
@@ -1061,6 +1060,10 @@ angular.module('tn', [])
         console.log(JSON.stringify(changes));
         return false;
     };
+    var handleCellClick = function (event, coords, TD) {
+        console.log(event.clientX + '/' + event.clientY + ':' + JSON.stringify(angular.element(TD).offset()));
+        // on delete: if fail set prop and $error
+    };
     var createHotIfReady = function () {
         // ensure Anwesenheit, Zeitspanne and Feiertag are loaded
         if (++readyTables < 3)
@@ -1087,6 +1090,7 @@ angular.module('tn', [])
             rowHeights: 21,
             columnSorting: true,
             beforeChange: handleHotChange,
+            afterOnCellMouseDown: handleCellClick,
             cells: function (row, col, prop) {
                 // return the cell properties
                 var cellProperties = {};
@@ -1141,12 +1145,12 @@ angular.module('tn', [])
             columns: [
                 {
                     data: globals.getReferencedData(hot, 'Einrichtung'),
-                    width: 128,
+                    width: 150,
                     readOnly: true,
                     sortIndicator: true
                 }, {
                     data: globals.getReferencedData(hot, 'Teilnehmer'),
-                    width: 256,
+                    width: 250,
                     readOnly: true,
                     sortIndicator: true
                 }, {
