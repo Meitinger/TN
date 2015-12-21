@@ -628,15 +628,16 @@ angular.module('tn', [])
             sql.batch({
                 description: 'Zeile in Tabelle ' + name + ' einfügen',
                 command: 'INSERT INTO dbo.' + name + ' (' + columnsWithValue.map(function (column) { return column.name; }).join(', ') + ')\n' +
-                                     'VALUES (' + columnsWithValue.map(function (column) { return '@' + column.name; }).join(', ') + ');\n' +
-                                     'IF @@ERROR = 0\n' +
-                                     'BEGIN\n' +
-                                     '    SELECT @@IDENTITY AS [$id]\n' +
-                                     (filter ? (
-                                     '    IF NOT EXISTS (SELECT * FROM dbo.' + name + ' WHERE ID = @@IDENTITY AND (' + filter + ')) RAISERROR(\'Der Eintrag entspricht nicht dem Tabellenfilter. [TN][' + name + ']\', 16, 1)\n'
-                                     ) : '') +
-                                     'END',
+                         'VALUES (' + columnsWithValue.map(function (column) { return '@' + column.name; }).join(', ') + ');\n' +
+                         'IF @@ERROR = 0\n' +
+                         'BEGIN\n' +
+                         '    SELECT SCOPE_IDENTITY() AS [$id]\n' +
+                         (filter ? (
+                         '    IF NOT EXISTS (SELECT * FROM dbo.' + name + ' WHERE ID = SCOPE_IDENTITY() AND (' + filter + ')) RAISERROR(\'Der Eintrag entspricht nicht dem Tabellenfilter. [TN][' + name + ']\', 16, 1)\n'
+                         ) : '') +
+                         'END',
                 parameters: insertParameters,
+                singleSet: true,
                 allowReview: true,
                 allowError: true,
                 cancelOn: disposePromise
@@ -695,11 +696,11 @@ angular.module('tn', [])
                 sql.nonQuery({
                     description: 'Zeile in Tabelle ' + name + ' ändern',
                     command: 'UPDATE dbo.' + name + '\n' +
-                                     'SET ' + changedColumns.map(function (column) { return column.name + ' = @' + column.name; }).join(', ') + '\n' +
-                                     'WHERE ID = @ID AND Version = @Version' +
-                                     (filter ? (';\n' +
-                                     'IF @@ROWCOUNT > 0 AND NOT EXISTS (SELECT * FROM dbo.' + name + ' WHERE ID = @ID AND (' + filter + ')) RAISERROR(\'Der Eintrag entspricht nicht dem Tabellenfilter. [TN][' + name + ']\', 16, 1)'
-                                     ) : ''),
+                             'SET ' + changedColumns.map(function (column) { return column.name + ' = @' + column.name; }).join(', ') + '\n' +
+                             'WHERE ID = @ID AND Version = @Version' +
+                             (filter ? (';\n' +
+                             'IF @@ROWCOUNT > 0 AND NOT EXISTS (SELECT * FROM dbo.' + name + ' WHERE ID = @ID AND (' + filter + ')) RAISERROR(\'Der Eintrag entspricht nicht dem Tabellenfilter. [TN][' + name + ']\', 16, 1)'
+                             ) : ''),
                     parameters: updateParameters,
                     allowReview: true,
                     allowError: true,
