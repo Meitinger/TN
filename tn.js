@@ -146,10 +146,11 @@ angular.module('tn', [])
                     case 'string':
                         value = encodeURIComponent(value);
                         break;
-                    case 'date':
-                        value = value.toISOString();
-                        break;
                     default:
+                        if (value instanceof Date) {
+                            value = value.toISOString();
+                            break;
+                        }
                         if (value !== null)
                             throw new ArgumentException('Der Abfrageparameter "' + name + '" ist ungültig.', 'args');
                         value = '';
@@ -519,6 +520,12 @@ angular.module('tn', [])
                     throw new InvalidDataException('Ungültige ID gefunden.');
                 if (!angular.isString(entry.$version) || !entry.$version.match(/^0x[0-9A-F]{16}$/))
                     throw new InvalidDataException('Ungültige Version gefunden.');
+                entry.$orig = {};
+                table.columns.forEach(function (column) {
+                    if (!(column.name in entry))
+                        throw new InvalidDataException('Wert für Spalte "' + column.name + '" nicht gefunden.');
+                    entry.$orig[column.name] = entry[column.name];
+                });
                 result[entry.$id] = entry;
             });
             return result;
@@ -588,34 +595,182 @@ angular.module('tn', [])
         };
 
         // helper function for inserting, updating and deleting rows
-        var rowAction = function (id, fn) {
-            // check the id
-            if (!angular.isNumber(id))
-                throw new ArgumentException('Numerischer Wert erwartet.', 'id');
+        var rowAction = function (row, fn) {
+            // check the row
+            if (!angular.isObject(row) || !angular.isNumber(row.$id))
+                throw new ArgumentException('Ungültige Tabellenzeile.', 'row');
+            if (!(row.$id in rowIndex) || rowIndex[row.$id] !== row)
+                throw new ArgumentException('Die Zeile befindet sich nicht (mehr) in der Tabelle.', 'row');
 
             // create the deferred object
             var deferred = $q.defer();
 
-            // check if the row exists
-            if (id in rowIndex) {
-                var row = rowIndex[id];
+            // make sure there is no other action and store this promise
+            if (angular.isDefined(row.$action))
+                throw new InvalidOperationException('Es ist bereits ein Vorgang bei dieser Zeile aktiv.');
+            row.$action = deferred.promise;
+            row.$action['finally'](function () {
+                delete row.$action;
+            });
 
-                // make sure there is no other action and store this promise
-                if (angular.isDefined(row.$action))
-                    throw new InvalidOperationException('Es ist bereits ein Vorgang bei dieser Zeile aktiv.');
-                row.$action = deferred.promise;
-                row.$action['finally'](function () {
-                    delete row.$action;
-                });
-
-                // run the action
-                fn(row, deferred);
-            }
-            else
-                deferred.reject('Die angegebene Zeile existiert nicht oder wurde bereits gelöscht.');
+            // run the action
+            fn(row, deferred);
 
             // return the promise
             return deferred.promise;
+        };
+
+        // insert a new row
+        var insertRow = function (row, deferred) {
+            var columnsWithValue = table.columns.filter(function (column) { return column.name in row; });
+            var insertParameters = {};
+            columnsWithValue.forEach(function (column) { insertParameters[column.name] = row[column.name]; });
+            sql.batch({
+                description: 'Zeile in Tabelle ' + name + ' einfügen',
+                command: 'INSERT INTO dbo.' + name + ' (' + columnsWithValue.map(function (column) { return column.name; }).join(', ') + ')\n' +
+                                     'VALUES (' + columnsWithValue.map(function (column) { return '@' + column.name; }).join(', ') + ');\n' +
+                                     'IF @@ERROR = 0\n' +
+                                     'BEGIN\n' +
+                                     '    SELECT @@IDENTITY AS [$id]\n' +
+                                     (filter ? (
+                                     '    IF NOT EXISTS (SELECT * FROM dbo.' + name + ' WHERE ID = @@IDENTITY AND (' + filter + ')) RAISERROR(\'Der Eintrag entspricht nicht dem Tabellenfilter. [TN][' + name + ']\', 16, 1)\n'
+                                     ) : '') +
+                                     'END',
+                parameters: insertParameters,
+                allowReview: true,
+                allowError: true,
+                cancelOn: disposePromise
+            }).then(
+                function (batch) {
+                    // check the batch result
+                    if (batch.recordsAffected === 0)
+                        throw new InvalidOperationException('Die Zeile wurde trotz Erfolg nicht in die Datenbank geschrieben.');
+                    if (batch.records.length === 0 || !angular.isNumber(batch.records[0].$id))
+                        throw new InvalidDataException('Die Rückgabewert von @@IDENTITY ist ungültig.');
+
+                    // delete the temporary row and remember its index
+                    var oldIndex = indexOfRow(row);
+                    table.rows.splice(oldIndex, 1);
+                    delete rowIndex[row.$id];
+                    callback(row, null);
+
+                    // update and reindex the row (if not done by an event already)
+                    row.$id = batch.records[0].$id;
+                    columnsWithValue.forEach(function (column) { row.$orig[column.name] = row[column.name]; });
+                    if (!(row.$id in rowIndex)) {
+                        table.rows.splice(oldIndex, 0, row);
+                        rowIndex[row.$id] = row;
+                        callback(null, row);
+                    }
+
+                    // clear the error and resolve the promise
+                    delete row.$error;
+                    deferred.resolve(row);
+                },
+                function (error) {
+                    // store the error and reject the promise
+                    row.$error = error;
+                    deferred.reject(error.message);
+                }
+            );
+        };
+
+        // update an existing row
+        var updateRow = function (row, deferred) {
+            // get all changed columns
+            var changedColumns = table.columns.filter(function (column) { return column.name in row && (!(column.name in row.$orig) || row[column.name] !== row.$orig[column.name]); });
+            if (changedColumns.length === 0) {
+                // if nothing has changed notify the listeners and clear the error
+                callback(row, row);
+                delete row.$error;
+                deferred.resolve(row);
+            }
+            else {
+                // persist the changes
+                var updateParameters = {
+                    'ID': row.$id,
+                    'Version': row.$version
+                };
+                changedColumns.forEach(function (column) { updateParameters[column.name] = row[column.name]; });
+                sql.nonQuery({
+                    description: 'Zeile in Tabelle ' + name + ' ändern',
+                    command: 'UPDATE dbo.' + name + '\n' +
+                                     'SET ' + changedColumns.map(function (column) { return column.name + ' = @' + column.name; }).join(', ') + '\n' +
+                                     'WHERE ID = @ID AND Version = @Version' +
+                                     (filter ? (';\n' +
+                                     'IF @@ROWCOUNT > 0 AND NOT EXISTS (SELECT * FROM dbo.' + name + ' WHERE ID = @ID AND (' + filter + ')) RAISERROR(\'Der Eintrag entspricht nicht dem Tabellenfilter. [TN][' + name + ']\', 16, 1)'
+                                     ) : ''),
+                    parameters: updateParameters,
+                    allowReview: true,
+                    allowError: true,
+                    cancelOn: disposePromise
+                }).then(
+                function (recordsAffected) {
+                    if (recordsAffected !== 0) {
+                        // update the original columns
+                        changedColumns.forEach(function (column) { row.$orig[column.name] = row[column.name]; });
+
+                        // notify the listeners if the current row is still the same
+                        if (row.$id in rowIndex && rowIndex[row.$id] === row) {
+                            callback(row, row);
+                        }
+
+                        // clear the error and resolve the promise
+                        delete row.$error;
+                        deferred.resolve(row);
+                    }
+                    else
+                        deferred.reject('Die Zeile wurde bereits geändert oder gelöscht.');
+                },
+                    function (error) {
+                        // store the error and reject the promise
+                        row.$error = error;
+                        deferred.reject(error.message);
+                    }
+                );
+            }
+        };
+
+        var deleteRow = function (row, deferred) {
+            if (row.$id < 0) {
+                // remove new lines immediatelly
+                table.rows.splice(indexOfRow(row), 1);
+                delete rowIndex[row.$id];
+                callback(row, null);
+                deferred.resolve(row);
+            }
+            else {
+                // remove the row from the database
+                sql.nonQuery({
+                    description: 'Zeile von Tabelle ' + name + ' löschen',
+                    command: 'DELETE FROM dbo.' + name + ' WHERE ID = @ID AND Version = @Version',
+                    parameters: {
+                        'ID': row.$id,
+                        'Version': row.$version
+                    },
+                    allowReview: true,
+                    allowError: true,
+                    cancelOn: disposePromise
+                }).then(
+                    function (recordsAffected) {
+                        // delete the row if successful (and not done by notify), otherwise reject the promise
+                        if (recordsAffected !== 0) {
+                            if (row.$id in rowIndex) {
+                                var currentRow = rowIndex[row.$id]; // NOTE: the row might have changed, so get the current one
+                                table.rows.splice(indexOfRow(currentRow), 1);
+                                delete rowIndex[row.$id];
+                                callback(currentRow, null);
+                            }
+                            deferred.resolve(row);
+                        }
+                        else
+                            deferred.reject('Die Zeile wurde geändert oder bereits gelöscht.');
+                    },
+                    function (error) {
+                        deferred.reject(error.message);
+                    }
+                );
+            }
         };
 
         // return the table object
@@ -664,147 +819,18 @@ angular.module('tn', [])
                     row = {};
                 row.$id = nextNewRowId--;
                 row.$version = '0x0000000000000000';
+                row.$orig = {};
                 table.rows.push(row);
                 rowIndex[row.$id] = row;
                 callback(null, row);
+                return row;
             }),
-            editRow: throwIfDisposed(function (id) {
-                return rowAction(id, function (row, deferred) {
-                    if (row.$id < 0) {
-                        // insert the new row
-                        var columnsWithValue = table.columns.filter(function (column) { return column.name in row; });
-                        var insertParameters = {};
-                        columnsWithValue.forEach(function (column) { insertParameters[column.name] = row[column.name]; });
-                        sql.batch({
-                            description: 'Zeile in Tabelle ' + name + ' einfügen',
-                            command: 'INSERT INTO dbo.' + name + ' (' + columnsWithValue.map(function (column) { return column.name; }).join(', ') + ')\n' +
-                                     'VALUES (' + columnsWithValue.map(function (column) { return '@' + column.name; }).join(', ') + ');\n' +
-                                     'SELECT @@IDENTITY AS [$id]' +
-                                     (filter ? (';\n' +
-                                     'IF NOT EXISTS (SELECT * FROM dbo.' + name + ' WHERE ID = @@IDENTITY AND (' + filter + ')) RAISERROR(\'Der Eintrag entspricht nicht dem Tabellenfilter. [TN][' + name + ']\', 16, 1)'
-                                     ) : ''),
-                            parameters: insertParameters,
-                            allowReview: true,
-                            allowError: true,
-                            cancelOn: disposePromise
-                        }).then(
-                            function (batch) {
-                                // check the batch result
-                                if (batch.recordsAffected === 0)
-                                    throw new InvalidOperationException('Die Zeile wurde trotz Erfolg nicht in die Datenbank geschrieben.');
-                                if (batch.records.length === 0 || !angular.isNumber(batch.records[0].$id))
-                                    throw new InvalidDataException('Die Rückgabewert von @@IDENTITY ist ungültig.');
-
-                                // delete the temporary row and remember its index
-                                var oldIndex = indexOfRow(row);
-                                table.rows.splice(oldIndex, 1);
-                                delete rowIndex[row.$id];
-                                callback(row, null);
-
-                                // update the id and reindex the row (if not done by an event already)
-                                row.$id = batch.records[0].$id;
-                                if (!(row.$id in rowIndex)) {
-                                    table.rows.splice(oldIndex, 0, row);
-                                    rowIndex[row.$id] = row;
-                                    callback(null, row);
-                                }
-
-                                // clear the error and resolve the promise
-                                delete row.$error;
-                                deferred.resolve(row);
-                            },
-                            function (error) {
-                                // store the error and reject the promise
-                                row.$error = error;
-                                deferred.reject(error.message);
-                            }
-                        );
-                    }
-                    else {
-                        // update an existing row
-                        var writableColumnsWithValue = table.columns.filter(function (column) { return !column.readOnly && column.name in row; });
-                        var updateParameters = {
-                            'ID': row.$id,
-                            'Version': row.$version
-                        };
-                        writableColumnsWithValue.forEach(function (column) { updateParameters[column.name] = row[column.name]; });
-                        sql.nonQuery({
-                            description: 'Zeile in Tabelle ' + name + ' ändern',
-                            command: 'UPDATE dbo.' + name + '\n' +
-                                     'SET ' + writableColumnsWithValue.map(function (column) { return column.name + ' = @' + column.name; }).join(', ') + '\n' +
-                                     'WHERE ID = @ID AND Version = @Version' +
-                                     (filter ? (';\n' +
-                                     'IF @@ROWCOUNT > 0 AND NOT EXISTS (SELECT * FROM dbo.' + name + ' WHERE ID = @ID AND (' + filter + ')) RAISERROR(\'Der Eintrag entspricht nicht dem Tabellenfilter. [TN][' + name + ']\', 16, 1)'
-                                     ) : ''),
-                            parameters: updateParameters,
-                            allowReview: true,
-                            allowError: true,
-                            cancelOn: disposePromise
-                        }).then(
-                            function (recordsAffected) {
-                                if (recordsAffected !== 0) {
-                                    // notify the listeners if the current row is still the same
-                                    if (row.$id in rowIndex && rowIndex[row.$id] === row)
-                                        callback(row, row);
-
-                                    // clear the error and resolve the promise
-                                    delete row.$error;
-                                    deferred.resolve(row);
-                                }
-                                else
-                                    deferred.reject('Die Zeile wurde bereits geändert oder gelöscht.');
-                            },
-                            function (error) {
-                                // store the error and reject the promise
-                                row.$error = error;
-                                deferred.reject(error.message);
-                            }
-                        );
-                    }
-                });
+            saveRow: throwIfDisposed(function (row) {
+                // insert or update a row
+                return rowAction(row, row.$id < 0 ? insertRow : updateRow);
             }),
-            deleteRow: throwIfDisposed(function (id) {
-                return rowAction(id, function (row, deferred) {
-                    if (row.$id < 0) {
-                        // remove new lines immediatelly
-                        table.rows.splice(indexOfRow(row), 1);
-                        delete rowIndex[row.$id];
-                        callback(row, null);
-                        deferred.resolve(row);
-                    }
-                    else {
-                        // remove the row from the database
-                        sql.nonQuery({
-                            description: 'Zeile von Tabelle ' + name + ' löschen',
-                            command: 'DELETE FROM dbo.' + name + ' WHERE ID = @ID AND Version = @Version',
-                            parameters: {
-                                'ID': row.$id,
-                                'Version': row.$version
-                            },
-                            allowReview: true,
-                            allowError: true,
-                            cancelOn: disposePromise
-                        }).then(
-                            function (recordsAffected) {
-                                // delete the row if successful (and not done by notify), otherwise reject the promise
-                                if (recordsAffected !== 0) {
-                                    if (row.$id in rowIndex) {
-                                        var currentRow = rowIndex[row.$id]; // NOTE: the row might have changed, so get the current one
-                                        table.rows.splice(indexOfRow(currentRow), 1);
-                                        delete rowIndex[row.$id];
-                                        callback(currentRow, null);
-                                    }
-                                    deferred.resolve(row);
-                                }
-                                else
-                                    deferred.reject('Die Zeile wurde geändert oder bereits gelöscht.');
-                            },
-                            function (error) {
-                                deferred.reject(error.message);
-                            }
-                        );
-                    }
-                });
+            deleteRow: throwIfDisposed(function (row) {
+                return rowAction(row, deleteRow);
             })
         };
 
@@ -1061,8 +1087,71 @@ angular.module('tn', [])
         return false;
     };
     var handleCellClick = function (event, coords, TD) {
-        console.log(event.clientX + '/' + event.clientY + ':' + JSON.stringify(angular.element(TD).offset()));
-        // on delete: if fail set prop and $error
+        // check the cell
+        if (coords.row < 0 || coords.col < 2)
+            return;
+
+        // check the position
+        var pos = event.clientX - angular.element(TD).offset().left;
+        if (pos < 2 || pos > 36)
+            return;
+
+        // update or create the Anwesenheit
+        var zeroTime = new Date(1900, 0, 1);
+        var row = hot.getSourceDataAtRow(coords.row);
+        var day = (coords.col - 1) % 7;
+        if (day in row.$Anwesenheit) {
+            row = row.$Anwesenheit[day];
+            if (row.$action)
+                return;
+            if (pos < 20) {
+                if (row.Vormittags && row.Nachmittags)
+                    row.Vormittags = false;
+                else if (row.Vormittags)
+                    row.Nachmittags = true;
+                else if (row.Nachmittags)
+                    row.Nachmittags = false;
+                else
+                    row.Vormittags = true;
+            }
+            else
+                row.Nachts = !row.Nachts;
+        }
+        else {
+            row = anwesenheit.newRow({
+                Zeitspanne: row.$id,
+                Datum: new Date(ctr.monday.getTime() + ((coords.col - 2) * (24 * 60 * 60 * 1000))),
+                Vormittags: pos < 20,
+                Nachmittags: false,
+                Nachts: pos >= 20,
+                Zusatz: zeroTime
+            });
+        }
+
+        // save or delete the row if its empty
+        var renderIfStillHot = function () {
+            if (hot)
+                hot.render();
+        };
+        if (!row.Vormittags && !row.Nachmittags && !row.Nachts && row.Zusatz.getTime() == zeroTime.getTime()) {
+            anwesenheit.deleteRow(row).then(
+                renderIfStillHot,
+                function (error) {
+                    row.$error = {
+                        message: error,
+                        table: 'Anwesenheit',
+                        column: null
+                    };
+                    if (hot)
+                        hot.render();
+                }
+            );
+        }
+        else
+            anwesenheit.saveRow(row).then(renderIfStillHot, renderIfStillHot);
+
+        // rerender
+        hot.render();
     };
     var createHotIfReady = function () {
         // ensure Anwesenheit, Zeitspanne and Feiertag are loaded
@@ -1088,7 +1177,7 @@ angular.module('tn', [])
             },
             manualColumnResize: true,
             rowHeights: 21,
-            columnSorting: true,
+            //columnSorting: true,
             beforeChange: handleHotChange,
             afterOnCellMouseDown: handleCellClick,
             cells: function (row, col, prop) {
