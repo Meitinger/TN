@@ -46,7 +46,7 @@ public class SqlHandler : IHttpHandler
 
         // format dates as ISO 8601 strings
         if (o is DateTime)
-            return ((DateTime)o).ToString("'\"'yyyy'-'MM'-'dd'T'HH':'mm':'ss'Z\"'", System.Globalization.CultureInfo.InvariantCulture);
+            return ((DateTime)o).ToString("'\"'yyyy'-'MM'-'dd'T'HH':'mm':'ss'.'fff'Z\"'", System.Globalization.CultureInfo.InvariantCulture);
 
         // format real numbers natively and ensure a fraction
         if (o is Decimal || o is Double)
@@ -217,6 +217,7 @@ public class SqlHandler : IHttpHandler
                         while (reader.NextResult());
                         response.Append(']');
                     }
+                    transaction.Commit();
                 }
             }
         }

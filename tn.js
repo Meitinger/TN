@@ -148,7 +148,7 @@ angular.module('tn', [])
                         break;
                     default:
                         if (value instanceof Date) {
-                            value = value.toISOString();
+                            value = (new Date(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate(), value.getHours(), value.getMinutes(), value.getSeconds(), value.getMilliseconds()))).toISOString();
                             break;
                         }
                         if (value !== null)
@@ -209,9 +209,9 @@ angular.module('tn', [])
 	                                if (angular.isString(value)) {
 	                                    var match = value.match(/^(\d\d\d\d)-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)\.(\d\d\d)Z$/);
 	                                    if (match) {
-	                                        record[name] = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6]), Number(match[7])));
-	                                        if (record[name].toISOString() != value)
+	                                        if ((new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6]), Number(match[7])))).toISOString() != value)
 	                                            throw new InvalidDataException('Ungültiger Datumswert zurückgegeben.');
+	                                        record[name] = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6]), Number(match[7]));
 	                                    }
 	                                }
 	                            }
@@ -238,7 +238,7 @@ angular.module('tn', [])
 	                        throw new InvalidDataException('Ein ungültiges oder unvollständiges Fehlerobjekt wurde zurückgegeben.');
 
 	                    // check if this is a managed error
-	                    var match = data.Message.match(/^(.*?)\s\[TN\](?:\[(.+?)\](?:\[(.+?)\])?)?$/);
+	                    var match = data.Message.match(/^(.*?)\s\[TN\](?:\[(.+?)\](?:\[(.+?)\])?)?/);
 	                    command.error = match ?
                             ('Ungültige Daten: ' + match[1]) :
                             ('Datenbankfehler: ' + data.Message);
@@ -1088,7 +1088,17 @@ angular.module('tn', [])
     };
     var handleCellClick = function (event, coords, TD) {
         // check the cell
-        if (coords.row < 0 || coords.col < 2)
+        if (coords.row < 0) {
+            if (coords.col > 1)
+                return;
+
+            // sort the Zeitspannen
+            var collator = new Intl.Collator('de');
+            var getter = hot.getSettings().columns[coords.col].data;
+            zeitspanne.rows.sort(function (a, b) { return collator.compare(getter(a), getter(b)); });
+            hot.render();
+        }
+        if (coords.col < 2)
             return;
 
         // check the position
@@ -1164,8 +1174,8 @@ angular.module('tn', [])
             data: zeitspanne.rows,
             colHeaders: function (col) {
                 switch (col) {
-                    case 0: return 'Einrichtung';
-                    case 1: return 'Teilnehmer';
+                    case 0: return '<span style="cursor:pointer;">Einrichtung</span>';
+                    case 1: return '<span style="cursor:pointer;">Teilnehmer</span>';
                     default:
                         // return either the holiday name or the formatted day string
                         var day = (col - 1) % 7;
@@ -1177,7 +1187,6 @@ angular.module('tn', [])
             },
             manualColumnResize: true,
             rowHeights: 21,
-            //columnSorting: true,
             beforeChange: handleHotChange,
             afterOnCellMouseDown: handleCellClick,
             cells: function (row, col, prop) {
@@ -1235,13 +1244,11 @@ angular.module('tn', [])
                 {
                     data: globals.getReferencedData(hot, 'Einrichtung'),
                     width: 150,
-                    readOnly: true,
-                    sortIndicator: true
+                    readOnly: true
                 }, {
                     data: globals.getReferencedData(hot, 'Teilnehmer'),
                     width: 250,
-                    readOnly: true,
-                    sortIndicator: true
+                    readOnly: true
                 }, {
                     data: '$Anwesenheit.1',
                     width: 100,
