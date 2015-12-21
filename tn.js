@@ -981,6 +981,20 @@ angular.module('tn', [])
             // create a permission filter for a table referencing Einrichtung
             return 'Einrichtung IN (SELECT ID FROM dbo.Einrichtung WHERE ' + globals.primaryFilter(role, superRole) + ')';
         },
+        escapeHtml: function (s) {
+            if (!angular.isString(s))
+                throw new ArgumentException('Zeichenkette erwartet', 's');
+
+            var entityMap = {
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': '&quot;',
+                "'": '&#39;',
+                "/": '&#47;'
+            };
+            return s.replace(/[&<>"'\/]/g, function (ch) { return entityMap[ch]; });
+        },
         getReferencedData: function (hotInstance, tableName) {
             // check the arguments
             if (!angular.isObject(hotInstance) || !(hotInstance instanceof Handsontable.Core))
@@ -1082,6 +1096,16 @@ angular.module('tn', [])
     var readyTables = 0;
     var dayRenderer = function (instance, td, row, col, prop, value, cellProperties) {
         (cellProperties.formattedValueIsHtml ? Handsontable.renderers.HtmlRenderer : Handsontable.renderers.TextRenderer).call(this, instance, td, row, col, prop, cellProperties.formattedValue, cellProperties);
+    };
+    var callback = function (fn) {
+        // create a safe callback function
+        return function () {
+            var that = this;
+            var args = arguments;
+            return $scope.$apply(function () {
+                return fn.apply(that, args);
+            });
+        };
     };
     var handleHotChange = function (changes, source) {
         console.log(JSON.stringify(changes));
@@ -1188,8 +1212,8 @@ angular.module('tn', [])
             },
             manualColumnResize: true,
             rowHeights: 21,
-            beforeChange: handleHotChange,
-            afterOnCellMouseDown: handleCellClick,
+            beforeChange: callback(handleHotChange),
+            afterOnCellMouseDown: callback(handleCellClick),
             cells: function (row, col, prop) {
                 // return the cell properties
                 var cellProperties = {};
@@ -1230,9 +1254,9 @@ angular.module('tn', [])
                             minutes = '0' + minutes;
                         cellProperties.formattedValue = hours + ':' + minutes;
                         if (sqlDayRow.$action || sqlDayRow.$error) {
-                            cellProperties.formattedValue += sqlDayRow.$action ?
-                                ' <i class="uk-icon-refresh uk-icon-spin"></i>' :
-                                ' <i class="uk-icon-exclamation-triangle"></i>';
+                            cellProperties.formattedValue += sqlDayRow.$error ?
+                                (' <i style="cursor:help;" data-uk-tooltip="data-uk-tooltip" title="' + globals.escapeHtml(sqlDayRow.$error.message) + '" class="uk-icon-exclamation-triangle"></i>') :
+                                ' <i style="cursor:wait;" class="uk-icon-refresh uk-icon-spin"></i>';
                             cellProperties.formattedValueIsHtml = true;
                         }
                     }
