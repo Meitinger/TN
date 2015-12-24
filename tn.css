@@ -1,31 +1,59 @@
-.handsontable td.atn 
+.handsontable td.attendance.htDimmed
 {
-    padding-left: 42px;
+    cursor: not-allowed;
+    background-image: repeating-linear-gradient(-45deg, transparent, transparent 5px, #ccc 5px, #ccc 6px);
+}
+.handsontable td.attendance.htDimmed span.missing
+{
+    visibility: hidden;
+}
+.handsontable td.attendance.holiday
+{
+    background-color: #ffcccc;
+}
+.handsontable td.attendance.saturday
+{
+    background-color: #ccffcc;
+}
+.handsontable td.attendance.sunday
+{
+    background-color: #ffffcc;
+}
+.handsontable td.attendance span
+{
+    cursor: pointer;
+    padding-left: 38px;
     background-repeat: no-repeat;
-    background-position: 2px 2px;
 }
-.handsontable td.atn.area
+.handsontable td.attendance span.bitmask-000
 {
-    background-color: #ccccff;
+    background-image: url(000.png);
 }
-.handsontable td.atn-invalid 
+.handsontable td.attendance span.bitmask-001
 {
-    background-image: repeating-linear-gradient(
-        -45deg,
-        transparent,
-        transparent 5px,
-        #ccc 5px,
-        #ccc 6px);
-    background-position: right top;
+    background-image: url(001.png);
 }
-.handsontable td.atn-holiday { background-color: #ffcccc; }
-.handsontable td.atn-saturday { background-color: #ccffcc; }
-.handsontable td.atn-sunday { background-color: #ffffcc; }
-.handsontable td.atn-000 { background-image: url(000.png); }
-.handsontable td.atn-001 { background-image: url(001.png); }
-.handsontable td.atn-010 { background-image: url(010.png); }
-.handsontable td.atn-011 { background-image: url(011.png); }
-.handsontable td.atn-100 { background-image: url(100.png); }
-.handsontable td.atn-101 { background-image: url(101.png); }
-.handsontable td.atn-110 { background-image: url(110.png); }
-.handsontable td.atn-111 { background-image: url(111.png); }
+.handsontable td.attendance span.bitmask-010
+{
+    background-image: url(010.png);
+}
+.handsontable td.attendance span.bitmask-011
+{
+    background-image: url(011.png);
+}
+.handsontable td.attendance span.bitmask-100
+{
+    background-image: url(100.png);
+}
+.handsontable td.attendance span.bitmask-101
+{
+    background-image: url(101.png);
+}
+.handsontable td.attendance span.bitmask-110
+{
+    background-image: url(110.png);
+}
+.handsontable td.attendance span.bitmask-111
+{
+    background-image: url(111.png);
+}

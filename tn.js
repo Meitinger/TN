@@ -58,6 +58,8 @@ ObjectDisposedException.prototype.constructor = ObjectDisposedException;
 
 // function that reports an error
 UIkit.modal.error = function (src, msg, trace) {
+    alert(trace);
+    return;
     UIkit.modal.blockUI(
         '<h1>Jo, des is\' hin...</h1>' +
         '<p>Es ist ein unerwarteter Fehler aufgetreten.<br/>Die Meldung lautet:</p>' +
@@ -99,6 +101,19 @@ angular.module('tn', [])
     Management: 'Leitung',
     Accounting: 'Rechnungswesen',
     Administration: 'Systemadministrator'//'Sekretariat'
+})
+
+// foreign row lookup names
+.constant('ReferenceLabels', {
+    'Teilnehmer': function (row) { return row.Nachname + ', ' + row.Vorname; },
+    'Zeitspanne_Austrittsgrund': function (row) { return row.Bezeichnung; },
+    'Bescheid_Typ': function (row) { return row.Bezeichnung; },
+    'Standort_Bereich': function (row) { return row.Code + ' - ' + row.Bezeichnung; },
+    'Praktikum_Kategorie': function (row) { return row.Bezeichnung; },
+    'Einrichtung': function (row) { return row.Name; },
+    'Leistungsart': function (row) { return row.Bezeichnung; },
+    'Einheit': function (row) { return row.Bezeichnung; },
+    'Rechnung': function (row) { return row.$id + " " + row.Bezeichnung; }
 })
 
 // SQL service
@@ -460,7 +475,13 @@ angular.module('tn', [])
 
     // define the readiness callback function
     notification.ready = function (fn) {
-        return readyEvent.promise.then(fn);
+        if (angular.isDefined(fn) && !angular.isFunction(fn))
+            throw new ArgumentException('Callbackfunktion erwartet.', 'fn');
+
+        // set the callback if given and return the promise
+        if (fn)
+            readyEvent.promise.then(fn);
+        return readyEvent.promise;
     };
 
     // initialize and return the notification function object
@@ -469,7 +490,7 @@ angular.module('tn', [])
 })
 
 // define the table factory
-.factory('table', function ($q, sql, notification) {
+.factory('table', function ($q, $rootScope, sql, notification) {
     return function (name, filter) {
         // check the input arguments
         if (!angular.isString(name) || !name.match(/^\w+$/))
@@ -483,9 +504,9 @@ angular.module('tn', [])
         var disposePromise = disposeDeferred.promise;
         var nextNewRowId = -1;
         var notificationPromise = null;
+        var rowIndex = {};
         var eventsBeforeReady = {};
         var readyEvent = $q.defer();
-        var rowIndex = {};
         var changeListeners = [];
 
         // wrap a function around a dispose checker
@@ -497,10 +518,12 @@ angular.module('tn', [])
             };
         };
 
-        // call all row listeners
-        var callback = function (oldRow, newRow) {
-            changeListeners.forEach(function (fn) {
-                fn.call(table, oldRow, newRow);
+        // call all row listeners asynchronously
+        var notifyAsync = function (oldRow, newRow) {
+            $rootScope.$evalAsync(function () {
+                changeListeners.forEach(function (fn) {
+                    fn.call(table, oldRow, newRow);
+                });
             });
         };
 
@@ -516,7 +539,7 @@ angular.module('tn', [])
         var indexAndCheckData = function (data) {
             var result = {};
             data.forEach(function (entry) {
-                if (!angular.isNumber(entry.$id) || entry.$id < 0)
+                if (!angular.isNumber(entry.$id) || entry.$id < 1)
                     throw new InvalidDataException('Ungültige ID gefunden.');
                 if (!angular.isString(entry.$version) || !entry.$version.match(/^0x[0-9A-F]{16}$/))
                     throw new InvalidDataException('Ungültige Version gefunden.');
@@ -571,13 +594,13 @@ angular.module('tn', [])
                                 if (newRow.$version > oldRow.$version) {
                                     table.rows[indexOfRow(oldRow)] = newRow;
                                     rowIndex[id] = newRow;
-                                    callback(oldRow, newRow);
+                                    notifyAsync(oldRow, newRow);
                                 }
                             }
                             else {
                                 table.rows.push(newRow);
                                 rowIndex[id] = newRow;
-                                callback(null, newRow);
+                                notifyAsync(null, newRow);
                             }
                         }
                         else {
@@ -586,7 +609,7 @@ angular.module('tn', [])
                                 var row = rowIndex[id];
                                 table.rows.splice(indexOfRow(row), 1);
                                 delete rowIndex[id];
-                                callback(row, null);
+                                notifyAsync(row, null);
                             }
                         }
                     });
@@ -609,9 +632,6 @@ angular.module('tn', [])
             if (angular.isDefined(row.$action))
                 throw new InvalidOperationException('Es ist bereits ein Vorgang bei dieser Zeile aktiv.');
             row.$action = deferred.promise;
-            row.$action['finally'](function () {
-                delete row.$action;
-            });
 
             // run the action
             fn(row, deferred);
@@ -622,6 +642,7 @@ angular.module('tn', [])
 
         // insert a new row
         var insertRow = function (row, deferred) {
+            // get all columns that have a value set
             var columnsWithValue = table.columns.filter(function (column) { return column.name in row; });
             var insertParameters = {};
             columnsWithValue.forEach(function (column) { insertParameters[column.name] = row[column.name]; });
@@ -653,7 +674,7 @@ angular.module('tn', [])
                     var oldIndex = indexOfRow(row);
                     table.rows.splice(oldIndex, 1);
                     delete rowIndex[row.$id];
-                    callback(row, null);
+                    notifyAsync(row, null);
 
                     // update and reindex the row (if not done by an event already)
                     row.$id = batch.records[0].$id;
@@ -661,16 +682,18 @@ angular.module('tn', [])
                     if (!(row.$id in rowIndex)) {
                         table.rows.splice(oldIndex, 0, row);
                         rowIndex[row.$id] = row;
-                        callback(null, row);
+                        notifyAsync(null, row);
                     }
 
-                    // clear the error and resolve the promise
+                    // clear the action and error and resolve the promise
                     delete row.$error;
+                    delete row.$action;
                     deferred.resolve(row);
                 },
                 function (error) {
-                    // store the error and reject the promise
+                    // store the error, clear the action and reject the promise
                     row.$error = error;
+                    delete row.$action;
                     deferred.reject(error.message);
                 }
             );
@@ -681,10 +704,15 @@ angular.module('tn', [])
             // get all changed columns
             var changedColumns = table.columns.filter(function (column) { return column.name in row && (!(column.name in row.$orig) || row[column.name] !== row.$orig[column.name]); });
             if (changedColumns.length === 0) {
-                // if nothing has changed notify the listeners and clear the error
-                callback(row, row);
-                delete row.$error;
-                deferred.resolve(row);
+                $rootScope.$evalAsync(function () {
+                    // if nothing has changed notify the listeners
+                    notifyAsync(row, row);
+
+                    // clear the error and action and resolve the promise
+                    delete row.$error;
+                    delete row.$action;
+                    deferred.resolve(row);
+                });
             }
             else {
                 // persist the changes
@@ -706,26 +734,37 @@ angular.module('tn', [])
                     allowError: true,
                     cancelOn: disposePromise
                 }).then(
-                function (recordsAffected) {
-                    if (recordsAffected !== 0) {
-                        // update the original columns
-                        changedColumns.forEach(function (column) { row.$orig[column.name] = row[column.name]; });
+                    function (recordsAffected) {
+                        if (recordsAffected !== 0) {
+                            // update the original columns
+                            changedColumns.forEach(function (column) { row.$orig[column.name] = row[column.name]; });
 
-                        // notify the listeners if the current row is still the same
-                        if (row.$id in rowIndex && rowIndex[row.$id] === row) {
-                            callback(row, row);
+                            // notify the listeners if the current row is still the same
+                            if (row.$id in rowIndex && rowIndex[row.$id] === row)
+                                notifyAsync(row, row);
+
+                            // clear the action and error and resolve the promise
+                            delete row.$error;
+                            delete row.$action;
+                            deferred.resolve(row);
                         }
-
-                        // clear the error and resolve the promise
-                        delete row.$error;
-                        deferred.resolve(row);
-                    }
-                    else
-                        deferred.reject('Die Zeile wurde bereits geändert oder gelöscht.');
-                },
+                        else {
+                            // create an error, clear the action and reject the promise
+                            var error = {
+                                statement: 0,
+                                message: 'Die Zeile wurde geändert oder bereits gelöscht.',
+                                table: name,
+                                column: null
+                            };
+                            row.$error = error;
+                            delete row.$action;
+                            deferred.reject(error.message);
+                        }
+                    },
                     function (error) {
-                        // store the error and reject the promise
+                        // store the error, clear the action and reject the promise
                         row.$error = error;
+                        delete row.$action;
                         deferred.reject(error.message);
                     }
                 );
@@ -734,11 +773,16 @@ angular.module('tn', [])
 
         var deleteRow = function (row, deferred) {
             if (row.$id < 0) {
-                // remove new lines immediatelly
-                table.rows.splice(indexOfRow(row), 1);
-                delete rowIndex[row.$id];
-                callback(row, null);
-                deferred.resolve(row);
+                $rootScope.$evalAsync(function () {
+                    // remove the unpersisted row
+                    table.rows.splice(indexOfRow(row), 1);
+                    delete rowIndex[row.$id];
+                    notifyAsync(row, null);
+
+                    // clear the action and resolve the promise
+                    delete row.$action;
+                    deferred.resolve(row);
+                });
             }
             else {
                 // remove the row from the database
@@ -760,14 +804,22 @@ angular.module('tn', [])
                                 var currentRow = rowIndex[row.$id]; // NOTE: the row might have changed, so get the current one
                                 table.rows.splice(indexOfRow(currentRow), 1);
                                 delete rowIndex[row.$id];
-                                callback(currentRow, null);
+                                notifyAsync(currentRow, null);
                             }
+
+                            // clear the action and resolve the promise
+                            delete row.$action;
                             deferred.resolve(row);
                         }
-                        else
+                        else {
+                            // clear the action and reject the promise
+                            delete row.$action;
                             deferred.reject('Die Zeile wurde geändert oder bereits gelöscht.');
+                        }
                     },
                     function (error) {
+                        // clear the action and reject the promise
+                        delete row.$action;
                         deferred.reject(error.message);
                     }
                 );
@@ -795,21 +847,42 @@ angular.module('tn', [])
             permissions: {},
             rows: [],
             ready: throwIfDisposed(function (fn) {
-                return readyEvent.promise.then(fn);
+                if (angular.isDefined(fn) && !angular.isFunction(fn))
+                    throw new ArgumentException('Callbackfunktion erwartet.', 'fn');
+
+                // set the callback if given and return the promise
+                if (fn)
+                    readyEvent.promise.then(fn);
+                return readyEvent.promise;
             }),
-            rowChange: throwIfDisposed(function (fn) {
+            addRowChangeListener: throwIfDisposed(function (fn) {
                 if (!angular.isFunction(fn))
                     throw new ArgumentException('Callbackfunktion erwartet.', 'fn');
 
                 // add the listener
+                if (changeListeners.indexOf(fn) > -1)
+                    return false;
                 changeListeners.push(fn);
+                return true;
+            }),
+            removeRowChangeListener: throwIfDisposed(function (fn) {
+                if (!angular.isFunction(fn))
+                    throw new ArgumentException('Callbackfunktion erwartet.', 'fn');
+
+                // add the listener
+                var index = changeListeners.indexOf(fn);
+                if (index > -1) {
+                    changeListeners.splice(index, 1);
+                    return true;
+                }
+                return false;
             }),
             getRowById: throwIfDisposed(function (id) {
                 if (!angular.isNumber(id))
                     throw new ArgumentException('Numerische Zeilen-ID erwartet.', 'id');
 
                 // return the row at the index
-                return rowIndex[id];
+                return id in rowIndex ? rowIndex[id] : null;
             }),
             newRow: throwIfDisposed(function (row) {
                 if (angular.isDefined(row) && !angular.isObject(row))
@@ -823,7 +896,7 @@ angular.module('tn', [])
                 row.$orig = {};
                 table.rows.push(row);
                 rowIndex[row.$id] = row;
-                callback(null, row);
+                notifyAsync(null, row);
                 return row;
             }),
             saveRow: throwIfDisposed(function (row) {
@@ -921,7 +994,7 @@ angular.module('tn', [])
                         var newRow = data[id];
                         table.rows.push(newRow);
                         rowIndex[id] = newRow;
-                        callback(null, newRow);
+                        notifyAsync(null, newRow);
                     }
                     handleNotifications(queryCommand, eventsBeforeReady);
                     eventsBeforeReady = null;
@@ -935,18 +1008,91 @@ angular.module('tn', [])
     };
 })
 
-// define global functions
-.service('globals', function (table) {
-    var tables = {};
-    var lookups = {};
-    var redraws = {};
-    var globals = {
-        loadTables: function (definitions) {
-            // store the old tables and reset the maps
+// define dataset functions
+.service('dataSet', function ($q, ReferenceLabels, table) {
+    // map structures
+    var tables = {}; // tableName => table
+    var views = {}; // tableName => array of {hotInstance, foreignTableName}
+    var references = {}; // tableName => array of hotInstance
+
+    var initializeView = function (view, settings) {
+        settings.data = view.hotInstance.tableName in tables ? tables[view.hotInstance.tableName].rows : [];
+        settings.columnSorting = true;
+        view.hotInstance.updateSettings(settings);
+        /*
+        var data = function (row) {
+        // try to find the referenced row
+        var id = row[columnName];
+        if (id) {
+        row = table.getRowById(id);
+
+        // return either the lookup value or a missing reference string
+        if (row)
+        return lookup(row);
+        else
+        return '(' + tableName + ' #' + id + ' fehlt)';
+        }
+        else
+        return '(leer)';
+        };*/
+    };
+
+    // helper functions to render foreign keys and base tables
+    var rowChange = function (oldRow, newRow) {
+        // render all referencing hot tables
+        var tableName = this.name;
+        references[tableName].forEach(function (hot) { hot.render(); });
+    };
+    var internalAddTable = function (table) {
+        // hook the handler and provide existing views with data
+        table.addRowChangeListener(rowChange);
+        if (table.name in views) {
+            views[table.name].forEach(function (view) {
+                view.hotInstance.updateSettings({ data: table.rows });
+            });
+        }
+        else
+            views[table.name] = [];
+        if (table.name in references) {
+            references[table.name].forEach(function (hot) {
+                hot.render();
+            });
+        }
+        else
+            references[table.name] = [];
+    };
+    var internalRemoveTable = function (table) {
+        // remove the table as view source and unhook the handler
+        views[table.name].forEach(function (view) {
+            view.hotInstance.updateSettings({ data: [] });
+        });
+        table.removeRowChangeListener(rowChange);
+    };
+
+    // define the data set functions
+    var dataSet = {
+        ready: function (fn) {
+            if (angular.isDefined(fn) && !angular.isFunction(fn))
+                throw new ArgumentException('Callbackfunktion erwartet.', 'fn');
+
+            // combine all table ready states
+            var promises = [];
+            for (var tableName in tables)
+                promises.push(tables[tableName].ready());
+            var promise = $q.all(promises);
+
+            // enlist the callback and return the combined promise
+            if (fn)
+                promise.then(fn);
+            return promise;
+        },
+        load: function (definitions) {
+            if (!angular.isArray(definitions) || definitions.some(function (definition) { return !angular.isString(definition.name) || angular.isDefined(definition.filter) && !angular.isString(definition.filter); }))
+                throw new ArgumentException('Name/Filter Liste erwartet.', 'definitions');
+
+            // store the old tables and reset the map
             var oldTables = tables;
             tables = {};
-            lookups = {};
-            redraws = {};
 
             // build the new maps
             definitions.forEach(function (definition) {
@@ -958,19 +1104,48 @@ angular.module('tn', [])
                     tables[definition.name] = oldTables[definition.name];
                     delete oldTables[definition.name];
                 }
-                else
+                else {
                     tables[definition.name] = table(definition.name, definition.filter);
-
-                // add the lookup
-                if (definition.lookup)
-                    lookups[definition.name] = definition.lookup;
+                    internalAddTable(tables[definition.name]);
+                }
             });
 
             // remove old unused tables
-            for (var tableName in oldTables)
+            for (var tableName in oldTables) {
+                internalRemoveTable(oldTables[tableName]);
                 oldTables[tableName].dispose();
+            }
+        },
+        addTable: function (name, filter) {
+            if (!angular.isString(name))
+                throw new ArgumentException('Tabellenname erwartet.', 'name');
+            if (angular.isDefined(filter) && !angular.isString(filter))
+                throw new ArgumentException('Zeichenkette erwartet.', 'filter');
+            if (name in tables)
+                throw new ArgumentException('Die Tabelle ' + name + ' existiert bereits.', 'name');
+
+            // add the table and hook its listener
+            tables[name] = table(name, filter);
+            internalAddTable(tables[name]);
+            return tables[name];
+        },
+        removeTable: function (table) {
+            if (!angular.isObject(table) || !angular.isString(table.name))
+                throw new ArgumentException('Tabellenobjekt erwartet.', 'table');
+            if (!(table.name in tables) || tables[table.name] !== table)
+                throw new ArgumentException('Die Tabelle wurde nicht geladen.', 'table');
+
+            // remove the listener and delete the entry
+            internalRemoveTable(table);
+            delete tables[table.name];
+            table.dispose();
         },
         primaryFilter: function (role, superRole) {
+            if (!angular.isString(role))
+                throw new ArgumentException('Zeichenkette erwartet.', 'role');
+            if (angular.isDefined(superRole) && !angular.isString(superRole))
+                throw new ArgumentException('Zeichenkette erwartet.', 'superRole');
+
             // create a permission filter for the Einrichtung table
             var filter = 'IS_MEMBER(SUSER_SNAME(' + role + ')) = 1';
             if (superRole)
@@ -978,13 +1153,111 @@ angular.module('tn', [])
             return filter;
         },
         secondaryFilter: function (role, superRole) {
-            // create a permission filter for a table referencing Einrichtung
-            return 'Einrichtung IN (SELECT ID FROM dbo.Einrichtung WHERE ' + globals.primaryFilter(role, superRole) + ')';
-        },
-        escapeHtml: function (s) {
-            if (!angular.isString(s))
-                throw new ArgumentException('Zeichenkette erwartet', 's');
+            if (!angular.isString(role))
+                throw new ArgumentException('Zeichenkette erwartet.', 'role');
+            if (angular.isDefined(superRole) && !angular.isString(superRole))
+                throw new ArgumentException('Zeichenkette erwartet.', 'superRole');
 
+            // create a permission filter for a table referencing Einrichtung
+            return 'Einrichtung IN (SELECT ID FROM dbo.Einrichtung WHERE ' + dataSet.primaryFilter(role, superRole) + ')';
+        },
+        createView: function (tableName, parentElement, settings) {
+            // check the arguments
+            if (!angular.isString(tableName))
+                throw new ArgumentException('Zeichenkette erwartet.', 'tableName');
+            if (!angular.isObject(parentElement))
+                throw new ArgumentException('Container erwartet.', 'parentElement');
+            if (!angular.isObject(settings))
+                throw new ArgumentException('Objekt erwartet.', 'settings');
+            if (!(tableName in tables))
+                throw new ArgumentException('Die Tabelle "' + tableName + '" ist nicht eingeladen.', 'tableName');
+
+            // create the view and return the instance
+            var hotInstance = new Handsontable(parentElement, { data: [] });
+            hotInstance.tableName = tableName;
+            var view = { hotInstance: hotInstance, foreignTableNames: [] };
+            views[tableName].push(view);
+            tables[tableName].ready(function () {
+                // intialize the view if it still exists
+                if (views[tableName].indexOf(view) > -1)
+                    initializeView(view, settings);
+            });
+            return hotInstance;
+        },
+        destroyView: function (hotInstance) {
+            if (!angular.isObject(hotInstance) || !angular.isString(hotInstance.tableName))
+                throw new ArgumentException('Ungültige Tabellenansicht.', 'hotInstance');
+
+            // find the handson table
+            if (!(hotInstance.tableName in views) || !views[hotInstance.tableName].some(function (view, viewIndex, tableViews) {
+                if (view.hotInstance !== hotInstance)
+                    return false;
+
+                // delete the view entry, unhook and destroy the handson table
+                tableViews.splice(viewIndex, 1);
+                view.foreignTableNames.forEach(function (foreignTableName) {
+                    var reference = references[foreignTableName];
+                    var index = reference.indexOf(hotInstance);
+                    if (index > -1)
+                        reference.splice(index, 1);
+                });
+                hotInstance.destroy();
+                return true;
+            }))
+                throw new ArgumentException('Die Tabellenansicht wurde nicht gefunden.', 'hotInstance');
+        }
+    };
+
+    // return the data set functions
+    return dataSet;
+})
+
+// define the trainee attendance controller
+.controller('AttendanceController', function ($scope, $element, $filter, Roles, dataSet) {
+    var ctr = this;
+
+    // date helper functions
+    var getDateFromWeekDay = function (weekDay) {
+        return new Date(ctr.monday.getTime() + (((weekDay + 6) % 7) * (24 * 60 * 60 * 1000)));
+    };
+    var getMondayByWeekOffset = function (offset) {
+        return new Date(ctr.monday.getTime() + (offset * 7 * 24 * 60 * 60 * 1000));
+    };
+    var getSundayByWeekOffset = function (offset) {
+        return new Date(ctr.monday.getTime() + (((offset * 7) + 6) * 24 * 60 * 60 * 1000));
+    };
+    var formatTime = function (time) {
+        // formats a date object into a 00:00 time string
+        var result = '';
+        var hours = time.getHours();
+        var minutes = time.getMinutes();
+        if (hours < 10)
+            result += '0';
+        result += hours;
+        result += ':';
+        if (minutes < 10)
+            result += '0';
+        result += minutes;
+        return result;
+    };
+
+    // attendance variables and functions
+    var attendance = {};
+    var zeitspanne = null;
+    var anwesenheit = null;
+    var getWeekDays = function (zeitspanneId) {
+        // create the weekdays if they don't exist
+        if (!(zeitspanneId in attendance)) {
+            var weekDays = { formatted: {} };
+            for (var weekDay = 0; weekDay < 7; weekDay++)
+                formatAnwesenheit(weekDays, weekDay);
+            attendance[zeitspanneId] = weekDays;
+        }
+        return attendance[zeitspanneId];
+    };
+    var formatAnwesenheit = function (weekDays, weekDay) {
+        // escape all entitites
+        var escapeHtml = function (s) {
             var entityMap = {
                 "&": "&amp;",
                 "<": "&lt;",
@@ -994,438 +1267,392 @@ angular.module('tn', [])
                 "/": '&#47;'
             };
             return s.replace(/[&<>"'\/]/g, function (ch) { return entityMap[ch]; });
-        },
-        getReferencedData: function (hotInstance, tableName) {
-            // check the arguments
-            if (!angular.isObject(hotInstance) || !(hotInstance instanceof Handsontable.Core))
-                throw new ArgumentException('Handsontable erwartet.', 'hotInstance');
-            if (!angular.isString(tableName))
-                throw new ArgumentException('Tabellenname erwartet.', 'tableName');
-            if (!(tableName in tables))
-                throw new ArgumentException('Die Tabelle "' + tableName + '" ist nicht eingeladen.', 'tableName');
-            if (!(tableName in lookups))
-                throw new ArgumentException('Für die Tabelle "' + tableName + '" ist kein Lookup definiert.', 'tableName');
-
-            // register the handson table instance for redraws
-            var hotWasAdded = true;
-            var redrawTables = [hotInstance];
-            if (tableName in redraws) {
-                // add the hot table if necessary
-                redrawTables = redraws[tableName];
-                if (redrawTables.indexOf(hotInstance) > -1)
-                    hotWasAdded = false;
-                else
-                    redrawTables.push(hotInstance);
-            }
-            else {
-                // create the new callback listener
-                redraws[tableName] = redrawTables;
-                tables[tableName].rowChange(function (oldRow, newRow) {
-                    // render all hot tables if a persisted row has changed
-                    if (oldRow && oldRow.$id > -1 || newRow && newRow.$id > -1) {
-                        redrawTables.forEach(function (hot) {
-                            hot.render();
-                        });
-                    }
-                });
-            }
-
-            // remove the table if it is destroyed
-            if (hotWasAdded) {
-                hotInstance.addHook('afterDestroy', function () {
-                    redrawTables.splice(redrawTables.indexOf(hotInstance), 1);
-                });
-            }
-
-            // create the lookup function
-            var table = tables[tableName];
-            var lookup = lookups[tableName];
-            return function (row) {
-                var id = row[tableName];
-                var sqlRow = table.getRowById(id);
-                return sqlRow ? (lookup(sqlRow)) : ('(' + tableName + ' #' + id + ' fehlt)');
-            };
-        }
-    };
-
-    return globals;
-})
-
-// define the trainee attendance controller
-.controller('AttendanceController', function ($scope, $filter, sql, table, Roles, globals) {
-    var ctr = this;
-
-    // define the data and table variables
-    var map = {};
-    var holidays = {};
-    var zeitspanne = null;
-    var anwesenheit = null;
-    var feiertag = null;
-
-    // cleanup helper function
-    var cleanup = function () {
-        ctr.weeks = [];
-        map = {};
-        holidays = {};
-        readyTables = 0;
-        if (hot) {
-            hot.destroy();
-            hot = null;
-        }
-        if (zeitspanne) {
-            zeitspanne.dispose();
-            zeitspanne = null;
-        }
-        if (anwesenheit) {
-            anwesenheit.dispose();
-            anwesenheit = null;
-        }
-        if (feiertag) {
-            feiertag.dispose();
-            feiertag = null;
-        }
-    };
-
-    // get the next sunday
-    var sundayFromMonday = function (monday) {
-        return new Date(monday.valueOf() + (6 * 24 * 60 * 60 * 1000));
-    };
-
-    // handson table variable and build function
-    var hot = null;
-    var readyTables = 0;
-    var dayRenderer = function (instance, td, row, col, prop, value, cellProperties) {
-        (cellProperties.formattedValueIsHtml ? Handsontable.renderers.HtmlRenderer : Handsontable.renderers.TextRenderer).call(this, instance, td, row, col, prop, cellProperties.formattedValue, cellProperties);
-    };
-    var callback = function (fn) {
-        // create a safe callback function
-        return function () {
-            var that = this;
-            var args = arguments;
-            return $scope.$apply(function () {
-                return fn.apply(that, args);
-            });
         };
-    };
-    var handleHotChange = function (changes, source) {
-        console.log(JSON.stringify(changes));
-        return false;
-    };
-    var handleCellClick = function (event, coords, TD) {
-        // check the cell
-        if (coords.row < 0) {
-            if (coords.col > 1)
-                return;
 
-            // sort the Zeitspannen
-            var collator = new Intl.Collator('de');
-            var getter = hot.getSettings().columns[coords.col].data;
-            zeitspanne.rows.sort(function (a, b) { return collator.compare(getter(a), getter(b)); });
-            hot.render();
-        }
-        if (coords.col < 2)
-            return;
-
-        // check the position
-        var pos = event.clientX - angular.element(TD).offset().left;
-        if (pos < 2 || pos > 36)
-            return;
-
-        // update or create the Anwesenheit
-        var zeroTime = new Date(1900, 0, 1);
-        var row = hot.getSourceDataAtRow(coords.row);
-        var day = (coords.col - 1) % 7;
-        if (day in row.$Anwesenheit) {
-            row = row.$Anwesenheit[day];
+        // format the day to html
+        var result = '<span class="bitmask-';
+        if (weekDay in weekDays) {
+            var row = weekDays[weekDay];
+            result += (row.Vormittags ? '1' : '0') + (row.Nachmittags ? '1' : '0') + (row.Nachts ? '1' : '0') + '">';
+            result += formatTime(row.Zusatz);
+            result += '</span>';
             if (row.$action)
+                result += ' <i style="cursor:wait;" class="uk-icon-refresh uk-icon-spin"></i>';
+            else if (row.$error)
+                result += ' <i style="cursor:help;" data-uk-tooltip="data-uk-tooltip" title="' + escapeHtml(row.$error.message) + '" class="uk-icon-exclamation-triangle"></i>';
+        }
+        else
+            result += '000 missing">00:00</span>';
+
+        // store the result and render
+        weekDays.formatted[weekDay] = result;
+        if (hot)
+            hot.render();
+    };
+    var changeAnwesenheit = function (zeitspanneId, weekDay, fn) {
+        // get or create the row object
+        var zeroTime = new Date(1900, 0, 1);
+        var weekDays = getWeekDays(zeitspanneId);
+        var row;
+        if (weekDay in weekDays) {
+            row = weekDays[weekDay];
+            if (row.$action) {
+                UIkit.modal.alert('Die Zeile wird bereits geändert.');
                 return;
-            if (pos < 20) {
-                if (row.Vormittags && row.Nachmittags)
-                    row.Vormittags = false;
-                else if (row.Vormittags)
-                    row.Nachmittags = true;
-                else if (row.Nachmittags)
-                    row.Nachmittags = false;
-                else
-                    row.Vormittags = true;
             }
-            else
-                row.Nachts = !row.Nachts;
         }
         else {
-            row = anwesenheit.newRow({
-                Zeitspanne: row.$id,
-                Datum: new Date(ctr.monday.getTime() + ((coords.col - 2) * (24 * 60 * 60 * 1000))),
-                Vormittags: pos < 20,
+            row = {
+                Zeitspanne: zeitspanneId,
+                Datum: getDateFromWeekDay(weekDay),
+                Vormittags: false,
                 Nachmittags: false,
-                Nachts: pos >= 20,
+                Nachts: false,
                 Zusatz: zeroTime
-            });
+            };
+            anwesenheit.newRow(row);
         }
 
-        // save or delete the row if its empty
-        var renderIfStillHot = function () {
-            if (hot)
-                hot.render();
+        // change the row
+        fn(row);
+
+        // define a callback that updates the row
+        var reformatAnwesenheit = function () {
+            // make sure the row is sill the same
+            if (weekDay in weekDays && weekDays[weekDay] === row)
+                formatAnwesenheit(weekDays, weekDay);
         };
+
+        // save or delete the row if its empty
         if (!row.Vormittags && !row.Nachmittags && !row.Nachts && row.Zusatz.getTime() == zeroTime.getTime()) {
             anwesenheit.deleteRow(row).then(
-                renderIfStillHot,
+                null,
                 function (error) {
+                    // also set an error and update the row
                     row.$error = {
+                        statement: 0,
                         message: error,
                         table: 'Anwesenheit',
                         column: null
                     };
-                    if (hot)
-                        hot.render();
+                    reformatAnwesenheit();
                 }
             );
         }
         else
-            anwesenheit.saveRow(row).then(renderIfStillHot, renderIfStillHot);
+            anwesenheit.saveRow(row).then(null, reformatAnwesenheit);
+
+        // update the row to indicate the action
+        reformatAnwesenheit();
+    };
+    var handleZeitspanneRowChange = function (oldRow, newRow) {
+        // remove the html from the old row
+        if (oldRow)
+            delete oldRow.$Anwesenheit;
+
+        // add the html to the new row
+        if (newRow)
+            newRow.$Anwesenheit = getWeekDays(newRow.$id).formatted;
 
         // rerender
-        hot.render();
+        if (hot)
+            hot.render();
     };
-    var createHotIfReady = function () {
-        // ensure Anwesenheit, Zeitspanne and Feiertag are loaded
-        if (++readyTables < 3)
-            return;
+    var handleAnwesenheitRowChange = function (oldRow, newRow) {
+        // define a helper function
+        var doUpdate = function (row, fn) {
+            if (row) {
+                var weekDays = getWeekDays(row.Zeitspanne);
+                var weekDay = row.Datum.getDay();
+                if (fn(row, weekDays, weekDay))
+                    formatAnwesenheit(weekDays, weekDay);
+            }
+        };
 
-        // create the table object
-        hot = new Handsontable(document.getElementById('attendance'));
-        hot.updateSettings({
-            data: zeitspanne.rows,
-            colHeaders: function (col) {
-                switch (col) {
-                    case 0: return '<span style="cursor:pointer;">Einrichtung</span>';
-                    case 1: return '<span style="cursor:pointer;">Teilnehmer</span>';
-                    default:
-                        // return either the holiday name or the formatted day string
-                        var day = (col - 1) % 7;
-                        if (day in holidays)
-                            return holidays[day].Name;
-                        day = ctr.monday.getTime() + ((col - 2) * (24 * 60 * 60 * 1000));
-                        return $filter('date')(day, 'EEE, d.M.');
-                }
-            },
-            manualColumnResize: true,
-            rowHeights: 21,
-            beforeChange: callback(handleHotChange),
-            afterOnCellMouseDown: callback(handleCellClick),
-            cells: function (row, col, prop) {
-                // return the cell properties
-                var cellProperties = {};
-                if (col > 1) {
-                    cellProperties.className = 'atn';
+        // remove the day if the old row exists and is not older
+        doUpdate(oldRow, function (row, weekDays, weekDay) {
+            if (!(weekDay in weekDays) || weekDays[weekDay].$version > row.$version)
+                return false;
+            delete weekDays[weekDay];
+            return true;
+        });
 
-                    // mark days outside the Zeitspanne as readonly
-                    var day = ctr.monday.getTime() + ((col - 2) * (24 * 60 * 60 * 1000));
-                    var sqlRow = hot.getSourceDataAtRow(row);
-                    cellProperties.readOnly = day < sqlRow.Eintritt.getTime() || sqlRow.Austritt && day > sqlRow.Austritt.getTime();
-
-                    // set the additional class names
-                    if (cellProperties.readOnly)
-                        cellProperties.className += ' atn-invalid';
-                    day = (col - 1) % 7;
-                    if (day in holidays)
-                        cellProperties.className += ' atn-holiday';
-                    else if (col == 7)
-                        cellProperties.className += ' atn-saturday';
-                    else if (col == 8)
-                        cellProperties.className += ' atn-sunday';
-                    if (day in sqlRow.$Anwesenheit) {
-                        var value = sqlRow.$Anwesenheit[day];
-                        cellProperties.className += ' atn-' + Number(value.Vormittags) + Number(value.Nachmittags) + Number(value.Nachts);
-                    }
-                    else if (!cellProperties.readOnly)
-                        cellProperties.className += ' atn-000';
-
-                    // set the formatted time
-                    if (day in sqlRow.$Anwesenheit) {
-                        var sqlDayRow = sqlRow.$Anwesenheit[day];
-                        var time = sqlDayRow.Zusatz;
-                        var hours = time.getHours();
-                        if (hours < 10)
-                            hours = '0' + hours;
-                        var minutes = time.getMinutes();
-                        if (minutes < 10)
-                            minutes = '0' + minutes;
-                        cellProperties.formattedValue = hours + ':' + minutes;
-                        if (sqlDayRow.$action || sqlDayRow.$error) {
-                            cellProperties.formattedValue += sqlDayRow.$error ?
-                                (' <i style="cursor:help;" data-uk-tooltip="data-uk-tooltip" title="' + globals.escapeHtml(sqlDayRow.$error.message) + '" class="uk-icon-exclamation-triangle"></i>') :
-                                ' <i style="cursor:wait;" class="uk-icon-refresh uk-icon-spin"></i>';
-                            cellProperties.formattedValueIsHtml = true;
-                        }
-                    }
-                    else
-                        cellProperties.formattedValue = cellProperties.readOnly ? '' : '00:00';
-                }
-                return cellProperties;
-            },
-            columns: [
-                {
-                    data: globals.getReferencedData(hot, 'Einrichtung'),
-                    width: 150,
-                    readOnly: true
-                }, {
-                    data: globals.getReferencedData(hot, 'Teilnehmer'),
-                    width: 250,
-                    readOnly: true
-                }, {
-                    data: '$Anwesenheit.1',
-                    width: 100,
-                    renderer: dayRenderer
-                }, {
-                    data: '$Anwesenheit.2',
-                    width: 100,
-                    renderer: dayRenderer
-                }, {
-                    data: '$Anwesenheit.3',
-                    width: 100,
-                    renderer: dayRenderer
-                }, {
-                    data: '$Anwesenheit.4',
-                    width: 100,
-                    renderer: dayRenderer
-                }, {
-                    data: '$Anwesenheit.5',
-                    width: 100,
-                    renderer: dayRenderer
-                }, {
-                    data: '$Anwesenheit.6',
-                    width: 100,
-                    renderer: dayRenderer
-                }, {
-                    data: '$Anwesenheit.0',
-                    width: 100,
-                    renderer: dayRenderer
-                }
-            ]
+        // add the day if no row exists or the row is newer
+        doUpdate(newRow, function (row, weekDays, weekDay) {
+            if (weekDay in weekDays && weekDays[weekDay].$version > row.$version)
+                return false;
+            weekDays[weekDay] = row;
+            return true;
         });
     };
 
+    // holiday variables and functions
+    var holidays = {};
+    var feiertag = null;
+    var handleFeiertagRowChange = function (oldRow, newRow) {
+        var render = false;
+
+        // remove old holidays and add new holidays
+        if (oldRow) {
+            var oldDay = oldRow.Datum.getDay();
+            if (oldDay in holidays && holidays[oldDay].$version <= oldRow.$version) {
+                delete holidays[oldDay];
+                render = true;
+            }
+        }
+        if (newRow) {
+            var newDay = newRow.Datum.getDay();
+            if (!(newDay in holidays) || newDay in holidays && holidays[newDay].$version <= newRow.$version) {
+                holidays[newDay] = newRow;
+                render = true;
+            }
+        }
+
+        // redraw the header if possible and necessary
+        if (hot && render)
+            hot.render();
+    };
+
+    // cleanup helper function
+    var cleanup = function () {
+        ctr.weeks = [];
+        attendance = {};
+        holidays = {};
+        if (hot) {
+            dataSet.destroyView(hot);
+            hot = null;
+        }
+        if (zeitspanne) {
+            zeitspanne.removeRowChangeListener(handleZeitspanneRowChange);
+            dataSet.removeTable(zeitspanne);
+            zeitspanne = null;
+        }
+        if (anwesenheit) {
+            anwesenheit.removeRowChangeListener(handleAnwesenheitRowChange);
+            dataSet.removeTable(anwesenheit);
+            anwesenheit = null;
+        }
+        if (feiertag) {
+            feiertag.removeRowChangeListener(handleFeiertagRowChange);
+            dataSet.removeTable(feiertag);
+            feiertag = null;
+        }
+    };
+
+    // handson table variable and build function
+    var hot = null;
+    var hotContainer = (function (children) { return children[children.length - 1]; })($element.children());
+    var hotHeaders = function (col) {
+        switch (col) {
+            case 0: return 'Einrichtung';
+            case 1: return 'Teilnehmer';
+            default:
+                // return either the holiday name or the formatted day string
+                var weekDay = (col - 1) % 7;
+                if (weekDay in holidays)
+                    return holidays[weekDay].Name;
+                return $filter('date')(getDateFromWeekDay(weekDay), 'EEE, d.M.');
+        }
+    };
+    var hotBeforeChange = function (changes, source) {
+        // go over all changes
+        changes.forEach(function (change) {
+            // make sure the weekday is editable
+            var propMatch = change[1].match(/^\$Anwesenheit\.([0-6])$/);
+            if (!propMatch)
+                return;
+            var weekDay = Number(propMatch[1]);
+            if (hot.getCellMeta(change[0], 2 + ((weekDay + 6) % 7)).readOnly)
+                return;
+
+            // make sure the format is value
+            var valueMatch = change[3].match(/^<span class="bitmask-([01])([01])([01])( missing)?">(\d\d):(\d\d)<\/span>/);
+            if (!valueMatch || valueMatch[5] >= 24 || valueMatch[6] >= 60)
+                return;
+
+            // change the attributes
+            var zeitspanneId = hot.getSourceDataAtRow(change[0]).$id;
+            $scope.$evalAsync(function () {
+                changeAnwesenheit(zeitspanneId, weekDay, function (row) {
+                    row.Vormittags = valueMatch[1] == 1;
+                    row.Nachmittags = valueMatch[2] == 1;
+                    row.Nachts = valueMatch[3] == 1;
+                    row.Zusatz = new Date(1900, 0, 1, Number(valueMatch[5]), Number(valueMatch[6]));
+                });
+            });
+        });
+        return false;
+    };
+    var hotMouseDown = function (event, coords, TD) {
+        // check the cell
+        if (coords.row < 0 || coords.col < 2 || hot.getCellMeta(coords.row, coords.col).readOnly)
+            return;
+
+        // get the common variable and calculate the position
+        var zeitspanneId = hot.getSourceDataAtRow(coords.row).$id;
+        var weekDay = (coords.col - 1) % 7;
+        var pos = event.clientX;
+        for (var parent = TD; parent; parent = parent.offsetParent)
+            pos -= parent.offsetLeft;
+        if (pos < 4 || pos > (angular.element(TD).find('span')[0].offsetWidth + 4))
+            return;
+
+        // change the Anwesenheit depending on the click position
+        if (pos > 37) {
+            // set the new time
+            var oldTime = zeitspanneId in attendance && weekDay in attendance[zeitspanneId] ?
+                formatTime(attendance[zeitspanneId][weekDay].Zusatz) :
+                '00:00';
+            UIkit.modal.prompt("Zusatz:", oldTime, function (newTime) {
+                var match = newTime.match(/^(\d\d):(\d\d)$/);
+                if (match && Number(match[1]) < 24 && Number(match[2]) < 60) {
+                    $scope.$evalAsync(function () {
+                        changeAnwesenheit(zeitspanneId, weekDay, function (row) {
+                            row.Zusatz = new Date(1900, 0, 1, Number(match[1]), Number(match[2]));
+                        });
+                    });
+                }
+                else
+                    UIkit.modal.alert('"' + newTime + '" ist keine gültige Uhrzeit.');
+            });
+        }
+        else {
+            // toggle the states
+            $scope.$evalAsync(function () {
+                changeAnwesenheit(zeitspanneId, weekDay, function (row) {
+                    if (pos < 22) {
+                        if (row.Vormittags && row.Nachmittags)
+                            row.Vormittags = false;
+                        else if (row.Vormittags)
+                            row.Nachmittags = true;
+                        else if (row.Nachmittags)
+                            row.Nachmittags = false;
+                        else
+                            row.Vormittags = true;
+                    }
+                    else
+                        row.Nachts = !row.Nachts;
+                });
+            });
+        }
+    };
+    var hotColumns = (function () {
+        // create the two main columns and add the day columns
+        var columns = [
+            { data: 'Einrichtung', width: 150, readOnly: true },
+            { data: 'Teilnehmer', width: 250, readOnly: true }
+        ];
+        for (var i = 1; i <= 7; i++)
+            columns.push({ data: '$Anwesenheit.' + (i % 7), width: 100, renderer: "html", editor: false });
+        return columns;
+    })();
+    var hotCells = function (row, col, prop) {
+        var cellProperties = {};
+        if (col > 1) {
+            // mark days outside the Zeitspanne as readonly
+            var weekDay = (col - 1) % 7;
+            var date = getDateFromWeekDay(weekDay).getTime();
+            var sourceRow = hot.getSourceDataAtRow(row);
+            cellProperties.readOnly = date < sourceRow.Eintritt.getTime() || sourceRow.Austritt && date > sourceRow.Austritt.getTime();
+
+            // set the class name depending on the day
+            cellProperties.className = 'attendance';
+            if (weekDay in holidays)
+                cellProperties.className += ' holiday';
+            else if (col == 7)
+                cellProperties.className += ' saturday';
+            else if (col == 8)
+                cellProperties.className += ' sunday';
+        }
+        return cellProperties;
+    };
+
     // define the date variables and functions
-    var today = new Date();
-    ctr.monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay() + 6) % 7));
-    ctr.sunday = sundayFromMonday(ctr.monday);
-    ctr.maxMonday = new Date(ctr.monday.valueOf() + (2 * 7 * 24 * 60 * 60 * 1000));
+    ctr.monday = (function (today) { return new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay() + 6) % 7)); })(new Date());
+    ctr.sunday = getSundayByWeekOffset(0);
+    ctr.maxMonday = getMondayByWeekOffset(2);
     ctr.weeks = [];
     ctr.updateWeek = function (incWeek) {
         // dispose old tables and maps
         cleanup();
 
         // adjust the dates and create the query parameters
-        ctr.monday = new Date(ctr.monday.valueOf() + (incWeek * 7 * 24 * 60 * 60 * 1000));
-        ctr.sunday = sundayFromMonday(ctr.monday);
+        ctr.monday = getMondayByWeekOffset(incWeek);
+        ctr.sunday = getSundayByWeekOffset(0);
         var begin = '\'' + new Date(Date.UTC(ctr.monday.getFullYear(), ctr.monday.getMonth(), ctr.monday.getDate())).toISOString() + '\'';
         var end = '\'' + new Date(Date.UTC(ctr.sunday.getFullYear(), ctr.sunday.getMonth(), ctr.sunday.getDate())).toISOString() + '\'';
 
         // populate the quick access menu
-        for (var monday = new Date(ctr.monday.valueOf() - (8 * 7 * 24 * 60 * 60 * 1000)), week = 0; week < 12 && monday <= ctr.maxMonday; monday = new Date(monday.valueOf() + (7 * 24 * 60 * 60 * 1000)), week++) {
+        for (var offset = -8; offset < 4; offset++) {
+            var monday = getMondayByWeekOffset(offset);
+            if (monday.getTime() > ctr.maxMonday.getTime())
+                break;
             ctr.weeks.push({
                 monday: monday,
-                sunday: sundayFromMonday(monday),
-                offset: week - 8
+                sunday: getSundayByWeekOffset(offset),
+                offset: offset
             });
         }
 
-        // fetch all Zeitspannen in the given range and append the week to the row
-        zeitspanne = table('Zeitspanne', 'Eintritt <= ' + end + ' AND (Austritt IS NULL OR Austritt >= ' + begin + ') AND (' + globals.secondaryFilter(Roles.Coaching, Roles.Administration) + ')');
-        zeitspanne.rowChange(function (oldRow, newRow) {
-            if (oldRow)
-                oldRow.$Anwesenheit.visible = false;
-            if (newRow) {
-                if (!(newRow.$id in map))
-                    map[newRow.$id] = { id: newRow.$id };
-                newRow.$Anwesenheit = map[newRow.$id];
-                newRow.$Anwesenheit.visible = true;
-            }
-            if (hot)
-                hot.render();
+        // fetch all data that depends on the week
+        zeitspanne = dataSet.addTable('Zeitspanne', 'Eintritt <= ' + end + ' AND (Austritt IS NULL OR Austritt >= ' + begin + ') AND (' + dataSet.secondaryFilter(Roles.Coaching, Roles.Administration) + ')');
+        zeitspanne.addRowChangeListener(handleZeitspanneRowChange);
+        anwesenheit = dataSet.addTable('Anwesenheit', 'Datum BETWEEN ' + begin + ' AND ' + end);
+        anwesenheit.addRowChangeListener(handleAnwesenheitRowChange);
+        feiertag = dataSet.addTable('Feiertag', 'Datum BETWEEN ' + begin + ' AND ' + end);
+        feiertag.addRowChangeListener(handleFeiertagRowChange);
+
+        // create the hot table when ready
+        dataSet.ready(function () {
+            hot = dataSet.createView('Zeitspanne', hotContainer, {
+                colHeaders: hotHeaders,
+                columns: hotColumns,
+                cells: hotCells,
+                beforeChange: hotBeforeChange,
+                afterOnCellMouseDown: hotMouseDown
+            });
         });
-        zeitspanne.ready(createHotIfReady);
-
-        // helper function that creates a change listener
-        var createRowChangeListener = function (getDays, needsRender) {
-            return function (oldRow, newRow) {
-                var render = false;
-
-                // remove old rows
-                if (oldRow) {
-                    var oldDay = oldRow.Datum.getDay();
-                    var oldDays = getDays(oldRow);
-                    if (oldDay in oldDays && oldDays[oldDay].$version <= oldRow.$version) {
-                        delete oldDays[oldDay];
-                        if (needsRender(oldDays))
-                            render = true;
-                    }
-                }
-
-                // add new rows
-                if (newRow) {
-                    var newDay = newRow.Datum.getDay();
-                    var newDays = getDays(newRow);
-                    if (!(newDay in newDays) || newDay in newDays && newDays[newDay].$version <= newRow.$version) {
-                        newDays[newDay] = newRow;
-                        if (needsRender(newDays))
-                            render = true;
-                    }
-                }
-
-                // redraw the hot table if possible and necessary
-                if (hot && render)
-                    hot.render();
-            };
-        };
-
-        // fetch all Anwesenheiten in the range and map them to a Zeitspanne
-        anwesenheit = table('Anwesenheit', 'Datum BETWEEN ' + begin + ' AND ' + end);
-        anwesenheit.rowChange(createRowChangeListener(
-            function (row) {
-                if (!(row.Zeitspanne in map)) {
-                    map[row.Zeitspanne] = {
-                        id: row.Zeitspanne,
-                        visible: false
-                    };
-                }
-                return map[row.Zeitspanne];
-            },
-            function (days) { return days.visible; }));
-        anwesenheit.ready(createHotIfReady);
-
-        // query all holidays in the interval
-        feiertag = table('Feiertag', 'Datum BETWEEN ' + begin + ' AND ' + end);
-        feiertag.rowChange(createRowChangeListener(
-            function (row) { return holidays; },
-            function (days) { return true; }));
-        feiertag.ready(createHotIfReady);
     };
 
-    // make sure the tables get cleaned up
-    $scope.$on('$destroy', function () {
-        cleanup();
-    });
+    // make sure everything gets cleaned up
+    $scope.$on('cleanup', cleanup);
 
     // show the current month
     ctr.updateWeek(0);
 })
 
+// controller for an ordinary table view
+.controller('TableController', function ($scope, $element, dataSet) {
+    var ctr = this;
+
+    var hot = null;
+    ctr.initialize = function (tableName) {
+        if (hot)
+            throw new InvalidOperationException('Die Tabellenansicht wurde bereits initialisiert.');
+        hot = dataSet.createView(tableName, $element[0], {});
+    };
+    $scope.$on('cleanup', function () {
+        if (hot) {
+            dataSet.destroyView(hot);
+            hot = null;
+        }
+    });
+})
+
 // define the log area controller
 .controller('LogController', function (sql, notification, SqlState) {
     var ctr = this;
+
     // controller variables
     ctr.sql = sql;
     ctr.notification = notification;
     ctr.filter = function (command) {
-        return command.state != SqlState.Completed || (new Date()).valueOf() - command.lastExecuteTime < 60000;
+        return command.state != SqlState.Completed || (new Date().getTime() - command.lastExecuteTime.getTime()) < 60000;
     };
 })
 
 // define the main scope controller
-.controller('MainController', function (sql, Roles, globals) {
+.controller('MainController', function ($scope, sql, Roles, dataSet) {
     var ctr = this;
 
     // define the navigational variables and functions
@@ -1442,8 +1669,9 @@ angular.module('tn', [])
             return;
 
         // load the tables and build the tabs
+        $scope.$broadcast('cleanup');
         ctr.tabs = [];
-        globals.loadTables(toc[index].tables);
+        dataSet.load(toc[index].tables);
         ctr.tabs = toc[index].tabs.slice();
         toc[index].tables.forEach(function (table) {
             // add a tab if the table is not hidden
@@ -1457,7 +1685,7 @@ angular.module('tn', [])
     };
     ctr.gotoTab = function (index) {
         if (!angular.isNumber(index) || index < 0 || index >= ctr.tabs.length)
-            throw new ArgumentException('Ungültiger Tabulatorindex.', 'index');
+            throw new ArgumentException('Ungültiger Registerkartenindex.', 'index');
 
         // switch the current tab
         ctr.currentTab = index;
@@ -1489,145 +1717,56 @@ angular.module('tn', [])
         });
     };
 
-    // define the content
+    // define the content and initialize the app
     var toc = [
         {
             name: 'Trainees und Bescheide',
             roles: [Roles.Management, Roles.Administration],
             tables: [
-                {
-                    name: 'Teilnehmer',
-                    lookup: function (row) {
-                        return row.Nachname + ', ' + row.Vorname;
-                    }
-                }, {
-                    name: 'Zeitspanne',
-                    filter: globals.secondaryFilter(Roles.Management, Roles.Administration)
-                }, {
-                    name: 'Bescheid',
-                    filter: globals.secondaryFilter(Roles.Management, Roles.Administration)
-                }, {
-                    name: 'Zeitspanne_Austrittsgrund',
-                    lookup: function (row) {
-                        return row.Bezeichnung;
-                    },
-                    hidden: true
-                }, {
-                    name: 'Bescheid_Typ',
-                    lookup: function (row) {
-                        return row.Bezeichnung;
-                    },
-                    hidden: true
-                }, {
-                    name: 'Einrichtung',
-                    filter: globals.primaryFilter(Roles.Management, Roles.Administration),
-                    lookup: function (row) {
-                        return row.Name;
-                    },
-                    hidden: true
-                }
+                { name: 'Teilnehmer' },
+                { name: 'Zeitspanne', filter: dataSet.secondaryFilter(Roles.Management, Roles.Administration) },
+                { name: 'Bescheid', filter: dataSet.secondaryFilter(Roles.Management, Roles.Administration) },
+                { name: 'Zeitspanne_Austrittsgrund', hidden: true },
+                { name: 'Bescheid_Typ', hidden: true },
+                { name: 'Einrichtung', hidden: true, filter: dataSet.primaryFilter(Roles.Management, Roles.Administration) }
             ],
             tabs: []
         }, {
             name: 'Anwesenheiten',
             roles: [Roles.Coaching, Roles.Administration],
             tables: [
-                {
-                    name: 'Teilnehmer',
-                    lookup: function (row) {
-                        return row.Nachname + ', ' + row.Vorname;
-                    },
-                    hidden: true
-                }, {
-                    name: 'Einrichtung',
-                    filter: globals.primaryFilter(Roles.Coaching, Roles.Administration),
-                    lookup: function (row) {
-                        return row.Name;
-                    },
-                    hidden: true
-                }
+                { name: 'Teilnehmer', hidden: true },
+                { name: 'Einrichtung', hidden: true, filter: dataSet.primaryFilter(Roles.Coaching, Roles.Administration) }
             ],
-            tabs: [
-                {
-                    name: 'Teilnehmerliste',
-                    type: 'attendance'
-                }
-            ]
+            tabs: [{ name: 'Teilnehmerliste', type: 'attendance'}]
         }, {
             name: 'Arbeitserprobungen',
             roles: [Roles.JobCoaching],
             tables: [
                 { name: 'Praktikum' },
                 { name: 'Standort' },
-                {
-                    name: 'Teilnehmer',
-                    lookup: function (row) {
-                        return row.Nachname + ', ' + row.Vorname;
-                    },
-                    hidden: true
-                }, {
-                    name: 'Standort_Bereich',
-                    lookup: function (row) {
-                        return row.Code + ' - ' + row.Bezeichnung;
-                    },
-                    hidden: true
-                }, {
-                    name: 'Praktikum_Kategorie',
-                    lookup: function (row) {
-                        return row.Bezeichnung;
-                    },
-                    hidden: true
-                }, {
-                    name: 'Einrichtung',
-                    lookup: function (row) {
-                        return row.Name;
-                    },
-                    hidden: true
-                }
+                { name: 'Teilnehmer', hidden: true },
+                { name: 'Standort_Bereich', hidden: true },
+                { name: 'Praktikum_Kategorie', hidden: true },
+                { name: 'Einrichtung', hidden: true }
             ],
             tabs: []
         }, {
             name: 'Planung',
             roles: [Roles.Management, Roles.Accounting],
             tables: [
-                {
-                    name: 'Planung',
-                    filter: globals.secondaryFilter(Roles.Management, Roles.Accounting)
-                }, {
-                    name: 'Leistungsart',
-                    lookup: function (row) {
-                        return row.Bezeichnung;
-                    },
-                    hidden: true
-                }, {
-                    name: 'Einrichtung',
-                    filter: globals.primaryFilter(Roles.Management, Roles.Accounting),
-                    lookup: function (row) {
-                        return row.Name;
-                    },
-                    hidden: true
-                }
+                { name: 'Planung', filter: dataSet.secondaryFilter(Roles.Management, Roles.Accounting) },
+                { name: 'Leistungsart', hidden: true },
+                { name: 'Einrichtung', hidden: true, filter: dataSet.primaryFilter(Roles.Management, Roles.Accounting) }
             ],
             tabs: []
         }, {
             name: 'Abrechnung',
             roles: [Roles.Accounting],
             tables: [
-                {
-                    name: 'Rechnung',
-                    lookup: function (row) {
-                        return row.$id + " " + row.Bezeichnung;
-                    },
-                    hidden: true
-                }, {
-                    name: 'Teilnehmer',
-                    hidden: true
-                }, {
-                    name: 'Einheit',
-                    lookup: function (row) {
-                        return row.Bezeichnung;
-                    }
-                },
+                { name: 'Rechnung', hidden: true },
+                { name: 'Teilnehmer', hidden: true },
+                { name: 'Einheit' },
                 { name: 'Leistungsart' },
                 { name: 'Kostensatz' },
                 { name: 'Verrechnungssatz' }

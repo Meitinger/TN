@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de" data-ng-app="tn" data-ng-controller="MainController as main">
+<html lang="de" data-ng-jq="" data-ng-app="tn" data-ng-controller="MainController as main">
 <!--
     Copyright (C) 2015, Manuel Meitinger
 
@@ -42,6 +42,9 @@
     </nav>
     <div style="height:calc(70vh - 77px);">
         <div data-ng-repeat="tab in main.tabs" data-ng-show="main.currentTab == $index" data-ng-switch="tab.type">
+            <div data-ng-switch-when="table">
+                <div style="width:100%; height:calc(70vh - 77px); overflow:hidden;" data-ng-controller="TableController as tbl" data-ng-init="tbl.initialize(tab.name)"></div>
+            </div>
             <form class="uk-form" data-ng-switch-when="attendance" data-ng-controller="AttendanceController as atn">
                 <div style="width:100%; white-space:nowrap;">
                     <button class="uk-button" data-ng-click="atn.updateWeek(-1)" style="width:30%;"><i class="uk-icon-angle-double-left"></i> Vorige Woche</button>
@@ -55,7 +58,7 @@
                     </div>
                     <button class="uk-button" data-ng-disabled="atn.monday &gt;= atn.maxMonday" data-ng-click="atn.updateWeek(1)" style="width:30%;">Nächste Woche <i class="uk-icon-angle-double-right"></i></button>
                 </div>
-                <div id="attendance" style="width:100%; height:calc(70vh - 107px); overflow:hidden;"></div>
+                <div style="width:100%; height:calc(70vh - 107px); overflow:hidden;"></div>
             </form>
         </div>
     </div>
