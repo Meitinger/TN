@@ -1083,7 +1083,17 @@ angular.module('tn', [])
                     if (name in events) {
                         // queue events for later if not ready or handle them now
                         if (eventsBeforeReady !== null) {
-                            angular.extend(eventsBeforeReady, events[name]);
+                            var newEventsBeforeReady = events[name];
+                            for (var id in newEventsBeforeReady) {
+                                var newVersion = newEventsBeforeReady[id];
+                                if (newVersion !== null && id in eventsBeforeReady) {
+                                    var version = eventsBeforeReady[id];
+                                    if (version === null || newVersion <= version) {
+                                        continue;
+                                    }
+                                }
+                                eventsBeforeReady[id] = newVersion;
+                            }
                         }
                         else {
                             handleNotifications(queryCommand, events[name]);
