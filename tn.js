@@ -948,6 +948,7 @@ angular.module('tn', [])
                     disposed = true;
                 }
             },
+            isDisposed: function () { return disposed; },
             name: name,
             filter: filter,
             columns: [],
@@ -992,6 +993,10 @@ angular.module('tn', [])
                 return false;
             }),
             getRowById: function (id) {
+                // inline check for faster execution speed
+                if (disposed) {
+                    throw new ObjectDisposedException('Tabelle ' + name);
+                }
                 // return the row at the index
                 return rowIndex[id];
             },
@@ -1122,22 +1127,60 @@ angular.module('tn', [])
 })
 
 // define dataset functions
-.service('dataSet', function ($q, ReferenceLabels, table) {
+.service('dataSet', function ($q, ReferenceLabels, sql, table) {
+    var dataSet;
+
     // map structures
     var tables = {}; // tableName => table
     var references = {}; // tableName => array of hotInstance
 
+    // update the settings of a new handsontable
     var initialize = function (hotInstance, settings) {
         // make sure the instance still exists
-        if (hotInstance.tableName in references) {
+        if (hotInstance.tableName in tables) {
             var hotInstances = references[hotInstance.tableName];
             for (var i = hotInstances.length - 1; i >= 0; i--) {
                 if (hotInstances[i] === hotInstance) {
-                    settings.columnSorting = true;
-                    hotInstance.updateSettings(settings);
-                    if (hotInstance.tableName in tables) {
-                        hotInstance.loadData(tables[hotInstance.tableName].rows);
+                    var table = tables[hotInstance.tableName];
+                    if (settings.columns === void 0) {
+                        settings.columns = [];
+                        for (var j = 0; j < table.columns.length; j++) {
+                            settings.columns.push({
+                                data: table.columns[j].name,
+                                title: table.columns[j].name
+                            });
+                        }
                     }
+
+                    // enable sorting, resizing and limit row rendering
+                    settings.columnSorting = true;
+                    settings.manualColumnResize = true;
+                    settings.manualRowResize = true;
+                    settings.viewportColumnRenderingOffset = 2;
+                    settings.viewportRowRenderingOffset = 10;
+
+                    // adjust all columns
+                    for (var k = settings.columns.length - 1; k >= 0; k--) {
+                        var column = settings.columns[k];
+
+                        // always show the sort indicator
+                        column.sortIndicator = true;
+
+                        // check if the hot column matches a table column
+                        if (typeof column.data === 'string') {
+                            for (var l = table.columns.length - 1; l >= 0; l--) {
+                                var tableColumn = table.columns[l];
+                                if (tableColumn.name === column.data) {
+                                    switch (tableColumn.type) {
+                                    }
+                                }
+                            }
+                        }
+
+                    }
+                    hotInstance.updateSettings(settings);
+                    hotInstance.loadData(table.rows);
+
                     break;
                 }
             }
@@ -1162,47 +1205,67 @@ angular.module('tn', [])
     };
 
     // helper functions to render foreign keys and base tables
-    var rowChange = function (table, oldRow, newRow) {
+    var rowChange = function (table) {
         // render all referencing hot tables
-        if (oldRow || newRow) {
-            var hotInstances = references[table.name];
-            for (var i = hotInstances.length - 1; i >= 0; i--) {
-                hotInstances[i].render();
+        var hotInstances = references[table.name];
+        for (var i = hotInstances.length - 1; i >= 0; i--) {
+            hotInstances[i].render();
+        }
+    };
+    var loadHotData = function (tableName, data) {
+        // load the data into all views of a certain table
+        var hotInstances = references[tableName];
+        for (var i = hotInstances.length - 1; i >= 0; i--) {
+            var hotInstance = hotInstances[i];
+            if (hotInstance.tableName === tableName) {
+                hotInstance.loadData(data);
             }
         }
     };
     var internalAddTable = function (table) {
-        // hook the handler and provide existing views with data
-        table.addRowChangeListener(rowChange);
+        // get the permissions if not in the cache
+        if (!(table.name in dataSet.permissions)) {
+            dataSet.permissions[table.name] = {};
+            sql.query({
+                description: 'Berechtigungen für Tabelle ' + table.name + ' abfragen',
+                command: 'SELECT\n' +
+                     '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'INSERT\') AS allowNew,\n' +
+                     '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'UPDATE\') AS allowEdit,\n' +
+                     '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'DELETE\') AS allowDelete',
+                parameters: { 'Table': 'dbo.' + table.name }
+            }).then(function (data) {
+                dataSet.permissions[table.name] = data;
+            });
+        }
+
+        // provide existing views with data and hook the handler
         if (table.name in references) {
-            var hotInstances = references[table.name];
-            for (var i = hotInstances.length - 1; i >= 0; i--) {
-                var hotInstance = hotInstances[i];
-                if (hotInstance.tableName === table.name) {
-                    hotInstance.loadData(table.rows);
-                }
-                hotInstance.render();
-            }
+            loadHotData(table.name, table.rows);
         }
         else {
             references[table.name] = [];
         }
+        table.ready(function () {
+            if (!table.isDisposed()) {
+                table.addRowChangeListener(rowChange);
+            }
+            rowChange(table, null, null);
+        });
     };
     var internalRemoveTable = function (table) {
         // remove the table as view source and unhook the handler
-        var hotInstances = references[table.name];
-        for (var i = hotInstances.length - 1; i >= 0; i--) {
-            var hotInstance = hotInstances[i];
-            if (hotInstance.tableName === table.name) {
-                hotInstance.loadData([]);
+        loadHotData(table.name, []);
+        table.ready(function () {
+            if (!table.isDisposed()) {
+                table.removeRowChangeListener(rowChange);
             }
-            hotInstance.render();
-        }
-        table.removeRowChangeListener(rowChange);
+            rowChange(table, null, null);
+        });
     };
 
     // define the data set functions
-    var dataSet = {
+    dataSet = {
+        permissions: {},
         ready: function (fn) {
             if (angular.isDefined(fn) && !angular.isFunction(fn)) {
                 throw new ArgumentException('Callbackfunktion erwartet.', 'fn');
@@ -1326,6 +1389,14 @@ angular.module('tn', [])
 
             // create and return the instance
             var hotInstance = new Handsontable(parentElement, { data: [] });
+            if (window.Intl && window.Intl.Collator) {
+                var collator = new Intl.Collator('de', { numeric: true });
+                hotInstance.getPlugin('columnSorting').defaultSort = function (sortOrder) {
+                    return sortOrder ?
+                        function (a, b) { return collator.compare(a[1], b[1]); } :
+                        function (a, b) { return collator.compare(b[1], a[1]); };
+                };
+            }
             hotInstance.tableName = tableName;
             references[tableName].push(hotInstance);
             tables[tableName].ready(function () { initialize(hotInstance, settings); });
@@ -1802,45 +1873,20 @@ angular.module('tn', [])
 })
 
 // controller for an ordinary table view
-.controller('TableController', function ($q, $scope, $element, sql, dataSet) {
-    var ctr = this;
+.controller('TableController', function ($scope, $element, dataSet) {
     var hot = null;
 
-    var cancelDeferred = $q.defer();
-    ctr.initialize = function (tableName) {
-        // ensure not already initializes
-        if (hot) {
-            throw new InvalidOperationException('Die Tabellenansicht wurde bereits initialisiert.');
+    // create the view if this is the first time the tab is shown
+    var createIfCurrentTab = function () {
+        if (!hot && $scope.$index === $scope.main.currentTab) {
+            hot = dataSet.createView($scope.tab.name, $element[0], {});
         }
-        if (!cancelDeferred) {
-            throw new InvalidOperationException('Die Tabellenansicht wurde bereits freigegeben.');
-        }
-
-        // query the permissions
-        sql.query({
-            description: 'Berechtigungen an Tabelle ' + tableName + ' abfragen',
-            command: 'SELECT\n' +
-                     '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'INSERT\') AS allowNew,\n' +
-                     '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'UPDATE\') AS allowEdit,\n' +
-                     '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'DELETE\') AS allowDelete',
-            parameters: { 'Table': 'dbo.' + tableName },
-            cancelOn: cancelDeferred.promise
-        }).then(function (data) {
-            if (!cancelDeferred) {
-                return;
-            }
-            cancelDeferred.reject();
-            cancelDeferred = null;
-            hot = dataSet.createView(tableName, $element[0], {
-                minSpareRows: data.allowNew ? 1 : 0
-            });
-        });
     };
+    createIfCurrentTab();
+
+    // watch for tab changes and cleanups
+    $scope.$watch('main.currentTab', createIfCurrentTab);
     $scope.$on('cleanup', function () {
-        if (cancelDeferred) {
-            cancelDeferred.resolve('Tabelle wird nicht mehr angezeigt.');
-            cancelDeferred = null;
-        }
         if (hot) {
             dataSet.destroyView(hot);
             hot = null;
@@ -1904,7 +1950,9 @@ angular.module('tn', [])
         }
 
         // switch the current tab
-        ctr.currentTab = index;
+        if (ctr.currentTab !== index) {
+            ctr.currentTab = index;
+        }
     };
 
     // query the role membership

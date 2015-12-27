@@ -41,11 +41,11 @@
         <a class="uk-navbar-toggle uk-visible-small" href="#nav-offcanvas" data-uk-offcanvas=""></a>
     </nav>
     <div style="height:calc(70vh - 77px);">
-        <div data-ng-repeat="tab in main.tabs" data-ng-show="main.currentTab == $index" data-ng-switch="tab.type">
-            <div data-ng-switch-when="table">
-                <div style="width:100%; height:calc(70vh - 77px); overflow:hidden;" data-ng-controller="TableController as tbl" data-ng-init="tbl.initialize(tab.name)"></div>
+        <div data-ng-repeat="tab in main.tabs" data-ng-switch="tab.type">
+            <div data-ng-switch-when="table" data-ng-show="main.currentTab == $index">
+                <div style="width:100%; height:calc(70vh - 77px); overflow:hidden;" data-ng-controller="TableController as tbl"></div>
             </div>
-            <form class="uk-form" data-ng-switch-when="attendance" data-ng-controller="AttendanceController as atn">
+            <form class="uk-form" data-ng-switch-when="attendance" data-ng-if="main.currentTab == $index" data-ng-controller="AttendanceController as atn">
                 <div style="width:100%; white-space:nowrap;">
                     <button class="uk-button" data-ng-click="atn.updateWeek(-1)" style="width:30%;"><i class="uk-icon-angle-double-left"></i> Vorige Woche</button>
                     <div class="uk-button-dropdown" style="width:calc(40% - 8px);" data-uk-dropdown>
