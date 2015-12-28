@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 /* Copyright (C) 2015, Manuel Meitinger
 * 
@@ -102,7 +102,7 @@ angular.module('tn', [])
     Coaching: 'Training',
     Management: 'Leitung',
     Accounting: 'Rechnungswesen',
-    Administration: 'Systemadministrator'//'Sekretariat'
+    Administration: 'Sekretariat'
 })
 
 // foreign row lookup names
@@ -128,6 +128,8 @@ angular.module('tn', [])
 
     // reader helper function
     var reader = function (args, forceSingleSet, parser) {
+        var command;
+
         // create the deferred object and check the parameters
         var deferred = $q.defer();
         if (!angular.isObject(args)) {
@@ -145,9 +147,6 @@ angular.module('tn', [])
         if (angular.isDefined(args.cancelOn) && !(angular.isObject(args.cancelOn) && args.cancelOn instanceof deferred.promise.constructor)) {
             throw new ArgumentException('Abbruchsereignis ist kein Promise.', 'args');
         }
-
-        // define the commmand variable
-        var command;
 
         // create the http config object
         var config = {
@@ -529,6 +528,8 @@ angular.module('tn', [])
 // define the table factory
 .factory('table', function ($q, $rootScope, sql, notification) {
     return function (name, filter) {
+        var table;
+
         // check the input arguments
         if (!angular.isString(name) || !name.match(/^\w+$/)) {
             throw new ArgumentException('Der Tabellenname muss ein einfacher Bezeichner sein.', 'name');
@@ -536,9 +537,6 @@ angular.module('tn', [])
         if (angular.isDefined(filter) && (!angular.isString(filter) || filter.match(/^\s*WHERE(\s+|$)/i))) {
             throw new ArgumentException('Der Filter muss eine Zeichenfolge ohne WHERE-Prefix sein.', 'filter');
         }
-
-        // define the table variable
-        var table;
 
         // create the variables
         var disposed = false;
@@ -1131,8 +1129,40 @@ angular.module('tn', [])
     var dataSet;
 
     // map structures
-    var tables = {}; // tableName => table
-    var references = {}; // tableName => array of hotInstance
+    var tables = {};
+    var references = {};
+
+    var numberOrDateSort = function (sordOrder) {
+        return sortOrder ?
+            function (a, b) {
+                return
+                    a[1] !== null && !isNaN(a[1]) && b[1] !== null && !isNaN(b[1]) ?
+                    (a[1] < b[1] ? -1 : b[1] < a[1] ? 1 : 0) :
+                    a[1] !== null && !isNaN(a[1]) ? 1 :
+                    b[1] !== null && !isNaN(b[1]) ? -1 : 0;
+            } :
+            function (a, b) { return a[1] !== null && b[1] !== null ? (a[1] < b[1] ? 1 : b[1] < a[1] ? -1 : 0) : a[1] !== null ? -1 : b[1] !== null ? 1 : 0; }
+        };
+    };
+    var textValidator = function (value, callback) {
+        if (value) {
+            callback(value.length <= this.maxLength);
+        }
+        else {
+            callback(!this.required);
+        }
+    };
+    var dateRenderer = function (instance, td, row, col, prop, value, cellProperties) {
+        Handsontable.renderers.AutocompleteRenderer(instance, td, row, col, prop, (value instanceof Date ? value : new Date()).toLocaleDateString('de'), cellProperties);
+    };
+    var dateValidator = function (value, callback) {
+        if (value) {
+            callback(true);
+        }
+        else {
+            callback(!this.required);
+        }
+    };
 
     // update the settings of a new handsontable
     var initialize = function (hotInstance, settings) {
@@ -1171,16 +1201,54 @@ angular.module('tn', [])
                             for (var l = table.columns.length - 1; l >= 0; l--) {
                                 var tableColumn = table.columns[l];
                                 if (tableColumn.name === column.data) {
+                                    // set the common attributes
+                                    //if (tableColumn.readOnly)
+                                    //column.readOnly = true;
+                                    column.required = tableColumn.required;
+                                    column.allowInvalid = false;
+
+                                    // set the type specific attributes
                                     switch (tableColumn.type) {
+                                        case 'int':
+                                            break;
+                                        case 'char':
+                                        case 'varchar':
+                                            column.validator = textValidator;
+                                            column.maxLength = tableColumn.maxLength;
+                                            break;
+                                        case 'nchar':
+                                        case 'nvarchar':
+                                            column.validator = textValidator;
+                                            column.maxLength = tableColumn.maxLength / 2;
+                                            break;
+                                        case 'datetime':
+                                            column.type = 'date';
+                                            column.dataType = 'object';
+                                            column.dateFormat = 'YYYY-MM-DD';
+                                            column.renderer = dateRenderer;
+                                            column.validator = dateValidator;
+                                            break;
+                                        case 'decimal':
+                                            column.type = 'date';
+                                            break;
+                                        case 'money':
+                                            column.type = 'date';
+                                            break;
+                                        case 'bit':
+                                            column.type = 'date';
+                                            break;
+                                        default:
+                                            throw new InvalidOperationException('Spaltentyp "' + tableColumn.type + '" wird nicht unterstützt.');
                                     }
                                 }
                             }
                         }
 
                     }
+
+                    // set the settings and load the data
                     hotInstance.updateSettings(settings);
                     hotInstance.loadData(table.rows);
-
                     break;
                 }
             }
@@ -1389,9 +1457,11 @@ angular.module('tn', [])
 
             // create and return the instance
             var hotInstance = new Handsontable(parentElement, { data: [] });
+            var sorting = hotInstance.getPlugin('columnSorting');
+            sorting.dateSort = numberOrDateSort;
             if (window.Intl && window.Intl.Collator) {
                 var collator = new Intl.Collator('de', { numeric: true });
-                hotInstance.getPlugin('columnSorting').defaultSort = function (sortOrder) {
+                sorting.defaultSort = function (sortOrder) {
                     return sortOrder ?
                         function (a, b) { return collator.compare(a[1], b[1]); } :
                         function (a, b) { return collator.compare(b[1], a[1]); };

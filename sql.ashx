@@ -1,4 +1,4 @@
-<%@ WebHandler Language="C#" Class="SqlHandler" %>
+﻿<%@ WebHandler Language="C#" Class="SqlHandler" %>
 
 /* Copyright (C) 2015, Manuel Meitinger
  * 

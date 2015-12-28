@@ -1,4 +1,4 @@
-<%@ WebHandler Language="C#" Class="NotifyHandler" %>
+﻿<%@ WebHandler Language="C#" Class="NotifyHandler" %>
 
 /* Copyright (C) 2015, Manuel Meitinger
  * 

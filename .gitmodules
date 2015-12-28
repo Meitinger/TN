@@ -1,0 +1,3 @@
+[submodule "handsontable"]
+	path = handsontable
+	url = https://github.com/handsontable/handsontable.git
