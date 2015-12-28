@@ -1132,39 +1132,87 @@ angular.module('tn', [])
     var tables = {};
     var references = {};
 
-    var numberOrDateSort = function (sordOrder) {
-        return sortOrder ?
-            function (a, b) {
-                return
-                    a[1] !== null && !isNaN(a[1]) && b[1] !== null && !isNaN(b[1]) ?
-                    (a[1] < b[1] ? -1 : b[1] < a[1] ? 1 : 0) :
-                    a[1] !== null && !isNaN(a[1]) ? 1 :
-                    b[1] !== null && !isNaN(b[1]) ? -1 : 0;
-            } :
-            function (a, b) { return a[1] !== null && b[1] !== null ? (a[1] < b[1] ? 1 : b[1] < a[1] ? -1 : 0) : a[1] !== null ? -1 : b[1] !== null ? 1 : 0; }
-        };
-    };
-    var textValidator = function (value, callback) {
-        if (value) {
-            callback(value.length <= this.maxLength);
-        }
-        else {
-            callback(!this.required);
-        }
-    };
-    var dateRenderer = function (instance, td, row, col, prop, value, cellProperties) {
-        Handsontable.renderers.AutocompleteRenderer(instance, td, row, col, prop, (value instanceof Date ? value : new Date()).toLocaleDateString('de'), cellProperties);
-    };
-    var dateValidator = function (value, callback) {
-        if (value) {
-            callback(true);
-        }
-        else {
-            callback(!this.required);
-        }
-    };
-
     // update the settings of a new handsontable
+    var adjustColumnToTableColumn = function (column, tableColumn) {
+        // set the common attributes
+        if (tableColumn.readOnly) {
+            column.readOnly = true;
+        }
+        if (tableColumn.required) {
+            column.required = true;
+        }
+        column.allowInvalid = false;
+        column.language = 'de';
+
+        // set the type specific attributes
+        switch (tableColumn.type) {
+            case 'int':
+                column.type = 'numeric';
+                column.format = '0';
+                if (column.minimum === void 0) {
+                    column.minimum = -2147483648;
+                }
+                if (column.maximum === void 0) {
+                    column.maximum = 2147483647;
+                }
+                break;
+            case 'char':
+            case 'varchar':
+                column.type = 'text';
+                if (column.maxLength === void 0) {
+                    column.maxLength = tableColumn.maxLength;
+                }
+                break;
+            case 'nchar':
+            case 'nvarchar':
+                column.type = 'text';
+                if (column.maxLength === void 0) {
+                    column.maxLength = tableColumn.maxLength / 2;
+                }
+                break;
+            case 'datetime':
+                column.type = 'date';
+                column.dateFormat = 'DD.MM.YYYY';
+                break;
+            case 'decimal':
+                column.type = 'numeric';
+                if (column.maximum === void 0) {
+                    column.maximum = Math.max(1, Math.pow(10, (tableColumn.precision - tableColumn.scale)) - 1);
+                }
+                if (column.minimum === void 0) {
+                    column.minimum = Math.min(-1, -Math.pow(10, (tableColumn.precision - tableColumn.scale)) + 1);
+                }
+                if (column.format === void 0) {
+                    column.format = "0";
+                    if (tableColumn.scale > 0) {
+                        column.format += '.';
+                        for (var i = tableColumn.scale; i > 0; i--) {
+                            column.format += '0';
+                        }
+                    }
+                }
+                column.maximum = 922337203685477.5807;
+                column.minimum = -922337203685477.5808;
+                break;
+            case 'money':
+                column.type = 'numeric';
+                if (column.format === void 0) {
+                    column.format = '$ 0,0.00';
+                }
+                if (column.maximum === void 0) {
+                    column.maximum = 922337203685477.5807;
+                }
+                if (column.minimum === void 0) {
+                    column.minimum = -922337203685477.5808;
+                }
+                break;
+            case 'bit':
+                column.type = 'checkbox';
+                break;
+            default:
+                throw new InvalidOperationException('Spaltentyp "' + tableColumn.type + '" wird nicht unterstützt.');
+        }
+    };
     var initialize = function (hotInstance, settings) {
         // make sure the instance still exists
         if (hotInstance.tableName in tables) {
@@ -1185,7 +1233,6 @@ angular.module('tn', [])
                     // enable sorting, resizing and limit row rendering
                     settings.columnSorting = true;
                     settings.manualColumnResize = true;
-                    settings.manualRowResize = true;
                     settings.viewportColumnRenderingOffset = 2;
                     settings.viewportRowRenderingOffset = 10;
 
@@ -1201,49 +1248,10 @@ angular.module('tn', [])
                             for (var l = table.columns.length - 1; l >= 0; l--) {
                                 var tableColumn = table.columns[l];
                                 if (tableColumn.name === column.data) {
-                                    // set the common attributes
-                                    //if (tableColumn.readOnly)
-                                    //column.readOnly = true;
-                                    column.required = tableColumn.required;
-                                    column.allowInvalid = false;
-
-                                    // set the type specific attributes
-                                    switch (tableColumn.type) {
-                                        case 'int':
-                                            break;
-                                        case 'char':
-                                        case 'varchar':
-                                            column.validator = textValidator;
-                                            column.maxLength = tableColumn.maxLength;
-                                            break;
-                                        case 'nchar':
-                                        case 'nvarchar':
-                                            column.validator = textValidator;
-                                            column.maxLength = tableColumn.maxLength / 2;
-                                            break;
-                                        case 'datetime':
-                                            column.type = 'date';
-                                            column.dataType = 'object';
-                                            column.dateFormat = 'YYYY-MM-DD';
-                                            column.renderer = dateRenderer;
-                                            column.validator = dateValidator;
-                                            break;
-                                        case 'decimal':
-                                            column.type = 'date';
-                                            break;
-                                        case 'money':
-                                            column.type = 'date';
-                                            break;
-                                        case 'bit':
-                                            column.type = 'date';
-                                            break;
-                                        default:
-                                            throw new InvalidOperationException('Spaltentyp "' + tableColumn.type + '" wird nicht unterstützt.');
-                                    }
+                                    adjustColumnToTableColumn(column, tableColumn);
                                 }
                             }
                         }
-
                     }
 
                     // set the settings and load the data
@@ -1457,16 +1465,6 @@ angular.module('tn', [])
 
             // create and return the instance
             var hotInstance = new Handsontable(parentElement, { data: [] });
-            var sorting = hotInstance.getPlugin('columnSorting');
-            sorting.dateSort = numberOrDateSort;
-            if (window.Intl && window.Intl.Collator) {
-                var collator = new Intl.Collator('de', { numeric: true });
-                sorting.defaultSort = function (sortOrder) {
-                    return sortOrder ?
-                        function (a, b) { return collator.compare(a[1], b[1]); } :
-                        function (a, b) { return collator.compare(b[1], a[1]); };
-                };
-            }
             hotInstance.tableName = tableName;
             references[tableName].push(hotInstance);
             tables[tableName].ready(function () { initialize(hotInstance, settings); });
