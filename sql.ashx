@@ -185,7 +185,20 @@ public class SqlHandler : IHttpHandler
                             // write the number of records affect and the records
                             response.Append("{\"RecordsAffected\":");
                             response.Append(ToJson(reader.RecordsAffected));
-                            response.Append(",\"Records\":[");
+                            response.Append(",\"DateFields\":[");
+                            var firstDateField = true;
+                            for (var i = 0; i < reader.VisibleFieldCount; i++)
+                            {
+                                if (reader.GetFieldType(i) == typeof(DateTime))
+                                {
+                                    if (firstDateField)
+                                        firstDateField = false;
+                                    else
+                                        response.Append(',');
+                                    response.Append(ToJson(reader.GetName(i)));
+                                }
+                            }
+                            response.Append("],\"Records\":[");
                             var firstRow = true;
                             while (reader.Read())
                             {

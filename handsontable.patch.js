@@ -1,9 +1,4 @@
-﻿Handsontable.DefaultSettings.required = false;
-Handsontable.DefaultSettings.maximum = void 0;
-Handsontable.DefaultSettings.minimum = void 0;
-Handsontable.DefaultSettings.minLength = 1;
-Handsontable.DefaultSettings.maxLength = void 0;
-Handsontable.DefaultSettings.comparer = void 0;
+﻿Handsontable.DefaultSettings.comparer = void 0;
 (function (plugin) {
     var match;
     var sort = plugin.sort.toString();
@@ -27,13 +22,7 @@ Handsontable.DefaultSettings.comparer = void 0;
 
 /******************************************************************************/
 
-Handsontable.CheckboxCell.validator = function (value, callback) {
-    if (value === null) {
-        callback(!this.required);
-    } else {
-        callback(typeof value === 'boolean');
-    }
-};
+Handsontable.CheckboxCell.validator = void 0;
 Handsontable.CheckboxCell.comparer = function (sortOrder) {
     if (sortOrder) {
         return function (a, b) {
@@ -48,15 +37,7 @@ Handsontable.CheckboxCell.comparer = function (sortOrder) {
 
 /******************************************************************************/
 
-Handsontable.TextCell.validator = function (value, callback) {
-    if (value === null) {
-        callback(!this.required);
-    } else if (typeof value === 'string') {
-        callback(!(value.length < this.minLength || this.maxLength !== void 0 && value.length > this.maxLength));
-    } else {
-        callback(false);
-    }
-};
+Handsontable.TextCell.validator = void 0;
 Handsontable.TextCell.comparer = function (sortOrder) {
     if (window.Intl && window.Intl.Collator) {
         var collator = new Intl.Collator(this.language);
@@ -72,6 +53,7 @@ Handsontable.TextCell.comparer = function (sortOrder) {
 
 /******************************************************************************/
 
+Handsontable.NumericCell.validator = void 0;
 Handsontable.NumericCell.renderer = function (instance, TD, row, col, prop, value, cellProperties) {
     if (value === null) {
         value = '';
@@ -85,15 +67,6 @@ Handsontable.NumericCell.renderer = function (instance, TD, row, col, prop, valu
         value = numeral(value).format(cellProperties.format || '0');
     }
     Handsontable.renderers.TextRenderer(instance, TD, row, col, prop, value, cellProperties);
-};
-Handsontable.NumericCell.validator = function (value, callback) {
-    if (value === null) {
-        callback(!this.required);
-    } else if (typeof value === 'number') {
-        callback(!(this.minimum !== void 0 && value < this.minimum || this.maximum !== void 0 && value > this.maximum));
-    } else {
-        callback(false);
-    }
 };
 Handsontable.NumericCell.comparer = function (sortOrder) {
     if (sortOrder) {
@@ -122,6 +95,7 @@ Handsontable.NumericCell.className = 'htNumeric';
 
 /******************************************************************************/
 
+Handsontable.DateCell.validator = void 0;
 Handsontable.DateCell.renderer = function (instance, TD, row, col, prop, value, cellProperties) {
     if (value === null) {
         value = '';
@@ -132,15 +106,6 @@ Handsontable.DateCell.renderer = function (instance, TD, row, col, prop, value, 
         value = moment(value).format(cellProperties.dateFormat || Handsontable.editors.getEditor('date', instance).defaultDateFormat);
     }
     Handsontable.renderers.AutocompleteRenderer(instance, TD, row, col, prop, value, cellProperties);
-};
-Handsontable.DateCell.validator = function (value, callback) {
-    if (value === null) {
-        callback(!this.required);
-    } else if (value instanceof Date) {
-        callback(!(this.minimum !== void 0 && value < this.minimum || this.maximum !== void 0 && value > this.maximum));
-    } else {
-        callback(false);
-    }
 };
 Handsontable.DateCell.comparer = function (sortOrder) {
     if (sortOrder) {

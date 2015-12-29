@@ -30,6 +30,34 @@ function ArgumentException(message, paramName) {
 }
 ArgumentException.prototype = Object.create(Error.prototype);
 ArgumentException.prototype.constructor = ArgumentException;
+ArgumentException.check = function (arg, name, constructor, optional) {
+    if (typeof name !== 'string') {
+        throw new Error('ArgumentException: name is a ' + (typeof name));
+    }
+    // thanks to IE we have to allow objects as constructors as well :(
+    if (typeof constructor !== 'function' && typeof constructor !== 'object') {
+        throw new Error('ArgumentException: constructor is a ' + (typeof constructor));
+    }
+    if (arg == null) {
+        if (optional) {
+            return;
+        }
+        throw new ArgumentException('Der Wert darf nicht null sein.', name);
+    }
+    if (arg.constructor !== constructor) {
+        var getName = function (fn) {
+            if (!fn) {
+                return "(ohne)";
+            }
+            if (fn.name) {
+                return fn.name;
+            }
+            var match = fn.toString().match(/^\s*function\s+(.*?)\s*\(/);
+            return match ? match[1] : "(unbekannt)";
+        };
+        throw new ArgumentException('Der Wert ist vom Typ "' + getName(arg.constructor) + '", erwartet wurde "' + getName(constructor) + '".', name);
+    }
+};
 function InvalidDataException(message) {
     this.name = 'InvalidDataException';
     this.message = message || 'Ungültige Daten beim Decodieren gefunden.';
@@ -120,6 +148,7 @@ angular.module('tn', [])
 
 // SQL service
 .service('sql', function ($q, $http, SqlState) {
+    var Promise = $q.defer().promise.constructor;
     var svc = this;
 
     // bindable fields
@@ -129,24 +158,11 @@ angular.module('tn', [])
     // reader helper function
     var reader = function (args, forceSingleSet, parser) {
         var command;
-
-        // create the deferred object and check the parameters
-        var deferred = $q.defer();
-        if (!angular.isObject(args)) {
-            throw new ArgumentException('Ungültige oder fehlende Abfrageargumente.', 'args');
-        }
-        if (!angular.isString(args.description)) {
-            throw new ArgumentException('Keine Abfragebeschreibung gefunden.', 'args');
-        }
-        if (!angular.isString(args.command)) {
-            throw new ArgumentException('Abfragetext fehlt.', 'args');
-        }
-        if (angular.isDefined(args.parameters) && !angular.isObject(args.parameters)) {
-            throw new ArgumentException('Abfrageparametersammlung ist kein Objekt.', 'args');
-        }
-        if (angular.isDefined(args.cancelOn) && !(angular.isObject(args.cancelOn) && args.cancelOn instanceof deferred.promise.constructor)) {
-            throw new ArgumentException('Abbruchsereignis ist kein Promise.', 'args');
-        }
+        ArgumentException.check(args, 'args', Object);
+        ArgumentException.check(args.description, 'args.description', String);
+        ArgumentException.check(args.command, 'args.command', String);
+        ArgumentException.check(args.parameters, 'args.parameters', Object, true);
+        ArgumentException.check(args.cancelOn, 'args.cancelOn', Promise, true);
 
         // create the http config object
         var config = {
@@ -181,9 +197,9 @@ angular.module('tn', [])
                             value = '';
                             break;
                         }
-                        throw new ArgumentException('Der Objekttyp des Abfrageparameter "' + name + '" wird nicht unterstützt.', 'args');
+                        // fallthru
                     default:
-                        throw new ArgumentException('Der Typ des Abfrageparameter "' + name + '" ist ungültig.', 'args');
+                        throw new ArgumentException('Typ nicht unterstützt.', 'args.parameters.' + name);
                 }
                 encodedParameters.push(encodeURIComponent(name) + '=' + encodeURIComponent(value));
             }
@@ -205,6 +221,7 @@ angular.module('tn', [])
         }
 
         // store internal flags
+        var deferred = $q.defer();
         var allowError = !!args.allowError;
         var singleSet = forceSingleSet || !!args.singleSet;
 
@@ -223,29 +240,44 @@ angular.module('tn', [])
 
 	                // check if the response include records
 	                var data = response.data;
-	                if (angular.isArray(data)) {
-	                    // make sure the recordsets are valid and convert date objects
+	                if (data == null) {
+	                    throw new InvalidDataException('Keine SQL-Daten empfangen.');
+	                }
+	                if (data.constructor === Array) {
+	                    // make sure the recordsets are valid
 	                    for (var i = data.length - 1; i >= 0; i--) {
 	                        var recordset = data[i];
-	                        if (!angular.isObject(recordset) || !angular.isNumber(recordset.RecordsAffected) || !angular.isArray(recordset.Records)) {
-	                            throw new InvalidDataException('Recorset #' + i + ' ist ungültig.');
+	                        if (recordset == null || recordset.constructor !== Object) {
+	                            throw new InvalidDataException('Recorset #' + (i + 1) + ' ist ungültig.');
+	                        }
+	                        var recordsAffected = recordset.RecordsAffected;
+	                        if (recordsAffected == null || recordsAffected.constructor !== Number) {
+	                            throw new InvalidDataException('Zeilenanzahl von Recorset #' + (i + 1) + ' ist ungültig.');
 	                        }
 	                        var records = recordset.Records;
+	                        if (records == null || records.constructor !== Array) {
+	                            throw new InvalidDataException('Zeilen des Recorsets #' + (i + 1) + ' sind ungültig.');
+	                        }
+	                        var dateFields = recordset.DateFields;
+	                        if (dateFields == null || dateFields.constructor !== Array) {
+	                            throw new InvalidDataException('Datumsfelder des Recorsets #' + (i + 1) + ' sind ungültig.');
+	                        }
+
+	                        // ensure the rows are objects and convert dates
 	                        for (var j = records.length - 1; j >= 0; j--) {
 	                            var record = records[j];
-	                            if (!angular.isObject(record)) {
-	                                throw new InvalidDataException('Record #' + j + ' in Recorset #' + i + ' ist ungültig.');
+	                            if (record == null || record.constructor !== Object) {
+	                                throw new InvalidDataException('Zeile ' + (j + 1) + ' des Recorsets #' + (i + 1) + ' ist ungültig.');
 	                            }
-	                            for (var name in record) {
-	                                var value = record[name];
-	                                if (angular.isString(value)) {
-	                                    var dateMatch = value.match(/^(\d\d\d\d)-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)\.(\d\d\d)Z$/);
-	                                    if (dateMatch) {
-	                                        if ((new Date(Date.UTC(Number(dateMatch[1]), Number(dateMatch[2]) - 1, Number(dateMatch[3]), Number(dateMatch[4]), Number(dateMatch[5]), Number(dateMatch[6]), Number(dateMatch[7])))).toISOString() !== value) {
-	                                            throw new InvalidDataException('Ungültiges Datum in Wert "' + name + '" in Record #' + j + ' in Recorset #' + i + '.');
-	                                        }
-	                                        record[name] = new Date(Number(dateMatch[1]), Number(dateMatch[2]) - 1, Number(dateMatch[3]), Number(dateMatch[4]), Number(dateMatch[5]), Number(dateMatch[6]), Number(dateMatch[7]));
+	                            var dateMatch;
+	                            for (var k = dateFields.length - 1; k >= 0; k--) {
+	                                var dateName = dateFields[k];
+	                                var value = record[dateName];
+	                                if (value !== null) {
+	                                    if (value == null || value.constructor !== String || !(dateMatch = value.match(/^(\d\d\d\d)-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)\.(\d\d\d)Z$/))) {
+	                                        throw new InvalidDataException('Datum "' + dateName + '" in Zeile ' + (j + 1) + ' des Recorsets #' + (i + 1) + ' ist ungültig.');
 	                                    }
+	                                    record[dateName] = new Date(Number(dateMatch[1]), Number(dateMatch[2]) - 1, Number(dateMatch[3]), Number(dateMatch[4]), Number(dateMatch[5]), Number(dateMatch[6]), Number(dateMatch[7]));
 	                                }
 	                            }
 	                        }
@@ -266,17 +298,22 @@ angular.module('tn', [])
 	                }
 
 	                // check if the response is an error
-	                else if (angular.isObject(data)) {
+	                else if (data.constructor === Object) {
 	                    // ensure a complete error object
-	                    if (!angular.isNumber(data.CommandNumber) || !angular.isString(data.Message)) {
-	                        throw new InvalidDataException('Ein ungültiges oder unvollständiges Fehlerobjekt wurde zurückgegeben.');
+	                    var commandNumber = data.CommandNumber;
+	                    if (commandNumber == null || commandNumber.constructor !== Number) {
+	                        throw new InvalidDataException('Der Befehlsindex im Fehlerobjekt ist ungültig.');
+	                    }
+	                    var message = data.Message;
+	                    if (message == null || message.constructor !== String) {
+	                        throw new InvalidDataException('Die Fehlermeldung im Fehlerobjekt ist ungültig.');
 	                    }
 
 	                    // check if this is a managed error
-	                    var errorMatch = data.Message.match(/^(.*?)\s\[TN\](?:\[(.+?)\](?:\[(.+?)\])?)?/);
+	                    var errorMatch = message.match(/^(.*?)\s\[TN\](?:\[(.+?)\](?:\[(.+?)\])?)?/);
 	                    command.error = errorMatch ?
                             ('Ungültige Daten: ' + errorMatch[1]) :
-                            ('Datenbankfehler: ' + data.Message);
+                            ('Datenbankfehler: ' + message);
 	                    if (!errorMatch || !allowError) {
 	                        command.state = SqlState.HasError;
 	                        return;
@@ -284,7 +321,7 @@ angular.module('tn', [])
 
 	                    // replace the data with a proper error object
 	                    data = {
-	                        statement: data.CommandNumber,
+	                        statement: commandNumber,
 	                        message: errorMatch[1],
 	                        table: errorMatch[2],
 	                        column: errorMatch[3]
@@ -394,6 +431,7 @@ angular.module('tn', [])
 
 // notification service
 .service('notification', function ($http, $timeout, $q) {
+    var Promise = $q.defer().promise.constructor;
 
     // define the global vars
     var nextNotificationId = 0;
@@ -403,10 +441,7 @@ angular.module('tn', [])
 
     // define the function object
     var notification = function (fn) {
-        // check the input arguments
-        if (!angular.isFunction(fn)) {
-            throw new ArgumentException('Callbackfunktion erwartet.', 'fn');
-        }
+        ArgumentException.check(fn, 'fn', Function);
 
         // get the next id and increment the counter
         var id = nextNotificationId++;
@@ -426,7 +461,9 @@ angular.module('tn', [])
 
     // define the cancellation method
     notification.cancel = function (promise) {
-        if (promise && promise.$notificationId in notifications) {
+        ArgumentException.check(promise, 'promise', Promise);
+
+        if (promise.$notificationId in notifications) {
             notifications[promise.$notificationId].reject('cancelled');
             delete notifications[promise.$notificationId];
             return true;
@@ -436,9 +473,7 @@ angular.module('tn', [])
 
     // define the readiness callback function
     notification.ready = function (fn) {
-        if (angular.isDefined(fn) && !angular.isFunction(fn)) {
-            throw new ArgumentException('Callbackfunktion erwartet.', 'fn');
-        }
+        ArgumentException.check(fn, 'fn', Function, true);
 
         // set the callback if given and return the promise
         if (fn) {
@@ -459,32 +494,30 @@ angular.module('tn', [])
             function (response) {
                 // check the data
                 var data = response.data;
-                if (!angular.isObject(data)) {
-                    throw new InvalidDataException('Kein Ereignisobjekt empfangen.');
+                if (data == null || data.constructor !== Object) {
+                    throw new InvalidDataException('Ungültiges Ereignisobjekt empfangen.');
                 }
-                if (!angular.isNumber(data.LastEventId)) {
-                    throw new InvalidDataException('Rückgabeobjekt enthält keine Ereignisnummer.');
-                }
-                if (data.LastEventId < 0) {
-                    throw new InvalidDataException('Die Ereignisnummer ist negativ.');
+                var newLastEventId = data.LastEventId;
+                if (newLastEventId == null || newLastEventId.constructor !== Number || newLastEventId < 0) {
+                    throw new InvalidDataException('Ungültige Ereignisnummer empfangen.');
                 }
                 var events = data.Events;
-                if (!angular.isObject(events)) {
+                if (events == null || events.constructor !== Object) {
                     throw new InvalidDataException('Die Ereignissammlung ist ungültig.');
                 }
                 var hasEvents = false;
                 for (var sourceName in events) {
                     var source = events[sourceName];
-                    hasEvents = true;
-                    if (!angular.isObject(source)) {
+                    if (source == null || source.constructor !== Object) {
                         throw new InvalidDataException('Die Ereignisquelle "' + sourceName + '" ist kein Objekt.');
                     }
+                    hasEvents = true;
                     for (var id in source) {
                         if (!id.match(/^[1-9]\d*$/)) {
                             throw new InvalidDataException('ID "' + id + '" von Ereignisquelle "' + sourceName + '" ist nicht numerisch.');
                         }
                         var version = source[id];
-                        if (version !== null && !(angular.isString(version) && version.match(/^0x[0-9A-F]{16}$/))) {
+                        if (version !== null && (version == null || version.constructor !== String || !version.match(/^0x[0-9A-F]{16}$/))) {
                             throw new InvalidDataException('Version von Ereignis #' + id + ' in Quelle "' + sourceName + '" ist ungültig.');
                         }
                     }
@@ -493,7 +526,7 @@ angular.module('tn', [])
                 // set the last event id and reset the error
                 var first = lastEventId === -1;
                 delete notification.error;
-                lastEventId = data.LastEventId;
+                lastEventId = newLastEventId;
                 notification.lastSyncTime = new Date();
 
                 // notify any readiness listeners and update the event time
@@ -529,13 +562,15 @@ angular.module('tn', [])
 .factory('table', function ($q, $rootScope, sql, notification) {
     return function (name, filter) {
         var table;
+        ArgumentException.check(name, 'name', String);
+        ArgumentException.check(filter, 'filter', String, true);
 
         // check the input arguments
-        if (!angular.isString(name) || !name.match(/^\w+$/)) {
+        if (!name.match(/^\w+$/)) {
             throw new ArgumentException('Der Tabellenname muss ein einfacher Bezeichner sein.', 'name');
         }
-        if (angular.isDefined(filter) && (!angular.isString(filter) || filter.match(/^\s*WHERE(\s+|$)/i))) {
-            throw new ArgumentException('Der Filter muss eine Zeichenfolge ohne WHERE-Prefix sein.', 'filter');
+        if (filter && filter.match(/^\s*WHERE(\s+|$)/i)) {
+            throw new ArgumentException('Der Filter darf keinen WHERE-Prefix enthalten.', 'filter');
         }
 
         // create the variables
@@ -559,10 +594,22 @@ angular.module('tn', [])
             };
         };
 
+        // ensure the columns have been queried
+        var throwIfNoColumns = function (fn) {
+            return function () {
+                if (table.columns.length === 0) {
+                    throw new InvalidOperationException('Die Spalten wurden noch nicht abgefragt.');
+                }
+                return fn.apply(this, arguments);
+            };
+        };
+
         // call all row listeners asynchronously
         var notifyAsync = function (oldRow, newRow) {
             var callback = function (fn) {
-                $rootScope.$evalAsync(function () { fn(table, oldRow, newRow); });
+                $rootScope.$evalAsync(function () {
+                    fn(table, oldRow, newRow);
+                });
             };
             for (var i = changeListeners.length - 1; i >= 0; i--) {
                 callback(changeListeners[i]);
@@ -587,11 +634,11 @@ angular.module('tn', [])
 
                 // ensure the entry is valid
                 var id = newRow.$id;
-                if (!angular.isNumber(id) || id < 1) {
+                if (id == null || id.constructor !== Number || id < 1) {
                     throw new InvalidDataException('Ungültige ID gefunden.');
                 }
                 var version = newRow.$version;
-                if (!angular.isString(version) || !version.match(/^0x[0-9A-F]{16}$/)) {
+                if (version == null || version.constructor !== String || !version.match(/^0x[0-9A-F]{16}$/)) {
                     throw new InvalidDataException('Ungültige Version gefunden.');
                 }
                 var clonedEntry = {};
@@ -695,11 +742,11 @@ angular.module('tn', [])
         };
 
         // helper function for inserting, updating and deleting rows
-        var rowAction = function (row, fn) {
+        var rowAction = function (row, fn, setError) {
+            ArgumentException.check(row, 'row', Object);
+            ArgumentException.check(row.$id, 'row.$id', Number);
+
             // check the row
-            if (!angular.isObject(row) || !angular.isNumber(row.$id)) {
-                throw new ArgumentException('Ungültige Tabellenzeile.', 'row');
-            }
             if (!(row.$id in rowIndex) || rowIndex[row.$id] !== row) {
                 throw new ArgumentException('Die Zeile befindet sich nicht (mehr) in der Tabelle.', 'row');
             }
@@ -713,22 +760,108 @@ angular.module('tn', [])
             }
             row.$action = deferred.promise;
 
+            // create the callbacks
+            var isSyncCall = true;
+            var asyncWrapper = function (fn, arg) {
+                return function () {
+                    if (isSyncCall) {
+                        $rootScope.$evalAsync(function () {
+                            fn(arg);
+                        });
+                    }
+                    else {
+                        fn(arg);
+                    }
+                };
+            };
+            var succeed = function () {
+                if (setError) {
+                    delete row.$error;
+                }
+                delete row.$action;
+                deferred.resolve(row);
+            };
+            var fail = function (error) {
+                if (setError) {
+                    row.$error = error;
+                }
+                delete row.$action;
+                deferred.reject(error.message);
+            };
+
             // run the action
-            fn(row, deferred);
+            fn(row, asyncWrapper(succeed), asyncWrapper(fail));
+            isSyncCall = false;
 
             // return the promise
             return deferred.promise;
         };
 
+        // check the value of a column
+        var checkColumnValue = function (column, value, fail) {
+            var type, range, maxLength;
+            switch (column.type) {
+                case 'int':
+                    type = Number;
+                    range = [-2147483648, 2147483647];
+                    break;
+                case 'char':
+                case 'varchar':
+                    type = String;
+                    maxLength = column.maxLength;
+                    break;
+                case 'nchar':
+                case 'nvarchar':
+                    type = String;
+                    maxLength = column.maxLength / 2;
+                    break;
+                case 'datetime':
+                case 'smalldatetime':
+                    type = Date;
+                    break;
+                case 'decimal':
+                    type = Number;
+                    var pow = Math.pow(10, (column.precision - column.scale));
+                    range = [Math.min(-1, -pow + 1), Math.max(1, pow - 1)];
+                    break;
+                case 'money':
+                    type = Number;
+                    range = [-922337203685477.5808, 922337203685477.5807];
+                    break;
+                case 'bit':
+                    type = Boolean;
+                    break;
+                default:
+                    throw new InvalidOperationException('Die Spalte "' + column.name + '" kann nicht eingefügt oder aktualisiert werden da ihr Typ "' + column.type + '" wird nicht unterstützt.');
+            }
+            return true;
+        };
+
         // insert a new row
-        var insertRow = function (row, deferred) {
+        var insertRow = function (row, succeed, fail) {
             // get all columns that have a value set
             var columnsWithValue = [];
             var insertParameters = {};
             for (var i = table.columns.length - 1; i >= 0; i--) {
-                var columnName = table.columns[i].name;
+                var column = table.columns[i];
+                var columnName = column.name;
                 var value = row[columnName];
-                if (value !== void 0) {
+                if (value === void 0) {
+                    if (column.defaultValue === null) {
+                        // don't allow missing columns without default values
+                        fail({
+                            statement: 0,
+                            message: 'Spalte "' + columnName + '" muss definiert sein.',
+                            table: name,
+                            column: columnName
+                        });
+                        return;
+                    }
+                }
+                else {
+                    if (!checkColumnValue(column, value, fail)) {
+                        return;
+                    }
                     insertParameters[columnName] = value;
                     columnsWithValue.push(columnName);
                 }
@@ -755,8 +888,12 @@ angular.module('tn', [])
                     if (batch.RecordsAffected === 0) {
                         throw new InvalidOperationException('Die Zeile wurde trotz Erfolg nicht in die Datenbank geschrieben.');
                     }
-                    if (batch.Records.length === 0 || !angular.isNumber(batch.Records[0].$id)) {
-                        throw new InvalidDataException('Die Rückgabewert von @@IDENTITY ist ungültig.');
+                    if (batch.Records.length === 0) {
+                        throw new InvalidDataException('@@SCOPE_IDENTITY hat keinen Wert zurückgegeben.');
+                    }
+                    var id = batch.Records[0].$id;
+                    if (id == null || id.constructor !== Number || id < 1) {
+                        throw new InvalidDataException('Der Rückgabewert von @@SCOPE_IDENTITY ist ungültig.');
                     }
 
                     // delete the temporary row and remember its index
@@ -766,7 +903,7 @@ angular.module('tn', [])
                     notifyAsync(row, null);
 
                     // update and reindex the row (if not done by an event already)
-                    row.$id = batch.Records[0].$id;
+                    row.$id = id;
                     for (var i = columnsWithValue.length - 1; i >= 0; i--) {
                         var columnName = columnsWithValue[i];
                         row.$orig[columnName] = row[columnName];
@@ -777,22 +914,15 @@ angular.module('tn', [])
                         notifyAsync(null, row);
                     }
 
-                    // clear the action and error and resolve the promise
-                    delete row.$error;
-                    delete row.$action;
-                    deferred.resolve(row);
+                    // finish
+                    succeed();
                 },
-                function (error) {
-                    // store the error, clear the action and reject the promise
-                    row.$error = error;
-                    delete row.$action;
-                    deferred.reject(error.message);
-                }
+                fail
             );
         };
 
         // update an existing row
-        var updateRow = function (row, deferred) {
+        var updateRow = function (row, succeed, fail) {
             // get all changed columns
             var changedColumns = [];
             var updateQueryString = [];
@@ -801,24 +931,22 @@ angular.module('tn', [])
                 'Version': row.$version
             };
             for (var i = table.columns.length - 1; i >= 0; i--) {
-                var columnName = table.columns[i].name;
+                var column = table.columns[i];
+                var columnName = column.name;
                 var value = row[columnName];
                 if (value !== void 0 && value !== row.$orig[columnName]) {
+                    if (!checkColumnValue(column, value, fail)) {
+                        return;
+                    }
                     updateParameters[columnName] = value;
                     updateQueryString.push(columnName + ' = @' + columnName);
                     changedColumns.push(columnName);
                 }
             }
             if (changedColumns.length === 0) {
-                $rootScope.$evalAsync(function () {
-                    // if nothing has changed notify the listeners
-                    notifyAsync(row, row);
-
-                    // clear the error and action and resolve the promise
-                    delete row.$error;
-                    delete row.$action;
-                    deferred.resolve(row);
-                });
+                // if nothing has changed notify the listeners
+                notifyAsync(row, row);
+                succeed();
             }
             else {
                 // persist the changes
@@ -848,46 +976,30 @@ angular.module('tn', [])
                                 notifyAsync(row, row);
                             }
 
-                            // clear the action and error and resolve the promise
-                            delete row.$error;
-                            delete row.$action;
-                            deferred.resolve(row);
+                            // finish
+                            succeed();
                         }
                         else {
-                            // create an error, clear the action and reject the promise
-                            var error = {
+                            fail({
                                 statement: 0,
                                 message: 'Die Zeile wurde geändert oder bereits gelöscht.',
                                 table: name,
                                 column: null
-                            };
-                            row.$error = error;
-                            delete row.$action;
-                            deferred.reject(error.message);
+                            });
                         }
                     },
-                    function (error) {
-                        // store the error, clear the action and reject the promise
-                        row.$error = error;
-                        delete row.$action;
-                        deferred.reject(error.message);
-                    }
+                    fail
                 );
             }
         };
 
-        var deleteRow = function (row, deferred) {
+        var deleteRow = function (row, succeed, fail) {
             if (row.$id < 0) {
-                $rootScope.$evalAsync(function () {
-                    // remove the unpersisted row
-                    table.rows.splice(indexOfRow(row), 1);
-                    delete rowIndex[row.$id];
-                    notifyAsync(row, null);
-
-                    // clear the action and resolve the promise
-                    delete row.$action;
-                    deferred.resolve(row);
-                });
+                // remove the unpersisted row
+                table.rows.splice(indexOfRow(row), 1);
+                delete rowIndex[row.$id];
+                notifyAsync(row, null);
+                succeed();
             }
             else {
                 // remove the row from the database
@@ -912,21 +1024,19 @@ angular.module('tn', [])
                                 notifyAsync(currentRow, null);
                             }
 
-                            // clear the action and resolve the promise
-                            delete row.$action;
-                            deferred.resolve(row);
+                            // finish
+                            succeed();
                         }
                         else {
-                            // clear the action and reject the promise
-                            delete row.$action;
-                            deferred.reject('Die Zeile wurde geändert oder bereits gelöscht.');
+                            fail({
+                                statement: 0,
+                                message: 'Die Zeile wurde geändert oder bereits gelöscht.',
+                                table: name,
+                                column: null
+                            });
                         }
                     },
-                    function (error) {
-                        // clear the action and reject the promise
-                        delete row.$action;
-                        deferred.reject(error.message);
-                    }
+                    fail
                 );
             }
         };
@@ -952,9 +1062,7 @@ angular.module('tn', [])
             columns: [],
             rows: [],
             ready: throwIfDisposed(function (fn) {
-                if (angular.isDefined(fn) && !angular.isFunction(fn)) {
-                    throw new ArgumentException('Callbackfunktion erwartet.', 'fn');
-                }
+                ArgumentException.check(fn, 'fn', Function, true);
 
                 // set the callback if given and return the promise
                 if (fn) {
@@ -963,9 +1071,7 @@ angular.module('tn', [])
                 return readyEvent.promise;
             }),
             addRowChangeListener: throwIfDisposed(function (fn) {
-                if (!angular.isFunction(fn)) {
-                    throw new ArgumentException('Callbackfunktion erwartet.', 'fn');
-                }
+                ArgumentException.check(fn, 'fn', Function);
 
                 // add the listener
                 for (var i = changeListeners.length - 1; i >= 0; i--) {
@@ -977,9 +1083,7 @@ angular.module('tn', [])
                 return true;
             }),
             removeRowChangeListener: throwIfDisposed(function (fn) {
-                if (!angular.isFunction(fn)) {
-                    throw new ArgumentException('Callbackfunktion erwartet.', 'fn');
-                }
+                ArgumentException.check(fn, 'fn', Function);
 
                 // remove the listener
                 for (var i = changeListeners.length - 1; i >= 0; i--) {
@@ -998,14 +1102,19 @@ angular.module('tn', [])
                 // return the row at the index
                 return rowIndex[id];
             },
-            newRow: throwIfDisposed(function (row) {
-                if (angular.isDefined(row) && !angular.isObject(row)) {
-                    throw new ArgumentException('Vorlagenobjekt erwartet.', 'row');
-                }
+            newRow: throwIfDisposed(throwIfNoColumns(function (row) {
+                ArgumentException.check(row, 'row', Object, true);
 
                 // create and add a row
                 if (!row) {
                     row = {};
+                }
+                for (var i = table.columns.length - 1; i >= 0; i--) {
+                    var column = table.columns[i];
+                    var columnName = column.name;
+                    if (row[columnName] === void 0 && column.defaultValue === null && !column.required) {
+                        row[columnName] = null;
+                    }
                 }
                 row.$id = nextNewRowId--;
                 row.$version = '0x0000000000000000';
@@ -1014,14 +1123,14 @@ angular.module('tn', [])
                 rowIndex[row.$id] = row;
                 notifyAsync(null, row);
                 return row;
-            }),
-            saveRow: throwIfDisposed(function (row) {
+            })),
+            saveRow: throwIfDisposed(throwIfNoColumns(function (row) {
                 // insert or update a row
-                return rowAction(row, row.$id < 0 ? insertRow : updateRow);
-            }),
-            deleteRow: throwIfDisposed(function (row) {
-                return rowAction(row, deleteRow);
-            })
+                return rowAction(row, row.$id < 0 ? insertRow : updateRow, true);
+            })),
+            deleteRow: throwIfDisposed(throwIfNoColumns(function (row) {
+                return rowAction(row, deleteRow, false);
+            }))
         };
 
         // initialize the table when ready
@@ -1042,6 +1151,7 @@ angular.module('tn', [])
                          '  c.precision,\n' +
                          '  c.scale,\n' +
                          '  CASE WHEN c.is_nullable = 1 THEN 0 ELSE 1 END AS required,\n' +
+                         '  d.definition AS defaultValue,\n' +
                          '  CASE WHEN HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'UPDATE\',c.name,\'COLUMN\') = 1 THEN 0 ELSE 1 END AS readOnly,\n' +
                          '  OBJECT_NAME(f.referenced_object_id) AS [references]\n' +
                          'FROM\n' +
@@ -1050,6 +1160,8 @@ angular.module('tn', [])
                          '  sys.types AS t ON c.user_type_id = t.user_type_id\n' +
                          '  LEFT OUTER JOIN\n' +
                          '  sys.foreign_key_columns AS f ON f.parent_object_id = c.object_id AND f.parent_column_id = c.column_id\n' +
+                         '  LEFT OUTER JOIN\n' +
+                         '  sys.default_constraints AS d ON d.parent_object_id = c.object_id AND d.parent_column_id = c.column_id\n' +
                          'WHERE\n' +
                          '  c.object_id = OBJECT_ID(@Table) AND\n' +
                          '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'SELECT\',c.name,\'COLUMN\') = 1 AND\n' +
@@ -1126,6 +1238,7 @@ angular.module('tn', [])
 
 // define dataset functions
 .service('dataSet', function ($q, ReferenceLabels, sql, table) {
+    var Div = document.createElement('div').constructor;
     var dataSet;
 
     // map structures
@@ -1133,86 +1246,6 @@ angular.module('tn', [])
     var references = {};
 
     // update the settings of a new handsontable
-    var adjustColumnToTableColumn = function (column, tableColumn) {
-        // set the common attributes
-        if (tableColumn.readOnly) {
-            column.readOnly = true;
-        }
-        if (tableColumn.required) {
-            column.required = true;
-        }
-        column.allowInvalid = false;
-        column.language = 'de';
-
-        // set the type specific attributes
-        switch (tableColumn.type) {
-            case 'int':
-                column.type = 'numeric';
-                column.format = '0';
-                if (column.minimum === void 0) {
-                    column.minimum = -2147483648;
-                }
-                if (column.maximum === void 0) {
-                    column.maximum = 2147483647;
-                }
-                break;
-            case 'char':
-            case 'varchar':
-                column.type = 'text';
-                if (column.maxLength === void 0) {
-                    column.maxLength = tableColumn.maxLength;
-                }
-                break;
-            case 'nchar':
-            case 'nvarchar':
-                column.type = 'text';
-                if (column.maxLength === void 0) {
-                    column.maxLength = tableColumn.maxLength / 2;
-                }
-                break;
-            case 'datetime':
-                column.type = 'date';
-                column.dateFormat = 'DD.MM.YYYY';
-                break;
-            case 'decimal':
-                column.type = 'numeric';
-                if (column.maximum === void 0) {
-                    column.maximum = Math.max(1, Math.pow(10, (tableColumn.precision - tableColumn.scale)) - 1);
-                }
-                if (column.minimum === void 0) {
-                    column.minimum = Math.min(-1, -Math.pow(10, (tableColumn.precision - tableColumn.scale)) + 1);
-                }
-                if (column.format === void 0) {
-                    column.format = "0";
-                    if (tableColumn.scale > 0) {
-                        column.format += '.';
-                        for (var i = tableColumn.scale; i > 0; i--) {
-                            column.format += '0';
-                        }
-                    }
-                }
-                column.maximum = 922337203685477.5807;
-                column.minimum = -922337203685477.5808;
-                break;
-            case 'money':
-                column.type = 'numeric';
-                if (column.format === void 0) {
-                    column.format = '$ 0,0.00';
-                }
-                if (column.maximum === void 0) {
-                    column.maximum = 922337203685477.5807;
-                }
-                if (column.minimum === void 0) {
-                    column.minimum = -922337203685477.5808;
-                }
-                break;
-            case 'bit':
-                column.type = 'checkbox';
-                break;
-            default:
-                throw new InvalidOperationException('Spaltentyp "' + tableColumn.type + '" wird nicht unterstützt.');
-        }
-    };
     var initialize = function (hotInstance, settings) {
         // make sure the instance still exists
         if (hotInstance.tableName in tables) {
@@ -1223,10 +1256,12 @@ angular.module('tn', [])
                     if (settings.columns === void 0) {
                         settings.columns = [];
                         for (var j = 0; j < table.columns.length; j++) {
-                            settings.columns.push({
-                                data: table.columns[j].name,
-                                title: table.columns[j].name
-                            });
+                            if (table.columns[j].type !== 'varbinary') {
+                                settings.columns.push({
+                                    data: table.columns[j].name,
+                                    title: table.columns[j].name
+                                });
+                            }
                         }
                     }
 
@@ -1248,7 +1283,56 @@ angular.module('tn', [])
                             for (var l = table.columns.length - 1; l >= 0; l--) {
                                 var tableColumn = table.columns[l];
                                 if (tableColumn.name === column.data) {
-                                    adjustColumnToTableColumn(column, tableColumn);
+                                    // set the common attributes
+                                    if (tableColumn.readOnly) {
+                                        column.readOnly = true;
+                                    }
+                                    if (tableColumn.required) {
+                                        column.required = true;
+                                    }
+                                    column.language = 'de';
+
+                                    // set the type specific attributes
+                                    switch (tableColumn.type) {
+                                        case 'int':
+                                            column.type = 'numeric';
+                                            column.format = '0';
+                                            break;
+                                        case 'char':
+                                        case 'varchar':
+                                        case 'nchar':
+                                        case 'nvarchar':
+                                            column.type = 'text';
+                                            column.trimWhitespace = true;
+                                            break;
+                                        case 'datetime':
+                                            column.type = 'date';
+                                            column.dateFormat = 'DD.MM.YYYY';
+                                            break;
+                                        case 'decimal':
+                                            column.type = 'numeric';
+                                            if (column.format === void 0) {
+                                                column.format = "0";
+                                                if (tableColumn.scale > 0) {
+                                                    column.format += '.';
+                                                    for (var n = tableColumn.scale; n > 0; n--) {
+                                                        column.format += '0';
+                                                    }
+                                                }
+                                            }
+                                            break;
+                                        case 'money':
+                                            column.type = 'numeric';
+                                            if (column.format === void 0) {
+                                                column.format = '$ 0,0.00';
+                                            }
+                                            break;
+                                        case 'bit':
+                                            column.type = 'checkbox';
+                                            break;
+                                        default:
+                                            throw new InvalidOperationException('Spaltentyp "' + tableColumn.type + '" wird nicht unterstützt.');
+                                    }
                                 }
                             }
                         }
@@ -1343,9 +1427,7 @@ angular.module('tn', [])
     dataSet = {
         permissions: {},
         ready: function (fn) {
-            if (angular.isDefined(fn) && !angular.isFunction(fn)) {
-                throw new ArgumentException('Callbackfunktion erwartet.', 'fn');
-            }
+            ArgumentException.check(fn, 'fn', Function, true);
 
             // combine all table ready states
             var promises = [];
@@ -1361,9 +1443,7 @@ angular.module('tn', [])
             return promise;
         },
         load: function (definitions) {
-            if (!angular.isArray(definitions) || definitions.some(function (definition) { return !angular.isString(definition.name) || angular.isDefined(definition.filter) && !angular.isString(definition.filter); })) {
-                throw new ArgumentException('Name/Filter Liste erwartet.', 'definitions');
-            }
+            ArgumentException.check(definitions, 'definitions', Array);
 
             // store the old tables and reset the map
             var oldTables = tables;
@@ -1372,6 +1452,8 @@ angular.module('tn', [])
             // build the new maps
             for (var i = definitions.length - 1; i >= 0; i--) {
                 var definition = definitions[i];
+
+                // ensure the table wasn't defined twice
                 if (definition.name in tables) {
                     throw new InvalidOperationException('Die Tabelle ' + definition.name + ' wurde versucht mehrfach zu laden.');
                 }
@@ -1394,14 +1476,9 @@ angular.module('tn', [])
             }
         },
         addTable: function (name, filter) {
-            if (!angular.isString(name)) {
-                throw new ArgumentException('Tabellenname erwartet.', 'name');
-            }
-            if (angular.isDefined(filter) && !angular.isString(filter)) {
-                throw new ArgumentException('Zeichenkette erwartet.', 'filter');
-            }
+            // ensure the tables wasn't already loaded
             if (name in tables) {
-                throw new ArgumentException('Die Tabelle ' + name + ' existiert bereits.', 'name');
+                throw new InvalidOperationException('Die Tabelle ' + name + ' existiert bereits.');
             }
 
             // add the table and hook its listener
@@ -1410,11 +1487,11 @@ angular.module('tn', [])
             return tables[name];
         },
         removeTable: function (table) {
-            if (!angular.isObject(table) || !angular.isString(table.name)) {
-                throw new ArgumentException('Tabellenobjekt erwartet.', 'table');
-            }
+            ArgumentException.check(table, 'table', Object);
+
+            // ensure the table is loaded
             if (!(table.name in tables) || tables[table.name] !== table) {
-                throw new ArgumentException('Die Tabelle wurde nicht geladen.', 'table');
+                throw new InvalidOperationException('Die Tabelle wurde nicht geladen.');
             }
 
             // remove the listener and delete the entry
@@ -1423,12 +1500,8 @@ angular.module('tn', [])
             table.dispose();
         },
         primaryFilter: function (role, superRole) {
-            if (!angular.isString(role)) {
-                throw new ArgumentException('Zeichenkette erwartet.', 'role');
-            }
-            if (angular.isDefined(superRole) && !angular.isString(superRole)) {
-                throw new ArgumentException('Zeichenkette erwartet.', 'superRole');
-            }
+            ArgumentException.check(role, 'role', String);
+            ArgumentException.check(superRole, 'superRole', String, true);
 
             // create a permission filter for the Einrichtung table
             var filter = 'IS_MEMBER(SUSER_SNAME(' + role + ')) = 1';
@@ -1438,29 +1511,20 @@ angular.module('tn', [])
             return filter;
         },
         secondaryFilter: function (role, superRole) {
-            if (!angular.isString(role)) {
-                throw new ArgumentException('Zeichenkette erwartet.', 'role');
-            }
-            if (angular.isDefined(superRole) && !angular.isString(superRole)) {
-                throw new ArgumentException('Zeichenkette erwartet.', 'superRole');
-            }
+            ArgumentException.check(role, 'role', String);
+            ArgumentException.check(superRole, 'superRole', String, true);
 
             // create a permission filter for a table referencing Einrichtung
             return 'Einrichtung IN (SELECT ID FROM dbo.Einrichtung WHERE ' + dataSet.primaryFilter(role, superRole) + ')';
         },
         createView: function (tableName, parentElement, settings) {
-            // check the arguments
-            if (!angular.isString(tableName)) {
-                throw new ArgumentException('Zeichenkette erwartet.', 'tableName');
-            }
-            if (!angular.isObject(parentElement)) {
-                throw new ArgumentException('Container erwartet.', 'parentElement');
-            }
-            if (!angular.isObject(settings)) {
-                throw new ArgumentException('Objekt erwartet.', 'settings');
-            }
+            ArgumentException.check(tableName, 'tableName', String);
+            ArgumentException.check(parentElement, 'parentElement', Div);
+            ArgumentException.check(settings, 'settings', Object);
+
+            // ensure the table is loaded
             if (!(tableName in tables)) {
-                throw new ArgumentException('Die Tabelle "' + tableName + '" ist nicht eingeladen.', 'tableName');
+                throw new InvalidOperationException('Die Tabelle "' + tableName + '" ist nicht eingeladen.');
             }
 
             // create and return the instance
@@ -1471,9 +1535,7 @@ angular.module('tn', [])
             return hotInstance;
         },
         destroyView: function (hotInstance) {
-            if (!angular.isObject(hotInstance) || !angular.isString(hotInstance.tableName)) {
-                throw new ArgumentException('Ungültige Tabellenansicht.', 'hotInstance');
-            }
+            ArgumentException.check(hotInstance, 'hotInstance', Handsontable.Core);
 
             // delete the entry, unhook and destroy the handson table
             if (hotInstance.tableName in references) {
@@ -1985,8 +2047,11 @@ angular.module('tn', [])
     ctr.tabs = [];
     ctr.currentTab = -1;
     ctr.gotoNav = function (index) {
-        if (!angular.isNumber(index) || index < 0 || index >= ctr.navs.length) {
-            throw new ArgumentException('Ungültiger Navigationsindex.', 'index');
+        ArgumentException.check(index, 'index', Number);
+
+        // make sure the index is within range
+        if (index < 0 || index >= ctr.navs.length) {
+            throw new ArgumentException('Der Navigationsindex ist außerhalb des Bereichs.', 'index');
         }
 
         // do nothing if we're already there
@@ -2013,8 +2078,11 @@ angular.module('tn', [])
         ctr.currentNav = index;
     };
     ctr.gotoTab = function (index) {
-        if (!angular.isNumber(index) || index < 0 || index >= ctr.tabs.length) {
-            throw new ArgumentException('Ungültiger Registerkartenindex.', 'index');
+        ArgumentException.check(index, 'index', Number);
+
+        // make sure the index is within range
+        if (index < 0 || index >= ctr.tabs.length) {
+            throw new ArgumentException('Der Registerkartenindex ist außerhalb des Bereichs.', 'index');
         }
 
         // switch the current tab
