@@ -22,7 +22,23 @@
 
 /******************************************************************************/
 
+Handsontable.DefaultSettings.formatCopyable = void 0;
+var origGetCopyable = Handsontable.DataMap.prototype.getCopyable;
+Handsontable.DataMap.prototype.getCopyable = function (row, prop) {
+    var result = origGetCopyable.call(this, row, prop);
+    if (result === '' || result === null) {
+        return '';
+    }
+    var meta = this.instance.getCellMeta(row, this.propToCol(prop));
+    return meta.formatCopyable ? meta.formatCopyable(result, row, prop) : result;
+};
+
+/******************************************************************************/
+
 Handsontable.CheckboxCell.validator = void 0;
+Handsontable.CheckboxCell.formatCopyable = function (value) {
+    return value ? '1' : '0';
+};
 Handsontable.CheckboxCell.comparer = function (sortOrder) {
     if (sortOrder) {
         return function (a, b) {
@@ -38,6 +54,9 @@ Handsontable.CheckboxCell.comparer = function (sortOrder) {
 /******************************************************************************/
 
 Handsontable.TextCell.validator = void 0;
+Handsontable.TextCell.formatCopyable = function (value) {
+    return '"' + value.replace(/"/g, '""') + '"';
+};
 Handsontable.TextCell.comparer = function (sortOrder) {
     if (window.Intl && window.Intl.Collator) {
         var collator = new Intl.Collator(this.language);
@@ -54,6 +73,9 @@ Handsontable.TextCell.comparer = function (sortOrder) {
 /******************************************************************************/
 
 Handsontable.NumericCell.validator = void 0;
+Handsontable.NumericCell.formatCopyable = function (value) {
+    return value.toLocaleString();
+};
 Handsontable.NumericCell.renderer = function (instance, TD, row, col, prop, value, cellProperties) {
     if (value === null) {
         value = '';
@@ -96,6 +118,9 @@ Handsontable.NumericCell.className = 'htNumeric';
 /******************************************************************************/
 
 Handsontable.DateCell.validator = void 0;
+Handsontable.DateCell.formatCopyable = function (value) {
+    return value.toLocaleDateString();
+};
 Handsontable.DateCell.renderer = function (instance, TD, row, col, prop, value, cellProperties) {
     if (value === null) {
         value = '';
@@ -115,6 +140,6 @@ Handsontable.DateCell.comparer = function (sortOrder) {
     } else {
         return function (a, b) {
             return a[1] !== null && b[1] !== null ? (a[1] < b[1] ? 1 : b[1] < a[1] ? -1 : 0) : a[1] !== null ? -1 : b[1] !== null ? 1 : 0;
-        }
+        };
     }
 };

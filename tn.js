@@ -1370,7 +1370,19 @@ angular.module('tn', [])
             else {
                 return 0;
             }
+        };
+    };
+    var labelOptions = function () {
+        return labels[this.referencedTable];
+    };
+    var formatLabel = function (value) {
+        if (this.referencedTable in labels) {
+            var label = labels[this.referencedTable];
+            if (value in label) {
+                return '"' + label[value].replace(/"/g, '""') + '"';
+            }
         }
+        return value.toLocaleString();
     };
     var initializeView = function (table, hotInstance, settings) {
         // create the columns array if necessary
@@ -1423,9 +1435,8 @@ angular.module('tn', [])
                                     column.comparer = labelsComparer;
                                     column.className = void 0;
                                     column.referencedTable = tableColumn.referencedTable;
-                                    column.selectOptions = function () {
-                                        return labels[column.referencedTable];
-                                    };
+                                    column.selectOptions = labelOptions;
+                                    column.formatCopyable = formatLabel;
                                 }
                                 break;
                             case 'char':
