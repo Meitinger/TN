@@ -16,7 +16,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/* jshint curly: true, eqeqeq: true, forin: false, freeze: true, latedef: nofunc, undef: true, unused: true */
+/* jshint curly: true, forin: false, freeze: true, latedef: nofunc, undef: true, unused: true */
 /* globals angular: false, Handsontable: false, UIkit: false */
 
 // define errors
@@ -38,10 +38,13 @@ ArgumentException.check = function (arg, name, constructor, optional) {
     if (typeof constructor !== 'function' && typeof constructor !== 'object') {
         throw new Error('ArgumentException: constructor is a ' + (typeof constructor));
     }
-    if (arg == null) {
+    if (arg === void 0) {
         if (optional) {
             return;
         }
+        throw new ArgumentException('Es muss ein Wert angegeben werden.', name);
+    }
+    if (arg === null) {
         throw new ArgumentException('Der Wert darf nicht null sein.', name);
     }
     if (arg.constructor !== constructor) {
@@ -49,7 +52,7 @@ ArgumentException.check = function (arg, name, constructor, optional) {
             if (!fn) {
                 return "(ohne)";
             }
-            if (fn.name) {
+            if (typeof fn.name === 'string') {
                 return fn.name;
             }
             var match = fn.toString().match(/^\s*function\s+(.*?)\s*\(/);
@@ -240,33 +243,33 @@ angular.module('tn', [])
 
 	                // check if the response include records
 	                var data = response.data;
-	                if (data == null) {
+	                if (data == void 0) {
 	                    throw new InvalidDataException('Keine SQL-Daten empfangen.');
 	                }
 	                if (data.constructor === Array) {
 	                    // make sure the recordsets are valid
 	                    for (var i = data.length - 1; i >= 0; i--) {
 	                        var recordset = data[i];
-	                        if (recordset == null || recordset.constructor !== Object) {
+	                        if (recordset == void 0 || recordset.constructor !== Object) {
 	                            throw new InvalidDataException('Recorset #' + (i + 1) + ' ist ungültig.');
 	                        }
 	                        var recordsAffected = recordset.RecordsAffected;
-	                        if (recordsAffected == null || recordsAffected.constructor !== Number) {
+	                        if (recordsAffected == void 0 || recordsAffected.constructor !== Number) {
 	                            throw new InvalidDataException('Zeilenanzahl von Recorset #' + (i + 1) + ' ist ungültig.');
 	                        }
 	                        var records = recordset.Records;
-	                        if (records == null || records.constructor !== Array) {
+	                        if (records == void 0 || records.constructor !== Array) {
 	                            throw new InvalidDataException('Zeilen des Recorsets #' + (i + 1) + ' sind ungültig.');
 	                        }
 	                        var dateFields = recordset.DateFields;
-	                        if (dateFields == null || dateFields.constructor !== Array) {
+	                        if (dateFields == void 0 || dateFields.constructor !== Array) {
 	                            throw new InvalidDataException('Datumsfelder des Recorsets #' + (i + 1) + ' sind ungültig.');
 	                        }
 
 	                        // ensure the rows are objects and convert dates
 	                        for (var j = records.length - 1; j >= 0; j--) {
 	                            var record = records[j];
-	                            if (record == null || record.constructor !== Object) {
+	                            if (record == void 0 || record.constructor !== Object) {
 	                                throw new InvalidDataException('Zeile ' + (j + 1) + ' des Recorsets #' + (i + 1) + ' ist ungültig.');
 	                            }
 	                            var dateMatch;
@@ -274,7 +277,7 @@ angular.module('tn', [])
 	                                var dateName = dateFields[k];
 	                                var value = record[dateName];
 	                                if (value !== null) {
-	                                    if (value == null || value.constructor !== String || !(dateMatch = value.match(/^(\d\d\d\d)-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)\.(\d\d\d)Z$/))) {
+	                                    if (value == void 0 || value.constructor !== String || !(dateMatch = value.match(/^(\d\d\d\d)-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)\.(\d\d\d)Z$/))) {
 	                                        throw new InvalidDataException('Datum "' + dateName + '" in Zeile ' + (j + 1) + ' des Recorsets #' + (i + 1) + ' ist ungültig.');
 	                                    }
 	                                    record[dateName] = new Date(Number(dateMatch[1]), Number(dateMatch[2]) - 1, Number(dateMatch[3]), Number(dateMatch[4]), Number(dateMatch[5]), Number(dateMatch[6]), Number(dateMatch[7]));
@@ -301,11 +304,11 @@ angular.module('tn', [])
 	                else if (data.constructor === Object) {
 	                    // ensure a complete error object
 	                    var commandNumber = data.CommandNumber;
-	                    if (commandNumber == null || commandNumber.constructor !== Number) {
+	                    if (commandNumber == void 0 || commandNumber.constructor !== Number) {
 	                        throw new InvalidDataException('Der Befehlsindex im Fehlerobjekt ist ungültig.');
 	                    }
 	                    var message = data.Message;
-	                    if (message == null || message.constructor !== String) {
+	                    if (message == void 0 || message.constructor !== String) {
 	                        throw new InvalidDataException('Die Fehlermeldung im Fehlerobjekt ist ungültig.');
 	                    }
 
@@ -494,21 +497,21 @@ angular.module('tn', [])
             function (response) {
                 // check the data
                 var data = response.data;
-                if (data == null || data.constructor !== Object) {
+                if (data == void 0 || data.constructor !== Object) {
                     throw new InvalidDataException('Ungültiges Ereignisobjekt empfangen.');
                 }
                 var newLastEventId = data.LastEventId;
-                if (newLastEventId == null || newLastEventId.constructor !== Number || newLastEventId < 0) {
+                if (newLastEventId == void 0 || newLastEventId.constructor !== Number || newLastEventId < 0) {
                     throw new InvalidDataException('Ungültige Ereignisnummer empfangen.');
                 }
                 var events = data.Events;
-                if (events == null || events.constructor !== Object) {
+                if (events == void 0 || events.constructor !== Object) {
                     throw new InvalidDataException('Die Ereignissammlung ist ungültig.');
                 }
                 var hasEvents = false;
                 for (var sourceName in events) {
                     var source = events[sourceName];
-                    if (source == null || source.constructor !== Object) {
+                    if (source == void 0 || source.constructor !== Object) {
                         throw new InvalidDataException('Die Ereignisquelle "' + sourceName + '" ist kein Objekt.');
                     }
                     hasEvents = true;
@@ -517,7 +520,7 @@ angular.module('tn', [])
                             throw new InvalidDataException('ID "' + id + '" von Ereignisquelle "' + sourceName + '" ist nicht numerisch.');
                         }
                         var version = source[id];
-                        if (version !== null && (version == null || version.constructor !== String || !version.match(/^0x[0-9A-F]{16}$/))) {
+                        if (version !== null && (version == void 0 || version.constructor !== String || !version.match(/^0x[0-9A-F]{16}$/))) {
                             throw new InvalidDataException('Version von Ereignis #' + id + ' in Quelle "' + sourceName + '" ist ungültig.');
                         }
                     }
@@ -634,11 +637,11 @@ angular.module('tn', [])
 
                 // ensure the entry is valid
                 var id = newRow.$id;
-                if (id == null || id.constructor !== Number || id < 1) {
+                if (id == void 0 || id.constructor !== Number || id < 1) {
                     throw new InvalidDataException('Ungültige ID gefunden.');
                 }
                 var version = newRow.$version;
-                if (version == null || version.constructor !== String || !version.match(/^0x[0-9A-F]{16}$/)) {
+                if (version == void 0 || version.constructor !== String || !version.match(/^0x[0-9A-F]{16}$/)) {
                     throw new InvalidDataException('Ungültige Version gefunden.');
                 }
                 var clonedEntry = {};
@@ -799,7 +802,29 @@ angular.module('tn', [])
 
         // check the value of a column
         var checkColumnValue = function (column, value, fail) {
-            var type, range, maxLength;
+            // helper function
+            var failWithMessage = function (message) {
+                fail({
+                    statement: 0,
+                    message: message,
+                    table: name,
+                    column: column.name
+                });
+            };
+
+            // check for NULL
+            if (value === null) {
+                if (column.required) {
+                    failWithMessage('Die Spalte "' + column.name + '" muss einen Wert haben.');
+                    return false;
+                }
+                return true;
+            }
+
+            // get the required type and range
+            var type = null;
+            var range = null;
+            var maxLength = null;
             switch (column.type) {
                 case 'int':
                     type = Number;
@@ -816,8 +841,12 @@ angular.module('tn', [])
                     maxLength = column.maxLength / 2;
                     break;
                 case 'datetime':
+                    type = Date;
+                    range = [new Date(1753, 0, 1, 0, 0, 0, 0), new Date(9999, 11, 31, 23, 59, 59, 997)];
+                    break;
                 case 'smalldatetime':
                     type = Date;
+                    range = [new Date(1900, 0, 1, 0, 0, 0, 0), new Date(2079, 5, 6, 23, 59, 59, 0)];
                     break;
                 case 'decimal':
                     type = Number;
@@ -832,7 +861,32 @@ angular.module('tn', [])
                     type = Boolean;
                     break;
                 default:
-                    throw new InvalidOperationException('Die Spalte "' + column.name + '" kann nicht eingefügt oder aktualisiert werden da ihr Typ "' + column.type + '" wird nicht unterstützt.');
+                    failWithMessage('Die Spalte "' + column.name + '" kann nicht eingefügt oder aktualisiert werden da ihr Typ "' + column.type + '" wird nicht unterstützt.');
+                    return false;
+            }
+
+            // check the type
+            if (value.constructor !== type) {
+                failWithMessage('Der Javascript-Typ der Spalte "' + column.name + '" ist nicht geeignet für den SQL-Typ.');
+                return false;
+            }
+
+            // check the length
+            if (maxLength !== null && value.length > maxLength) {
+                failWithMessage('Die Länge des Wertes in Spalte "' + column.name + '" überschreitet das Maximum von ' + maxLength + '.');
+                return false;
+            }
+
+            // check the range
+            if (range !== null) {
+                if (value < range[0]) {
+                    failWithMessage('Der Wert der Spalte "' + column.name + '" liegt unterhalb des Minimums ' + range[0].toLocaleString() + '.');
+                    return false;
+                }
+                if (value > range[1]) {
+                    failWithMessage('Der Wert der Spalte "' + column.name + '" liegt oberhalb des Maximums ' + range[1].toLocaleString() + '.');
+                    return false;
+                }
             }
             return true;
         };
@@ -892,7 +946,7 @@ angular.module('tn', [])
                         throw new InvalidDataException('@@SCOPE_IDENTITY hat keinen Wert zurückgegeben.');
                     }
                     var id = batch.Records[0].$id;
-                    if (id == null || id.constructor !== Number || id < 1) {
+                    if (id == void 0 || id.constructor !== Number || id < 1) {
                         throw new InvalidDataException('Der Rückgabewert von @@SCOPE_IDENTITY ist ungültig.');
                     }
 
@@ -1153,7 +1207,7 @@ angular.module('tn', [])
                          '  CASE WHEN c.is_nullable = 1 THEN 0 ELSE 1 END AS required,\n' +
                          '  d.definition AS defaultValue,\n' +
                          '  CASE WHEN HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'UPDATE\',c.name,\'COLUMN\') = 1 THEN 0 ELSE 1 END AS readOnly,\n' +
-                         '  OBJECT_NAME(f.referenced_object_id) AS [references]\n' +
+                         '  OBJECT_NAME(f.referenced_object_id) AS referencedTable\n' +
                          'FROM\n' +
                          '  sys.columns AS c\n' +
                          '  JOIN\n' +
@@ -1244,135 +1298,200 @@ angular.module('tn', [])
     // map structures
     var tables = {};
     var references = {};
+    var labels = {};
 
     // update the settings of a new handsontable
-    var initialize = function (hotInstance, settings) {
-        // make sure the instance still exists
-        if (hotInstance.tableName in tables) {
-            var hotInstances = references[hotInstance.tableName];
-            for (var i = hotInstances.length - 1; i >= 0; i--) {
-                if (hotInstances[i] === hotInstance) {
-                    var table = tables[hotInstance.tableName];
-                    if (settings.columns === void 0) {
-                        settings.columns = [];
-                        for (var j = 0; j < table.columns.length; j++) {
-                            if (table.columns[j].type !== 'varbinary') {
-                                settings.columns.push({
-                                    data: table.columns[j].name,
-                                    title: table.columns[j].name
-                                });
-                            }
-                        }
-                    }
+    var labelsRenderer = function (instance, TD, row, col, prop, value, cellProperties) {
+        // find the label
+        if (value === null) {
+            value = '';
+        }
+        else {
+            if (typeof value !== 'number') {
+                value = Number(value);
+            }
+            if (cellProperties.referencedTable in labels) {
+                var label = labels[cellProperties.referencedTable];
+                if (value in label) {
+                    value = label[value];
+                }
+                else {
+                    value = '(' + cellProperties.referencedTable + ' #' + value + ' fehlt)';
+                }
+            }
+            else {
+                value = '(' + cellProperties.referencedTable + ' #' + value + ' nicht geladen)';
+            }
+        }
+        Handsontable.renderers.AutocompleteRenderer(instance, TD, row, col, prop, value, cellProperties);
+    };
+    var labelsComparer = function (sortOrder) {
+        // return the numeric comparer if there are no labels
+        if (!(this.referencedTable in labels)) {
+            return Handsontable.NumericCell.comparer(sortOrder);
+        }
 
-                    // enable sorting, resizing and limit row rendering
-                    settings.columnSorting = true;
-                    settings.manualColumnResize = true;
-                    settings.viewportColumnRenderingOffset = 2;
-                    settings.viewportRowRenderingOffset = 10;
-
-                    // adjust all columns
-                    for (var k = settings.columns.length - 1; k >= 0; k--) {
-                        var column = settings.columns[k];
-
-                        // always show the sort indicator
-                        column.sortIndicator = true;
-
-                        // check if the hot column matches a table column
-                        if (typeof column.data === 'string') {
-                            for (var l = table.columns.length - 1; l >= 0; l--) {
-                                var tableColumn = table.columns[l];
-                                if (tableColumn.name === column.data) {
-                                    // set the common attributes
-                                    if (tableColumn.readOnly) {
-                                        column.readOnly = true;
-                                    }
-                                    if (tableColumn.required) {
-                                        column.required = true;
-                                    }
-                                    column.language = 'de';
-
-                                    // set the type specific attributes
-                                    switch (tableColumn.type) {
-                                        case 'int':
-                                            column.type = 'numeric';
-                                            column.format = '0';
-                                            break;
-                                        case 'char':
-                                        case 'varchar':
-                                        case 'nchar':
-                                        case 'nvarchar':
-                                            column.type = 'text';
-                                            column.trimWhitespace = true;
-                                            break;
-                                        case 'datetime':
-                                            column.type = 'date';
-                                            column.dateFormat = 'DD.MM.YYYY';
-                                            break;
-                                        case 'decimal':
-                                            column.type = 'numeric';
-                                            if (column.format === void 0) {
-                                                column.format = "0";
-                                                if (tableColumn.scale > 0) {
-                                                    column.format += '.';
-                                                    for (var n = tableColumn.scale; n > 0; n--) {
-                                                        column.format += '0';
-                                                    }
-                                                }
-                                            }
-                                            break;
-                                        case 'money':
-                                            column.type = 'numeric';
-                                            if (column.format === void 0) {
-                                                column.format = '$ 0,0.00';
-                                            }
-                                            break;
-                                        case 'bit':
-                                            column.type = 'checkbox';
-                                            break;
-                                        default:
-                                            throw new InvalidOperationException('Spaltentyp "' + tableColumn.type + '" wird nicht unterstützt.');
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // set the settings and load the data
-                    hotInstance.updateSettings(settings);
-                    hotInstance.loadData(table.rows);
-                    break;
+        // generate the flags and compare function
+        var label = labels[this.referencedTable];
+        var aNotB = sortOrder ? 1 : -1;
+        var bNotA = sortOrder ? -1 : 1;
+        var compare = function (a, b) {
+            a = a.toLowerCase();
+            b = b.toLowerCase();
+            return a < b ? -1 : b < a ? 1 : 0;
+        };
+        if (window.Intl && window.Intl.Collator) {
+            var collator = new Intl.Collator(this.language);
+            compare = collator.compare;
+        }
+        return function (a, b) {
+            if (a[1] !== null && b[1] !== null) {
+                var hasA = a[1] in label;
+                var hasB = b[1] in label;
+                if (hasA && hasB) {
+                    return sortOrder ? compare(label[a[1]], label[b[1]]) : compare(label[b[1]], label[a[1]]);
+                }
+                else if (hasA) {
+                    return aNotB;
+                }
+                else if (hasB) {
+                    return bNotA;
+                }
+                else {
+                    return sortOrder ? a[1] - b[1] : b[1] - a[1];
+                }
+            }
+            else if (a[1] !== null) {
+                return aNotB;
+            }
+            else if (b[1] !== null) {
+                return bNotA;
+            }
+            else {
+                return 0;
+            }
+        }
+    };
+    var initializeView = function (table, hotInstance, settings) {
+        // create the columns array if necessary
+        if (!settings.columns) {
+            settings.columns = [];
+            for (var j = 0; j < table.columns.length; j++) {
+                if (table.columns[j].type !== 'varbinary') {
+                    settings.columns.push({
+                        data: table.columns[j].name,
+                        title: table.columns[j].name
+                    });
                 }
             }
         }
 
-        /*
-        var data = function (row) {
-        // try to find the referenced row
-        var id = row[columnName];
-        if (id) {
-        row = table.getRowById(id);
+        // enable sorting, resizing and limit row rendering
+        settings.columnSorting = true;
+        settings.manualColumnResize = true;
+        settings.viewportColumnRenderingOffset = 2;
+        settings.viewportRowRenderingOffset = 10;
 
-        // return either the lookup value or a missing reference string
-        if (row)
-        return lookup(row);
-        else
-        return '(' + tableName + ' #' + id + ' fehlt)';
+        // adjust all columns
+        for (var k = settings.columns.length - 1; k >= 0; k--) {
+            var column = settings.columns[k];
+
+            // always show the sort indicator
+            column.sortIndicator = true;
+
+            // check if the hot column matches a table column
+            if (typeof column.data === 'string') {
+                for (var l = table.columns.length - 1; l >= 0; l--) {
+                    var tableColumn = table.columns[l];
+                    if (tableColumn.name === column.data) {
+                        // set the common attributes
+                        if (tableColumn.readOnly) {
+                            column.readOnly = true;
+                        }
+                        if (tableColumn.required) {
+                            column.required = true;
+                        }
+                        column.language = 'de';
+
+                        // set the type specific attributes
+                        switch (tableColumn.type) {
+                            case 'int':
+                                column.type = 'numeric';
+                                column.format = '0';
+                                if (tableColumn.referencedTable) {
+                                    column.renderer = labelsRenderer;
+                                    column.comparer = labelsComparer;
+                                    column.className = void 0;
+                                    column.referencedTable = tableColumn.referencedTable;
+                                    column.selectOptions = function () {
+                                        return labels[column.referencedTable];
+                                    };
+                                }
+                                break;
+                            case 'char':
+                            case 'varchar':
+                            case 'nchar':
+                            case 'nvarchar':
+                                column.type = 'text';
+                                column.trimWhitespace = true;
+                                break;
+                            case 'datetime':
+                                column.type = 'date';
+                                column.dateFormat = 'DD.MM.YYYY';
+                                break;
+                            case 'decimal':
+                                column.type = 'numeric';
+                                if (!column.format) {
+                                    column.format = "0";
+                                    if (tableColumn.scale > 0) {
+                                        column.format += '.';
+                                        for (var n = tableColumn.scale; n > 0; n--) {
+                                            column.format += '0';
+                                        }
+                                    }
+                                }
+                                break;
+                            case 'money':
+                                column.type = 'numeric';
+                                if (!column.format) {
+                                    column.format = '$ 0,0.00';
+                                }
+                                break;
+                            case 'bit':
+                                column.type = 'checkbox';
+                                break;
+                            default:
+                                throw new InvalidOperationException('Spaltentyp "' + tableColumn.type + '" wird nicht unterstützt.');
+                        }
+                    }
+                }
+            }
         }
-        else
-        return '(leer)';
-        };*/
+
+        // set the settings and load the data
+        hotInstance.updateSettings(settings);
+        hotInstance.loadData(table.rows);
     };
 
     // helper functions to render foreign keys and base tables
-    var rowChange = function (table) {
+    var rowChangeForReferences = function (table) {
         // render all referencing hot tables
         var hotInstances = references[table.name];
         for (var i = hotInstances.length - 1; i >= 0; i--) {
             hotInstances[i].render();
         }
     };
-    var loadHotData = function (tableName, data) {
+    var rowChangeForLabels = function (table, oldRow, newRow) {
+        // update the labels
+        var label = labels[table.name];
+        if (oldRow) {
+            delete label[oldRow.$id];
+        }
+        if (newRow) {
+            label[newRow.$id] = ReferenceLabels[table.name](newRow);
+        }
+    };
+    var loadViewDate = function (tableName, data) {
         // load the data into all views of a certain table
         var hotInstances = references[tableName];
         for (var i = hotInstances.length - 1; i >= 0; i--) {
@@ -1398,28 +1517,38 @@ angular.module('tn', [])
             });
         }
 
-        // provide existing views with data and hook the handler
+        // provide existing views with data
         if (table.name in references) {
-            loadHotData(table.name, table.rows);
+            loadViewDate(table.name, table.rows);
         }
         else {
             references[table.name] = [];
         }
+
+        // hook the listeners
+        if (table.name in ReferenceLabels) {
+            labels[table.name] = {};
+            table.addRowChangeListener(rowChangeForLabels);
+        }
         table.ready(function () {
             if (!table.isDisposed()) {
-                table.addRowChangeListener(rowChange);
+                table.addRowChangeListener(rowChangeForReferences);
             }
-            rowChange(table, null, null);
+            rowChangeForReferences(table, null, null);
         });
     };
     var internalRemoveTable = function (table) {
-        // remove the table as view source and unhook the handler
-        loadHotData(table.name, []);
+        // remove the table as view source and unhook the handlers
+        loadViewDate(table.name, []);
+        if (table.name in ReferenceLabels) {
+            table.removeRowChangeListener(rowChangeForLabels);
+            delete labels[table.name];
+        }
         table.ready(function () {
             if (!table.isDisposed()) {
-                table.removeRowChangeListener(rowChange);
+                table.removeRowChangeListener(rowChangeForReferences);
             }
-            rowChange(table, null, null);
+            rowChangeForReferences(table, null, null);
         });
     };
 
@@ -1459,8 +1588,17 @@ angular.module('tn', [])
                 }
 
                 // check if the table can be reused
-                if (definition.name in oldTables && oldTables[definition.name].filter === definition.filter) {
-                    tables[definition.name] = oldTables[definition.name];
+                if (definition.name in oldTables) {
+                    if (oldTables[definition.name].filter === definition.filter) {
+                        tables[definition.name] = oldTables[definition.name];
+                    }
+                    else {
+                        // unload the old table before loading it with a different filter
+                        internalRemoveTable(oldTables[definition.name]);
+                        oldTables[definition.name].dispose();
+                        tables[definition.name] = table(definition.name, definition.filter);
+                        internalAddTable(tables[definition.name]);
+                    }
                     delete oldTables[definition.name];
                 }
                 else {
@@ -1531,7 +1669,18 @@ angular.module('tn', [])
             var hotInstance = new Handsontable(parentElement, { data: [] });
             hotInstance.tableName = tableName;
             references[tableName].push(hotInstance);
-            tables[tableName].ready(function () { initialize(hotInstance, settings); });
+            tables[tableName].ready(function () {
+                // make sure the table and instance still exist before initializing the view
+                if (tableName in tables) {
+                    var hotInstances = references[tableName];
+                    for (var i = hotInstances.length - 1; i >= 0; i--) {
+                        if (hotInstances[i] === hotInstance) {
+                            initializeView(tables[tableName], hotInstance, settings);
+                            break;
+                        }
+                    }
+                }
+            });
             return hotInstance;
         },
         destroyView: function (hotInstance) {
@@ -2138,6 +2287,7 @@ angular.module('tn', [])
                 { name: 'Bescheid', filter: dataSet.secondaryFilter(Roles.Management, Roles.Administration) },
                 { name: 'Zeitspanne_Austrittsgrund', hidden: true },
                 { name: 'Bescheid_Typ', hidden: true },
+                { name: 'Leistungsart', hidden: true },
                 { name: 'Einrichtung', hidden: true, filter: dataSet.primaryFilter(Roles.Management, Roles.Administration) }
             ],
             tabs: []

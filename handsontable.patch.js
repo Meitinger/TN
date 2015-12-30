@@ -12,7 +12,7 @@
         throw new Error('Sort function variable not found.');
     }
     var sortFunction = match[1];
-    sort = sort.replace(sortFunction + '(this.hot.sortOrder)', '(' + cellMeta + '.comparer||' + sortFunction + ')(this.hot.sortOrder)');
+    sort = sort.replace(sortFunction + '(this.hot.sortOrder)', '(typeof ' + cellMeta + '.comparer === "function" ? ' + cellMeta + '.comparer(this.hot.sortOrder) : ' + sortFunction + '(this.hot.sortOrder))');
     match = sort.match(/^\s*function\s*\(\s*\)\s*\{(.*)\}\s*$/);
     if (!match) {
         throw new Error('Function text not found.');
