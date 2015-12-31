@@ -50,13 +50,13 @@ ArgumentException.check = function (arg, name, constructor, optional) {
     if (arg.constructor !== constructor) {
         var getName = function (fn) {
             if (!fn) {
-                return "(ohne)";
+                return '(ohne)';
             }
             if (typeof fn.name === 'string') {
                 return fn.name;
             }
             var match = fn.toString().match(/^\s*function\s+(.*?)\s*\(/);
-            return match ? match[1] : "(unbekannt)";
+            return match ? match[1] : '(unbekannt)';
         };
         throw new ArgumentException('Der Wert ist vom Typ "' + getName(arg.constructor) + '", erwartet wurde "' + getName(constructor) + '".', name);
     }
@@ -146,7 +146,7 @@ angular.module('tn', [])
     'Einrichtung': function (row) { return row.Name; },
     'Leistungsart': function (row) { return row.Bezeichnung; },
     'Einheit': function (row) { return row.Bezeichnung; },
-    'Rechnung': function (row) { return row.$id + " " + row.Bezeichnung; }
+    'Rechnung': function (row) { return row.$id + ' ' + row.Bezeichnung; }
 })
 
 // SQL service
@@ -550,7 +550,7 @@ angular.module('tn', [])
             },
 			function (response) {
 			    // there is a network error, try again soon
-			    notification.error = response.statusText || "Zeitüberschreitung";
+			    notification.error = response.statusText || 'Zeitüberschreitung';
 			    $timeout(query, 10000);
 			}
 		);
@@ -1328,6 +1328,19 @@ angular.module('tn', [])
         }
         (cellProperties.readOnly ? Handsontable.renderers.TextRenderer : Handsontable.renderers.AutocompleteRenderer)(instance, TD, row, col, prop, value, cellProperties);
     };
+    var compareString = (function () {
+        if (window.Intl && window.Intl.Collator) {
+            var collator = new Intl.Collator('de');
+            return collator.compare;
+        }
+        else {
+            return function (a, b) {
+                a = a.toLowerCase();
+                b = b.toLowerCase();
+                return a < b ? -1 : b < a ? 1 : 0;
+            };
+        }
+    })();
     var labelsComparer = function (sortOrder) {
         // return the numeric comparer if there are no labels
         if (!(this.referencedTable in labels)) {
@@ -1338,21 +1351,12 @@ angular.module('tn', [])
         var label = labels[this.referencedTable];
         var aNotB = sortOrder ? 1 : -1;
         var bNotA = sortOrder ? -1 : 1;
-        var compare = function (a, b) {
-            a = a.toLowerCase();
-            b = b.toLowerCase();
-            return a < b ? -1 : b < a ? 1 : 0;
-        };
-        if (window.Intl && window.Intl.Collator) {
-            var collator = new Intl.Collator(this.language);
-            compare = collator.compare;
-        }
         return function (a, b) {
             if (a[1] !== null && b[1] !== null) {
                 var hasA = a[1] in label;
                 var hasB = b[1] in label;
                 if (hasA && hasB) {
-                    return sortOrder ? compare(label[a[1]], label[b[1]]) : compare(label[b[1]], label[a[1]]);
+                    return sortOrder ? compareString(label[a[1]], label[b[1]]) : compareString(label[b[1]], label[a[1]]);
                 }
                 else if (hasA) {
                     return aNotB;
@@ -1375,9 +1379,6 @@ angular.module('tn', [])
             }
         };
     };
-    var labelOptions = function () {
-        return labels[this.referencedTable];
-    };
     var formatLabel = function (value) {
         if (this.referencedTable in labels) {
             var label = labels[this.referencedTable];
@@ -1386,6 +1387,36 @@ angular.module('tn', [])
             }
         }
         return value.toLocaleString();
+    };
+    var LabelsEditor = Handsontable.editors.SelectEditor.prototype.extend();
+    LabelsEditor.prototype.prepare = function () {
+        Handsontable.editors.BaseEditor.prototype.prepare.apply(this, arguments);
+        // get and sort the options
+        var options = this.cellProperties.referencedTable in labels ? labels[this.cellProperties.referencedTable] : {};
+        var sortOptions = [];
+        for (var value in options) {
+            sortOptions.push([value, options[value]]);
+        }
+        sortOptions.sort(function (a, b) { return -compareString(a[1], b[1]); });
+
+        // clear all previous options
+        var child;
+        while (child = this.select.lastChild) {
+            this.select.removeChild(child);
+        }
+
+        // add the null option together with all the other options
+        sortOptions.push(['', '']);
+        for (var i = sortOptions.length - 1; i >= 0; i--) {
+            var optionElement = document.createElement('OPTION');
+            optionElement.value = sortOptions[i][0];
+            optionElement.text = sortOptions[i][1];
+            this.select.appendChild(optionElement);
+        }
+    };
+    LabelsEditor.prototype.getValue = function () {
+        // return null or a number
+        return this.select.value === '' ? null : Number(this.select.value);
     };
     var initializeView = function (table, hotInstance, settings) {
         // create the columns array if necessary
@@ -1434,11 +1465,11 @@ angular.module('tn', [])
                                 column.type = 'numeric';
                                 column.format = '0';
                                 if (tableColumn.referencedTable) {
+                                    column.editor = LabelsEditor;
                                     column.renderer = labelsRenderer;
                                     column.comparer = labelsComparer;
                                     column.className = void 0;
                                     column.referencedTable = tableColumn.referencedTable;
-                                    column.selectOptions = labelOptions;
                                     column.formatCopyable = formatLabel;
                                 }
                                 break;
@@ -1456,7 +1487,7 @@ angular.module('tn', [])
                             case 'decimal':
                                 column.type = 'numeric';
                                 if (!column.format) {
-                                    column.format = "0";
+                                    column.format = '0';
                                     if (tableColumn.scale > 0) {
                                         column.format += '.';
                                         for (var n = tableColumn.scale; n > 0; n--) {
@@ -1658,7 +1689,7 @@ angular.module('tn', [])
             // create a permission filter for the Einrichtung table
             var filter = 'IS_MEMBER(SUSER_SNAME(' + role + ')) = 1';
             if (superRole) {
-                filter += " OR IS_MEMBER('" + superRole + "') = 1";
+                filter += ' OR IS_MEMBER(\'' + superRole + '\') = 1';
             }
             return filter;
         },
@@ -1772,12 +1803,12 @@ angular.module('tn', [])
         // escape all entitites
         var escapeHtml = function (s) {
             var entityMap = {
-                "&": "&amp;",
-                "<": "&lt;",
-                ">": "&gt;",
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
                 '"': '&quot;',
                 "'": '&#39;',
-                "/": '&#47;'
+                '/': '&#47;'
             };
             return s.replace(/[&<>"'\/]/g, function (ch) { return entityMap[ch]; });
         };
@@ -2002,7 +2033,7 @@ angular.module('tn', [])
             var oldTime = zeitspanneId in attendance && weekDay in attendance[zeitspanneId] ?
                 formatTime(attendance[zeitspanneId][weekDay].Zusatz) :
                 '00:00';
-            UIkit.modal.prompt("Zusatz:", oldTime, function (newTime) {
+            UIkit.modal.prompt('Zusatz:', oldTime, function (newTime) {
                 var match = newTime.match(/^(\d\d):(\d\d)$/);
                 if (match && Number(match[1]) < 24 && Number(match[2]) < 60) {
                     changeAnwesenheit(zeitspanneId, weekDay, function (row) {
@@ -2055,7 +2086,7 @@ angular.module('tn', [])
             columns.push({
                 data: '$Anwesenheit.' + (i % 7),
                 width: 100,
-                renderer: "html",
+                renderer: 'html',
                 formatCopyable: hotFormatCopyable,
                 editor: false
             });
@@ -2174,7 +2205,12 @@ angular.module('tn', [])
     // create the view if this is the first time the tab is shown
     var createIfCurrentTab = function () {
         if (!hot && $scope.$index === $scope.main.currentTab) {
-            hot = dataSet.createView($scope.tab.name, $element[0], {});
+            hot = dataSet.createView($scope.tab.name, $element[0], {
+                beforeChange: function (changes, source) {
+                    // only allow changes by editors
+                    return source === 'edit' || source === 'undo';
+                }
+            });
         }
     };
     createIfCurrentTab();
