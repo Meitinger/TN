@@ -16,28 +16,25 @@
 
 USE [Teilnehmer_innen]
 GO
-/****** Objekt:  User [Training]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  User [Training]    Skriptdatum: 12/31/2015 14:13:50 ******/
 CREATE USER [Training] FOR LOGIN [AUFBAUWERK\000120]
 GO
-/****** Objekt:  User [Systemadministrator]    Skriptdatum: 12/16/2015 15:15:14 ******/
-CREATE USER [Systemadministrator] FOR LOGIN [AUFBAUWERK\m.meitinger] WITH DEFAULT_SCHEMA=[dbo]
-GO
-/****** Objekt:  User [Sekretariat]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  User [Sekretariat]    Skriptdatum: 12/31/2015 14:13:51 ******/
 CREATE USER [Sekretariat] FOR LOGIN [AUFBAUWERK\000910]
 GO
-/****** Objekt:  User [Rechnungswesen]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  User [Rechnungswesen]    Skriptdatum: 12/31/2015 14:13:51 ******/
 CREATE USER [Rechnungswesen] FOR LOGIN [AUFBAUWERK\000920]
 GO
-/****** Objekt:  User [Leitung]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  User [Leitung]    Skriptdatum: 12/31/2015 14:13:51 ******/
 CREATE USER [Leitung] FOR LOGIN [AUFBAUWERK\000999]
 GO
-/****** Objekt:  User [Integrationsassistenz]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  User [Integrationsassistenz]    Skriptdatum: 12/31/2015 14:13:51 ******/
 CREATE USER [Integrationsassistenz] FOR LOGIN [AUFBAUWERK\000110]
 GO
-/****** Objekt:  User [app]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  User [app]    Skriptdatum: 12/31/2015 14:13:51 ******/
 CREATE USER [app] FOR LOGIN [AUFBAUWERK\ERP$] WITH DEFAULT_SCHEMA=[dbo]
 GO
-/****** Objekt:  Table [dbo].[Einrichtung]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  Table [dbo].[Einrichtung]    Skriptdatum: 12/31/2015 14:13:54 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -65,7 +62,7 @@ CREATE NONCLUSTERED INDEX [IX_Einrichtung_Name] ON [dbo].[Einrichtung]
 	[Name] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[IstTelefonnummer]    Skriptdatum: 12/16/2015 15:15:15 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[IstTelefonnummer]    Skriptdatum: 12/31/2015 14:14:08 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -88,7 +85,7 @@ BEGIN
 	END
 END
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Schätzung]    Skriptdatum: 12/16/2015 15:15:15 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[Schätzung]    Skriptdatum: 12/31/2015 14:14:08 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -108,7 +105,7 @@ CREATE FUNCTION [dbo].[Schätzung](@Jahr int, @Monat int) RETURNS TABLE AS RETUR
 		B.Einrichtung, B.Leistungsart, A.Kostensatz
 )
 GO
-/****** Objekt:  StoredProcedure [dbo].[BerichteFehler]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  StoredProcedure [dbo].[BerichteFehler]    Skriptdatum: 12/31/2015 14:14:02 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -129,7 +126,7 @@ BEGIN
 	RAISERROR(@MESSAGE,@SEVERITY,@STATE)
 END
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[ErstelleFehler]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[ErstelleFehler]    Skriptdatum: 12/31/2015 14:14:02 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -143,7 +140,7 @@ BEGIN
 	END
 END
 GO
-/****** Objekt:  Table [dbo].[Feiertag]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  Table [dbo].[Feiertag]    Skriptdatum: 12/31/2015 14:13:54 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -164,7 +161,7 @@ CREATE NONCLUSTERED INDEX [IX_Feiertag_Datum] ON [dbo].[Feiertag]
 	[Datum] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  Table [dbo].[Einheit]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  Table [dbo].[Einheit]    Skriptdatum: 12/31/2015 14:13:53 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -191,7 +188,7 @@ CREATE NONCLUSTERED INDEX [IX_Einheit_Bezeichnung_ID] ON [dbo].[Einheit]
 	[ID] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[IstKlientennummer]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[IstKlientennummer]    Skriptdatum: 12/31/2015 14:14:08 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -205,7 +202,7 @@ BEGIN
 	END
 END
 GO
-/****** Objekt:  Table [dbo].[Rechnung]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  Table [dbo].[Rechnung]    Skriptdatum: 12/31/2015 14:13:57 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -222,7 +219,7 @@ CREATE TABLE [dbo].[Rechnung](
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[IstMehrzeiler]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[IstMehrzeiler]    Skriptdatum: 12/31/2015 14:14:08 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -249,57 +246,7 @@ BEGIN
 	END
 END
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[IstEinzeiler]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[IstEinzeiler](@Bezeichnung nvarchar(50)) RETURNS bit AS
-BEGIN
-	RETURN CASE
-		WHEN @Bezeichnung IS NULL THEN NULL
-		WHEN
-			LEN(@Bezeichnung) = 0 OR
-			@Bezeichnung LIKE N'%[' + CHAR(9) + CHAR(10) + CHAR(13) + N']%' OR
-			@Bezeichnung LIKE N' %' OR
-			@Bezeichnung LIKE N'%  %' OR
-			@Bezeichnung LIKE N'% '
-		THEN 0
-		ELSE 1
-	END
-END
-GO
-/****** Objekt:  Table [dbo].[Standort_Bereich]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-SET ANSI_PADDING ON
-GO
-CREATE TABLE [dbo].[Standort_Bereich](
-	[ID] [int] IDENTITY(1,1) NOT NULL,
-	[Code] [char](1) NOT NULL,
-	[Bezeichnung] [nvarchar](50) NOT NULL,
-	[Version] [timestamp] NOT NULL,
- CONSTRAINT [PK_Standort_Bereich] PRIMARY KEY CLUSTERED 
-(
-	[ID] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-) ON [PRIMARY]
-GO
-SET ANSI_PADDING OFF
-GO
-CREATE NONCLUSTERED INDEX [IX_Standort_Bereich_Bezeichnung] ON [dbo].[Standort_Bereich] 
-(
-	[Bezeichnung] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-GO
-CREATE NONCLUSTERED INDEX [IX_Standort_Bereich_Code] ON [dbo].[Standort_Bereich] 
-(
-	[Code] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-GO
-/****** Objekt:  Table [dbo].[Kostensatz]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  Table [dbo].[Kostensatz]    Skriptdatum: 12/31/2015 14:13:55 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -326,7 +273,27 @@ CREATE NONCLUSTERED INDEX [IX_Kostensatz_Bezeichnung_ID] ON [dbo].[Kostensatz]
 	[ID] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Time]    Skriptdatum: 12/16/2015 15:15:15 ******/
+/****** Objekt:  Table [dbo].[Praktikum_Kategorie]    Skriptdatum: 12/31/2015 14:13:57 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Praktikum_Kategorie](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[Bezeichnung] [nvarchar](50) NOT NULL,
+	[Version] [timestamp] NOT NULL,
+ CONSTRAINT [PK_Praktikum_Kategorie] PRIMARY KEY CLUSTERED 
+(
+	[ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_Praktikum_Kategorie_Bezeichnung] ON [dbo].[Praktikum_Kategorie] 
+(
+	[Bezeichnung] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+GO
+/****** Objekt:  UserDefinedFunction [dbo].[Time]    Skriptdatum: 12/31/2015 14:14:08 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -336,7 +303,7 @@ BEGIN
 	RETURN DATEADD(day,-DATEDIFF(day,0,@dt),@dt)
 END
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[YearDiff]    Skriptdatum: 12/16/2015 15:15:15 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[YearDiff]    Skriptdatum: 12/31/2015 14:14:08 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -372,27 +339,7 @@ BEGIN
 	RETURN @Diff
 END
 GO
-/****** Objekt:  Table [dbo].[Praktikum_Kategorie]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[Praktikum_Kategorie](
-	[ID] [int] IDENTITY(1,1) NOT NULL,
-	[Bezeichnung] [nvarchar](50) NOT NULL,
-	[Version] [timestamp] NOT NULL,
- CONSTRAINT [PK_Praktikum_Kategorie] PRIMARY KEY CLUSTERED 
-(
-	[ID] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-) ON [PRIMARY]
-GO
-CREATE NONCLUSTERED INDEX [IX_Praktikum_Kategorie_Bezeichnung] ON [dbo].[Praktikum_Kategorie] 
-(
-	[Bezeichnung] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-GO
-/****** Objekt:  UserDefinedFunction [dbo].[PlatzhalterProJahr]    Skriptdatum: 12/16/2015 15:15:15 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[PlatzhalterProJahr]    Skriptdatum: 12/31/2015 14:14:08 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -437,7 +384,7 @@ BEGIN
 	)
 END
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[IstKürzel]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[IstKürzel]    Skriptdatum: 12/31/2015 14:14:08 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -451,64 +398,57 @@ BEGIN
 	END
 END
 GO
-/****** Objekt:  Table [dbo].[Bescheid_Typ]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[IstEinzeiler]    Skriptdatum: 12/31/2015 14:14:07 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE TABLE [dbo].[Bescheid_Typ](
+CREATE FUNCTION [dbo].[IstEinzeiler](@Bezeichnung nvarchar(50)) RETURNS bit AS
+BEGIN
+	RETURN CASE
+		WHEN @Bezeichnung IS NULL THEN NULL
+		WHEN
+			LEN(@Bezeichnung) = 0 OR
+			@Bezeichnung LIKE N'%[' + CHAR(9) + CHAR(10) + CHAR(13) + N']%' OR
+			@Bezeichnung LIKE N' %' OR
+			@Bezeichnung LIKE N'%  %' OR
+			@Bezeichnung LIKE N'% '
+		THEN 0
+		ELSE 1
+	END
+END
+GO
+/****** Objekt:  Table [dbo].[Standort_Bereich]    Skriptdatum: 12/31/2015 14:13:58 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+SET ANSI_PADDING ON
+GO
+CREATE TABLE [dbo].[Standort_Bereich](
 	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[Code] [char](1) NOT NULL,
 	[Bezeichnung] [nvarchar](50) NOT NULL,
-	[Abrechnung] [bit] NOT NULL,
-	[Anschrift] [nvarchar](200) NULL,
 	[Version] [timestamp] NOT NULL,
- CONSTRAINT [PK_Bescheid_Typ] PRIMARY KEY CLUSTERED 
+ CONSTRAINT [PK_Standort_Bereich] PRIMARY KEY CLUSTERED 
 (
 	[ID] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-CREATE NONCLUSTERED INDEX [IX_Bescheid_Typ_Bezeichnung_ID] ON [dbo].[Bescheid_Typ] 
-(
-	[Bezeichnung] ASC,
-	[ID] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+SET ANSI_PADDING OFF
 GO
-/****** Objekt:  Table [dbo].[Zeitspanne_Austrittsgrund]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[Zeitspanne_Austrittsgrund](
-	[ID] [int] IDENTITY(1,1) NOT NULL,
-	[Bezeichnung] [nvarchar](50) NOT NULL,
-	[Version] [timestamp] NOT NULL,
- CONSTRAINT [PK_Zeitspanne_Austrittsgrund] PRIMARY KEY CLUSTERED 
-(
-	[ID] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-) ON [PRIMARY]
-GO
-CREATE NONCLUSTERED INDEX [IX_Zeitspanne_Austrittsgrund_Bezeichnung] ON [dbo].[Zeitspanne_Austrittsgrund] 
+CREATE NONCLUSTERED INDEX [IX_Standort_Bereich_Bezeichnung] ON [dbo].[Standort_Bereich] 
 (
 	[Bezeichnung] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  Table [dbo].[Fehler]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[Fehler](
-	[ID] [smallint] IDENTITY(1,1) NOT NULL,
-	[Meldung] [nvarchar](2048) NOT NULL,
- CONSTRAINT [PK_Fehler] PRIMARY KEY CLUSTERED 
+CREATE NONCLUSTERED INDEX [IX_Standort_Bereich_Code] ON [dbo].[Standort_Bereich] 
 (
-	[ID] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-) ON [PRIMARY]
+	[Code] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[IstGeschäftszahl]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[IstGeschäftszahl]    Skriptdatum: 12/31/2015 14:14:08 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -554,7 +494,64 @@ BEGIN
 	END
 END
 GO
-/****** Objekt:  Table [dbo].[Version]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  Table [dbo].[Bescheid_Typ]    Skriptdatum: 12/31/2015 14:13:53 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Bescheid_Typ](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[Bezeichnung] [nvarchar](50) NOT NULL,
+	[Abrechnung] [bit] NOT NULL,
+	[Anschrift] [nvarchar](200) NULL,
+	[Version] [timestamp] NOT NULL,
+ CONSTRAINT [PK_Bescheid_Typ] PRIMARY KEY CLUSTERED 
+(
+	[ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_Bescheid_Typ_Bezeichnung_ID] ON [dbo].[Bescheid_Typ] 
+(
+	[Bezeichnung] ASC,
+	[ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+GO
+/****** Objekt:  Table [dbo].[Zeitspanne_Austrittsgrund]    Skriptdatum: 12/31/2015 14:14:01 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Zeitspanne_Austrittsgrund](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[Bezeichnung] [nvarchar](50) NOT NULL,
+	[Version] [timestamp] NOT NULL,
+ CONSTRAINT [PK_Zeitspanne_Austrittsgrund] PRIMARY KEY CLUSTERED 
+(
+	[ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_Zeitspanne_Austrittsgrund_Bezeichnung] ON [dbo].[Zeitspanne_Austrittsgrund] 
+(
+	[Bezeichnung] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+GO
+/****** Objekt:  Table [dbo].[Fehler]    Skriptdatum: 12/31/2015 14:13:54 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Fehler](
+	[ID] [smallint] IDENTITY(1,1) NOT NULL,
+	[Meldung] [nvarchar](2048) NOT NULL,
+ CONSTRAINT [PK_Fehler] PRIMARY KEY CLUSTERED 
+(
+	[ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Objekt:  Table [dbo].[Version]    Skriptdatum: 12/31/2015 14:13:59 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -586,7 +583,7 @@ CREATE PRIMARY XML INDEX [XML_IX_Version] ON [dbo].[Version]
 	[Zeile]
 )WITH (PAD_INDEX  = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON)
 GO
-/****** Objekt:  Table [dbo].[Teilnehmer]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  Table [dbo].[Teilnehmer]    Skriptdatum: 12/31/2015 14:13:59 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -620,7 +617,7 @@ CREATE NONCLUSTERED INDEX [IX_Teilnehmer_Vorname_Nachname_Geburtstag] ON [dbo].[
 	[Geburtstag] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[IstEmail]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[IstEmail]    Skriptdatum: 12/31/2015 14:14:07 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -646,7 +643,7 @@ BEGIN
 	END
 END
 GO
-/****** Objekt:  Table [dbo].[Bescheid]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  Table [dbo].[Bescheid]    Skriptdatum: 12/31/2015 14:13:53 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -688,43 +685,7 @@ CREATE NONCLUSTERED INDEX [IX_Bescheid_Teilnehmer] ON [dbo].[Bescheid]
 	[Teilnehmer] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  Table [dbo].[Zeitspanne]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[Zeitspanne](
-	[ID] [int] IDENTITY(1,1) NOT NULL,
-	[Einrichtung] [int] NOT NULL,
-	[Teilnehmer] [int] NOT NULL,
-	[Eintritt] [datetime] NOT NULL,
-	[Austritt] [datetime] NULL,
-	[Austrittsgrund] [int] NULL,
-	[Austrittsnotiz] [nvarchar](200) NULL,
-	[Überprüft] [datetime] NULL,
-	[Version] [timestamp] NOT NULL,
- CONSTRAINT [PK_Zeitspanne] PRIMARY KEY CLUSTERED 
-(
-	[ID] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-) ON [PRIMARY]
-GO
-CREATE NONCLUSTERED INDEX [IX_Zeitspanne_Austritt_Austrittsgrund_Austrittsnotiz] ON [dbo].[Zeitspanne] 
-(
-	[Austritt] ASC,
-	[Austrittsgrund] ASC,
-	[Austrittsnotiz] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-GO
-CREATE NONCLUSTERED INDEX [IX_Zeitspanne_Einrichtung_Teilnehmer_Eintritt_Austritt] ON [dbo].[Zeitspanne] 
-(
-	[Einrichtung] ASC,
-	[Teilnehmer] ASC,
-	[Eintritt] ASC,
-	[Austritt] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-GO
-/****** Objekt:  Table [dbo].[Planung]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  Table [dbo].[Planung]    Skriptdatum: 12/31/2015 14:13:56 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -751,7 +712,7 @@ CREATE NONCLUSTERED INDEX [IX_Planung_Einrichtung_Leistungsart_Jahr_Monat] ON [d
 	[Monat] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  Table [dbo].[Praktikum]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  Table [dbo].[Praktikum]    Skriptdatum: 12/31/2015 14:13:57 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -779,7 +740,43 @@ CREATE NONCLUSTERED INDEX [IX_Praktikum_Teilnehmer_Von_Bis] ON [dbo].[Praktikum]
 	[Bis] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  Table [dbo].[Leistungsart]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  Table [dbo].[Zeitspanne]    Skriptdatum: 12/31/2015 14:14:00 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Zeitspanne](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[Einrichtung] [int] NOT NULL,
+	[Teilnehmer] [int] NOT NULL,
+	[Eintritt] [datetime] NOT NULL,
+	[Überprüft] [datetime] NULL,
+	[Austritt] [datetime] NULL,
+	[Austrittsgrund] [int] NULL,
+	[Austrittsnotiz] [nvarchar](200) NULL,
+	[Version] [timestamp] NOT NULL,
+ CONSTRAINT [PK_Zeitspanne] PRIMARY KEY CLUSTERED 
+(
+	[ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_Zeitspanne_Austritt_Austrittsgrund_Austrittsnotiz] ON [dbo].[Zeitspanne] 
+(
+	[Austritt] ASC,
+	[Austrittsgrund] ASC,
+	[Austrittsnotiz] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_Zeitspanne_Einrichtung_Teilnehmer_Eintritt_Austritt] ON [dbo].[Zeitspanne] 
+(
+	[Einrichtung] ASC,
+	[Teilnehmer] ASC,
+	[Eintritt] ASC,
+	[Austritt] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+GO
+/****** Objekt:  Table [dbo].[Leistungsart]    Skriptdatum: 12/31/2015 14:13:55 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -807,88 +804,7 @@ CREATE NONCLUSTERED INDEX [IX_Leistungsart_Bezeichnung_ID] ON [dbo].[Leistungsar
 	[ID] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  Table [dbo].[Abrechnung]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[Abrechnung](
-	[ID] [int] IDENTITY(1,1) NOT NULL,
-	[Rechnung] [int] NOT NULL,
-	[Bescheid] [int] NOT NULL,
-	[Datum] [datetime] NOT NULL,
-	[Preis] [money] NOT NULL,
-	[Menge] [decimal](9, 4) NOT NULL,
-	[Kostensatz] [int] NOT NULL,
-	[Version] [timestamp] NOT NULL,
- CONSTRAINT [PK_Abrechnung] PRIMARY KEY CLUSTERED 
-(
-	[ID] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-) ON [PRIMARY]
-GO
-CREATE NONCLUSTERED INDEX [IX_Abrechnung_Bescheid_Datum] ON [dbo].[Abrechnung] 
-(
-	[Bescheid] ASC,
-	[Datum] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-GO
-CREATE NONCLUSTERED INDEX [IX_Abrechnung_Rechnung] ON [dbo].[Abrechnung] 
-(
-	[Rechnung] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-GO
-/****** Objekt:  Table [dbo].[Standort]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-SET ANSI_PADDING ON
-GO
-CREATE TABLE [dbo].[Standort](
-	[ID] [int] IDENTITY(1,1) NOT NULL,
-	[Name] [nvarchar](50) NOT NULL,
-	[Adresse] [nvarchar](200) NOT NULL,
-	[Telefon] [varchar](50) NULL,
-	[Fax] [varchar](50) NULL,
-	[Email] [varchar](200) NULL,
-	[Bereich] [int] NOT NULL,
-	[Version] [timestamp] NOT NULL,
- CONSTRAINT [PK_Standort] PRIMARY KEY CLUSTERED 
-(
-	[ID] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-) ON [PRIMARY]
-GO
-SET ANSI_PADDING OFF
-GO
-/****** Objekt:  Table [dbo].[Verrechnungssatz]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[Verrechnungssatz](
-	[ID] [int] IDENTITY(1,1) NOT NULL,
-	[Leistungsart] [int] NOT NULL,
-	[Kostensatz] [int] NOT NULL,
-	[Jahr] [int] NOT NULL,
-	[Preis] [money] NOT NULL,
-	[Version] [timestamp] NOT NULL,
- CONSTRAINT [PK_Verrechnungssatz] PRIMARY KEY CLUSTERED 
-(
-	[ID] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-) ON [PRIMARY]
-GO
-CREATE NONCLUSTERED INDEX [IX_Verrechnungssatz_Leistungsart_Kostensatz_Jahr_ID] ON [dbo].[Verrechnungssatz] 
-(
-	[Leistungsart] ASC,
-	[Kostensatz] ASC,
-	[Jahr] ASC,
-	[ID] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-GO
-/****** Objekt:  Table [dbo].[Anwesenheit]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  Table [dbo].[Anwesenheit]    Skriptdatum: 12/31/2015 14:13:52 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -922,7 +838,88 @@ CREATE NONCLUSTERED INDEX [IX_Anwesenheit_Zeitspanne_Datum] ON [dbo].[Anwesenhei
 	[Datum] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  StoredProcedure [dbo].[ErstelleAbrechnung]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  Table [dbo].[Abrechnung]    Skriptdatum: 12/31/2015 14:13:51 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Abrechnung](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[Rechnung] [int] NOT NULL,
+	[Bescheid] [int] NOT NULL,
+	[Datum] [datetime] NOT NULL,
+	[Preis] [money] NOT NULL,
+	[Menge] [decimal](9, 4) NOT NULL,
+	[Kostensatz] [int] NOT NULL,
+	[Version] [timestamp] NOT NULL,
+ CONSTRAINT [PK_Abrechnung] PRIMARY KEY CLUSTERED 
+(
+	[ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_Abrechnung_Bescheid_Datum] ON [dbo].[Abrechnung] 
+(
+	[Bescheid] ASC,
+	[Datum] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_Abrechnung_Rechnung] ON [dbo].[Abrechnung] 
+(
+	[Rechnung] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+GO
+/****** Objekt:  Table [dbo].[Standort]    Skriptdatum: 12/31/2015 14:13:58 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+SET ANSI_PADDING ON
+GO
+CREATE TABLE [dbo].[Standort](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[Name] [nvarchar](50) NOT NULL,
+	[Adresse] [nvarchar](200) NOT NULL,
+	[Telefon] [varchar](50) NULL,
+	[Fax] [varchar](50) NULL,
+	[Email] [varchar](200) NULL,
+	[Bereich] [int] NOT NULL,
+	[Version] [timestamp] NOT NULL,
+ CONSTRAINT [PK_Standort] PRIMARY KEY CLUSTERED 
+(
+	[ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_PADDING OFF
+GO
+/****** Objekt:  Table [dbo].[Verrechnungssatz]    Skriptdatum: 12/31/2015 14:13:59 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Verrechnungssatz](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[Leistungsart] [int] NOT NULL,
+	[Kostensatz] [int] NOT NULL,
+	[Jahr] [int] NOT NULL,
+	[Preis] [money] NOT NULL,
+	[Version] [timestamp] NOT NULL,
+ CONSTRAINT [PK_Verrechnungssatz] PRIMARY KEY CLUSTERED 
+(
+	[ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_Verrechnungssatz_Leistungsart_Kostensatz_Jahr_ID] ON [dbo].[Verrechnungssatz] 
+(
+	[Leistungsart] ASC,
+	[Kostensatz] ASC,
+	[Jahr] ASC,
+	[ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+GO
+/****** Objekt:  StoredProcedure [dbo].[ErstelleAbrechnung]    Skriptdatum: 12/31/2015 14:14:02 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1042,42 +1039,7 @@ BEGIN
 	CLOSE Typen
 END
 GO
-/****** Objekt:  Trigger [ArchiviereEinrichtung]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[ArchiviereEinrichtung] ON [dbo].[Einrichtung] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-			*
-		FROM inserted AS I2
-		WHERE I1.ID = I2.ID
-		FOR XML PATH('Einrichtung')
-	)
-	FROM inserted AS I1
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			'Gelöscht' AS [@Aktion],
-			ID
-		FROM deleted AS D2
-		WHERE D1.ID = D2.ID
-		FOR XML PATH('Einrichtung')
-	)
-	FROM deleted AS D1
-	WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-END
-GO
-/****** Objekt:  View [dbo].[Tagsatzplanung]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  View [dbo].[Tagsatzplanung]    Skriptdatum: 12/31/2015 14:14:02 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1119,7 +1081,7 @@ FROM
 	dbo.Abrechnung AS A ON A.Bescheid = B.ID AND YEAR(A.Datum) <= P.Jahr AND MONTH(A.Datum) = P.Monat
 GROUP BY P.Jahr, P.Monat, P.Einrichtung, E.Name, P.Leistungsart, L.Bezeichnung
 GO
-/****** Objekt:  View [dbo].[Druckform]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  View [dbo].[Druckform]    Skriptdatum: 12/31/2015 14:14:02 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1164,7 +1126,7 @@ GROUP BY
 	K.Kürzel,
 	A.Preis
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Standort]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Standort]    Skriptdatum: 12/31/2015 14:14:06 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1192,7 +1154,7 @@ UNION
 	WHERE dbo.IstEmail(Email) = 0
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Anwesenheit]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Anwesenheit]    Skriptdatum: 12/31/2015 14:14:04 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1221,42 +1183,7 @@ UNION
 		)
 )
 GO
-/****** Objekt:  Trigger [ArchiviereAnwesenheit]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[ArchiviereAnwesenheit] ON [dbo].[Anwesenheit] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-			*
-		FROM inserted AS I2
-		WHERE I1.ID = I2.ID
-		FOR XML PATH('Anwesenheit')
-	)
-	FROM inserted AS I1
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			'Gelöscht' AS [@Aktion],
-			ID
-		FROM deleted AS D2
-		WHERE D1.ID = D2.ID
-		FOR XML PATH('Anwesenheit')
-	)
-	FROM deleted AS D1
-	WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-END
-GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Feiertag]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Feiertag]    Skriptdatum: 12/31/2015 14:14:05 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1282,42 +1209,400 @@ UNION
 		)
 )
 GO
-/****** Objekt:  Trigger [ArchiviereFeiertag]    Skriptdatum: 12/16/2015 15:15:15 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Zeitspanne]    Skriptdatum: 12/31/2015 14:14:07 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE TRIGGER [dbo].[ArchiviereFeiertag] ON [dbo].[Feiertag] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-			*
-		FROM inserted AS I2
-		WHERE I1.ID = I2.ID
-		FOR XML PATH('Feiertag')
-	)
-	FROM inserted AS I1
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			'Gelöscht' AS [@Aktion],
-			ID
-		FROM deleted AS D2
-		WHERE D1.ID = D2.ID
-		FOR XML PATH('Feiertag')
-	)
-	FROM deleted AS D1
-	WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-END
+CREATE FUNCTION [dbo].[Fehler_Zeitspanne]() RETURNS TABLE AS RETURN
+(
+	SELECT ID, dbo.ErstelleFehler(4,'Zeitspanne','Eintritt') AS Fehler
+	FROM dbo.Zeitspanne
+	WHERE dbo.Time(Eintritt) <> 0
+UNION
+	SELECT ID, dbo.ErstelleFehler(4,'Zeitspanne','Austritt') AS Fehler
+	FROM dbo.Zeitspanne
+	WHERE dbo.Time(Austritt) <> 0
+UNION
+	SELECT ID, dbo.ErstelleFehler(37,'Zeitspanne','Austrittsnotiz') AS Fehler
+	FROM dbo.Zeitspanne
+	WHERE dbo.IstMehrzeiler(Austrittsnotiz) = 0
+UNION
+	SELECT ID, dbo.ErstelleFehler(4,'Zeitspanne','Überprüft') AS Fehler
+	FROM dbo.Zeitspanne
+	WHERE dbo.Time(Überprüft) <> 0
+UNION
+	SELECT ID, dbo.ErstelleFehler(29,'Zeitspanne',DEFAULT) AS Fehler
+	FROM dbo.Zeitspanne
+	WHERE Eintritt > Austritt
+UNION
+	SELECT ID, dbo.ErstelleFehler(59,'Zeitspanne',DEFAULT) AS Fehler
+	FROM dbo.Zeitspanne
+	WHERE Überprüft < Eintritt OR Austritt < Überprüft
+UNION
+	SELECT ID, dbo.ErstelleFehler(57,'Zeitspanne',DEFAULT) AS Fehler
+	FROM dbo.Zeitspanne
+	WHERE
+		Austritt IS NULL AND (Austrittsgrund IS NOT NULL OR Austrittsnotiz IS NOT NULL) OR
+		Austritt IS NOT NULL AND Austrittsgrund IS NULL
+UNION
+	SELECT Z1.ID, dbo.ErstelleFehler(55,'Zeitspanne',DEFAULT) AS Fehler
+	FROM dbo.Zeitspanne AS Z1
+	WHERE
+		EXISTS
+		(
+			SELECT *
+			FROM dbo.Zeitspanne AS Z2
+			WHERE
+				Z1.ID <> Z2.ID AND
+				Z1.Einrichtung = Z2.Einrichtung AND
+				Z1.Teilnehmer = Z2.Teilnehmer AND
+				(Z1.Eintritt <= Z2.Austritt OR Z2.Austritt IS NULL) AND (Z1.Austritt IS NULL OR Z1.Austritt >= Z2.Eintritt)
+		)
+)
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Bescheid]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Einrichtung]    Skriptdatum: 12/31/2015 14:14:05 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE FUNCTION [dbo].[Fehler_Einrichtung]() RETURNS TABLE AS RETURN
+(
+	SELECT ID, dbo.ErstelleFehler(36,'Einrichtung','Name') AS Fehler
+	FROM dbo.Einrichtung
+	WHERE dbo.IstEinzeiler(Name) = 0
+UNION
+	SELECT E1.ID, dbo.ErstelleFehler(16,'Einrichtung','Name') AS Fehler
+	FROM dbo.Einrichtung AS E1
+	WHERE
+		EXISTS
+		(
+			SELECT *
+			FROM dbo.Einrichtung AS E2
+			WHERE E1.ID <> E2.ID AND E1.Name = E2.Name
+		)
+)
+GO
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Verrechnungssatz_Platzhalter]    Skriptdatum: 12/31/2015 14:14:04 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE FUNCTION [dbo].[Fehler__Verrechnungssatz_Platzhalter]() RETURNS TABLE AS RETURN
+(
+	SELECT
+		V.ID AS Verrechnungssatz,
+		L.ID AS Leistungsart,
+		K.ID AS Kostensatz,
+		dbo.ErstelleFehler(23,DEFAULT,DEFAULT) AS Fehler
+	FROM
+		dbo.Verrechnungssatz AS V JOIN
+		dbo.Leistungsart AS L ON V.Leistungsart = L.ID JOIN
+		dbo.Kostensatz AS K ON V.Kostensatz = K.ID
+	WHERE
+		K.Platzhalter = 1 AND
+		L.Platzhalter = 0
+)
+GO
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Kostensatz]    Skriptdatum: 12/31/2015 14:14:05 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE FUNCTION [dbo].[Fehler_Kostensatz]() RETURNS TABLE AS RETURN
+(
+	SELECT ID, dbo.ErstelleFehler(36,'Kostensatz','Bezeichnung') AS Fehler
+	FROM dbo.Kostensatz
+	WHERE dbo.IstEinzeiler(Bezeichnung) = 0
+UNION
+	SELECT ID, dbo.ErstelleFehler(38,'Kostensatz','Kürzel') AS Fehler
+	FROM dbo.Kostensatz
+	WHERE dbo.IstKürzel(Kürzel) = 0
+UNION
+	SELECT K1.ID, dbo.ErstelleFehler(16,'Kostensatz','Bezeichnung') AS Fehler
+	FROM dbo.Kostensatz AS K1
+	WHERE
+		EXISTS
+		(
+			SELECT *
+			FROM dbo.Kostensatz AS K2
+			WHERE K1.ID <> K2.ID AND K1.Bezeichnung = K2.Bezeichnung
+		)
+)
+GO
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Rechnung]    Skriptdatum: 12/31/2015 14:14:06 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE FUNCTION [dbo].[Fehler_Rechnung]() RETURNS TABLE AS RETURN
+(
+	SELECT ID, dbo.ErstelleFehler(36,'Rechnung','Bezeichnung') AS Fehler
+	FROM dbo.Rechnung
+	WHERE dbo.IstEinzeiler(Bezeichnung) = 0
+UNION
+	SELECT ID, dbo.ErstelleFehler(4,'Rechnung','Datum') AS Fehler
+	FROM dbo.Rechnung
+	WHERE dbo.Time(Datum) <> 0
+UNION
+	SELECT ID, dbo.ErstelleFehler(37,'Rechnung','Kommentar') AS Fehler
+	FROM dbo.Rechnung
+	WHERE dbo.IstMehrzeiler(Kommentar) = 0
+)
+GO
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Leistungsart]    Skriptdatum: 12/31/2015 14:14:06 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE FUNCTION [dbo].[Fehler_Leistungsart]() RETURNS TABLE AS RETURN
+(
+	SELECT ID, dbo.ErstelleFehler(36,'Leistungsart','Bezeichnung') AS Fehler
+	FROM dbo.Leistungsart
+	WHERE dbo.IstEinzeiler(Bezeichnung) = 0
+UNION
+	SELECT ID, dbo.ErstelleFehler(38,'Leistungsart','Kürzel') AS Fehler
+	FROM dbo.Leistungsart
+	WHERE dbo.IstKürzel(Kürzel) = 0
+UNION
+	SELECT ID, dbo.ErstelleFehler(39,'Leistungsart','Platzhalter') AS Fehler
+	FROM dbo.Leistungsart
+	WHERE Platzhalter < 0
+UNION
+	SELECT L1.ID, dbo.ErstelleFehler(16,'Leistungsart','Bezeichnung') AS Fehler
+	FROM dbo.Leistungsart AS L1
+	WHERE
+		EXISTS
+		(
+			SELECT *
+			FROM dbo.Leistungsart AS L2
+			WHERE L1.ID <> L2.ID AND L1.Bezeichnung = L2.Bezeichnung
+		)
+)
+GO
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Planung]    Skriptdatum: 12/31/2015 14:14:06 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE FUNCTION [dbo].[Fehler_Planung]() RETURNS TABLE AS RETURN
+(
+	SELECT ID, dbo.ErstelleFehler(39,'Planung','Schätzung') AS Fehler
+	FROM dbo.Planung
+	WHERE Schätzung < 0
+UNION
+	SELECT ID, dbo.ErstelleFehler(40,'Planung','Monat') AS Fehler
+	FROM dbo.Planung
+	WHERE Monat NOT BETWEEN 1 AND 12
+UNION
+	SELECT P1.ID, dbo.ErstelleFehler(55,'Planung',DEFAULT) AS Fehler
+	FROM dbo.Planung AS P1
+	WHERE
+		EXISTS
+		(
+			SELECT *
+			FROM dbo.Planung AS P2
+			WHERE
+				P1.ID <> P2.ID AND
+				P1.Einrichtung = P2.Einrichtung AND
+				P1.Leistungsart = P2.Leistungsart AND
+				P1.Jahr = P2.Jahr AND
+				P1.Monat = P2.Monat
+		)
+)
+GO
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Praktikum]    Skriptdatum: 12/31/2015 14:14:06 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE FUNCTION [dbo].[Fehler_Praktikum]() RETURNS TABLE AS RETURN
+(
+	SELECT ID, dbo.ErstelleFehler(4,'Praktikum','Von') AS Fehler
+	FROM dbo.Praktikum
+	WHERE dbo.Time(Von) <> 0
+UNION
+	SELECT ID, dbo.ErstelleFehler(4,'Praktikum','Bis') AS Fehler
+	FROM dbo.Praktikum
+	WHERE dbo.Time(Bis) <> 0
+UNION
+	SELECT ID, dbo.ErstelleFehler(29,'Praktikum',DEFAULT) AS Fehler
+	FROM dbo.Praktikum
+	WHERE Von > Bis
+)
+GO
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Teilnehmer]    Skriptdatum: 12/31/2015 14:14:07 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE FUNCTION [dbo].[Fehler_Teilnehmer]() RETURNS TABLE AS RETURN
+(
+	SELECT ID, dbo.ErstelleFehler(36,'Teilnehmer','Vorname') AS Fehler
+	FROM dbo.Teilnehmer
+	WHERE dbo.IstEinzeiler(Vorname) = 0
+UNION
+	SELECT ID, dbo.ErstelleFehler(36,'Teilnehmer','Nachname') AS Fehler
+	FROM dbo.Teilnehmer
+	WHERE dbo.IstEinzeiler(Nachname) = 0
+UNION
+	SELECT ID, dbo.ErstelleFehler(4,'Teilnehmer','Geburtstag') AS Fehler
+	FROM dbo.Teilnehmer
+	WHERE dbo.Time(Geburtstag) <> 0
+UNION
+	SELECT ID, dbo.ErstelleFehler(48,'Teilnehmer','Klientennummer') AS Fehler
+	FROM dbo.Teilnehmer
+	WHERE dbo.IstKlientennummer(Klientennummer) = 0
+UNION
+	SELECT T1.ID, dbo.ErstelleFehler(16,'Teilnehmer','Klientennummer') AS Fehler
+	FROM dbo.Teilnehmer AS T1
+	WHERE
+		EXISTS
+		(
+			SELECT *
+			FROM dbo.Teilnehmer AS T2
+			WHERE T1.ID <> T2.ID AND T1.Klientennummer = T2.Klientennummer
+		)
+UNION
+	SELECT T1.ID, dbo.ErstelleFehler(55,'Teilnehmer',DEFAULT) AS Fehler
+	FROM dbo.Teilnehmer AS T1
+	WHERE
+		EXISTS
+		(
+			SELECT *
+			FROM dbo.Teilnehmer AS T2
+			WHERE
+				T1.ID <> T2.ID AND
+				T1.Vorname = T2.Vorname AND
+				T1.Nachname = T2.Nachname AND
+				T1.Geburtstag = T2.Geburtstag
+		)
+)
+GO
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Standort_Bereich]    Skriptdatum: 12/31/2015 14:14:07 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE FUNCTION [dbo].[Fehler_Standort_Bereich]() RETURNS TABLE AS RETURN
+(
+	SELECT ID, dbo.ErstelleFehler(36,'Standort_Bereich','Bezeichnung') AS Fehler
+	FROM dbo.Standort_Bereich
+	WHERE dbo.IstEinzeiler(Bezeichnung) = 0
+UNION
+	SELECT ID, dbo.ErstelleFehler(50,'Standort_Bereich','Code') AS Fehler
+	FROM dbo.Standort_Bereich
+	WHERE Code NOT BETWEEN 'A' AND 'Z' COLLATE Latin1_General_BIN
+UNION
+	SELECT S1.ID, dbo.ErstelleFehler(16,'Standort_Bereich','Bezeichnung') AS Fehler
+	FROM dbo.Standort_Bereich AS S1
+	WHERE
+		EXISTS
+		(
+			SELECT *
+			FROM dbo.Standort_Bereich AS S2
+			WHERE S1.ID <> S2.ID AND S1.Bezeichnung = S2.Bezeichnung
+		)
+UNION
+	SELECT S1.ID, dbo.ErstelleFehler(16,'Standort_Bereich','Code') AS Fehler
+	FROM dbo.Standort_Bereich AS S1
+	WHERE
+		EXISTS
+		(
+			SELECT *
+			FROM dbo.Standort_Bereich AS S2
+			WHERE S1.ID <> S2.ID AND S1.Code = S2.Code
+		)
+)
+GO
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Anwesenheit_Zeitspanne]    Skriptdatum: 12/31/2015 14:14:03 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE FUNCTION [dbo].[Fehler__Anwesenheit_Zeitspanne]() RETURNS TABLE AS RETURN
+(
+	SELECT
+		A.ID AS Anwesenheit,
+		Z.ID AS Zeitspanne,
+		dbo.ErstelleFehler(58,DEFAULT,DEFAULT) AS Fehler
+	FROM
+		dbo.Anwesenheit AS A JOIN
+		dbo.Zeitspanne AS Z ON A.Zeitspanne = Z.ID
+	WHERE
+		A.Datum < Z.Eintritt OR (Z.Austritt IS NOT NULL AND A.Datum > Z.Austritt)
+)
+GO
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Zeitspanne_Austrittsgrund]    Skriptdatum: 12/31/2015 14:14:07 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE FUNCTION [dbo].[Fehler_Zeitspanne_Austrittsgrund]() RETURNS TABLE AS RETURN
+(
+	SELECT ID, dbo.ErstelleFehler(36,'Zeitspanne_Austrittsgrund','Bezeichnung') AS Fehler
+	FROM dbo.Zeitspanne_Austrittsgrund
+	WHERE dbo.IstEinzeiler(Bezeichnung) = 0
+UNION
+	SELECT A1.ID, dbo.ErstelleFehler(16,'Zeitspanne_Austrittsgrund','Bezeichnung') AS Fehler
+	FROM dbo.Zeitspanne_Austrittsgrund AS A1
+	WHERE
+		EXISTS
+		(
+			SELECT *
+			FROM dbo.Zeitspanne_Austrittsgrund AS A2
+			WHERE A1.ID <> A2.ID AND A1.Bezeichnung = A2.Bezeichnung
+		)
+)
+GO
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Abrechnung_Bescheid]    Skriptdatum: 12/31/2015 14:14:03 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE FUNCTION [dbo].[Fehler__Abrechnung_Bescheid]() RETURNS TABLE AS RETURN
+(
+	SELECT
+		A.ID AS Abrechnung,
+		B.ID AS Bescheid,
+		dbo.ErstelleFehler(12,DEFAULT,DEFAULT) AS Fehler
+	FROM
+		dbo.Abrechnung AS A JOIN
+		dbo.Bescheid AS B ON A.Bescheid = B.ID
+	WHERE
+		NOT (A.Datum BETWEEN B.Beginn AND B.Ende)
+)
+GO
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Abrechnung]    Skriptdatum: 12/31/2015 14:14:04 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE FUNCTION [dbo].[Fehler_Abrechnung]() RETURNS TABLE AS RETURN
+(
+	SELECT ID, dbo.ErstelleFehler(4,'Abrechnung','Datum') AS Fehler
+	FROM dbo.Abrechnung
+	WHERE dbo.Time(Datum) <> 0
+UNION
+	SELECT ID, dbo.ErstelleFehler(5,'Abrechnung','Dauer') AS Fehler
+	FROM dbo.Abrechnung
+	WHERE Menge <= 0
+UNION
+	SELECT A1.ID, dbo.ErstelleFehler(55,'Abrechnung',DEFAULT) AS Fehler
+	FROM dbo.Abrechnung AS A1
+	WHERE
+		EXISTS
+		(
+			SELECT *
+			FROM dbo.Abrechnung AS A2
+			WHERE
+				A1.ID <> A2.ID AND
+				A1.Bescheid = A2.Bescheid AND
+				A1.Datum = A2.Datum
+		)
+)
+GO
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Bescheid]    Skriptdatum: 12/31/2015 14:14:05 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1373,177 +1658,145 @@ UNION
 		)
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Einrichtung]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Bescheid_Maximum]    Skriptdatum: 12/31/2015 14:14:04 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE FUNCTION [dbo].[Fehler_Einrichtung]() RETURNS TABLE AS RETURN
-(
-	SELECT ID, dbo.ErstelleFehler(36,'Einrichtung','Name') AS Fehler
-	FROM dbo.Einrichtung
-	WHERE dbo.IstEinzeiler(Name) = 0
-UNION
-	SELECT E1.ID, dbo.ErstelleFehler(16,'Einrichtung','Name') AS Fehler
-	FROM dbo.Einrichtung AS E1
-	WHERE
-		EXISTS
-		(
-			SELECT *
-			FROM dbo.Einrichtung AS E2
-			WHERE E1.ID <> E2.ID AND E1.Name = E2.Name
-		)
-)
-GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Verrechnungssatz_Platzhalter]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[Fehler__Verrechnungssatz_Platzhalter]() RETURNS TABLE AS RETURN
+CREATE FUNCTION [dbo].[Fehler__Bescheid_Maximum]() RETURNS TABLE AS RETURN
 (
 	SELECT
-		V.ID AS Verrechnungssatz,
-		L.ID AS Leistungsart,
-		K.ID AS Kostensatz,
-		dbo.ErstelleFehler(23,DEFAULT,DEFAULT) AS Fehler
+		B.ID AS Bescheid,
+		dbo.ErstelleFehler(21,DEFAULT,DEFAULT) AS Fehler
 	FROM
-		dbo.Verrechnungssatz AS V JOIN
-		dbo.Leistungsart AS L ON V.Leistungsart = L.ID JOIN
-		dbo.Kostensatz AS K ON V.Kostensatz = K.ID
+		dbo.Bescheid AS B JOIN
+		dbo.Abrechnung AS A ON A.Bescheid = B.ID
 	WHERE
-		K.Platzhalter = 1 AND
-		L.Platzhalter = 0
+		B.Maximum IS NOT NULL
+	GROUP BY B.ID, B.Maximum
+	HAVING SUM(A.Menge) > B.Maximum
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Kostensatz]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Abrechnung_Einheit]    Skriptdatum: 12/31/2015 14:14:03 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE FUNCTION [dbo].[Fehler_Kostensatz]() RETURNS TABLE AS RETURN
+CREATE FUNCTION [dbo].[Fehler__Abrechnung_Einheit]() RETURNS TABLE AS RETURN
 (
-	SELECT ID, dbo.ErstelleFehler(36,'Kostensatz','Bezeichnung') AS Fehler
-	FROM dbo.Kostensatz
+	SELECT
+		A.ID AS Abrechnung,
+		B.ID AS Bescheid,
+		L.ID AS Leistungsart,
+		E.ID AS Einheit,
+		dbo.ErstelleFehler(15,DEFAULT,DEFAULT) AS Fehler
+	FROM
+		dbo.Bescheid AS B JOIN
+		dbo.Leistungsart AS L ON B.Leistungsart = L.ID JOIN
+		dbo.Einheit AS E ON L.Einheit = E.ID JOIN
+		dbo.Abrechnung AS A ON A.Bescheid = B.ID
+	WHERE
+		A.Menge <> 1 AND
+		E.Diskret = 1
+)
+GO
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Abrechnung_Platzhalter]    Skriptdatum: 12/31/2015 14:14:03 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE FUNCTION [dbo].[Fehler__Abrechnung_Platzhalter]() RETURNS TABLE AS RETURN
+(
+	SELECT
+		B.ID AS Bescheid,
+		B.Leistungsart AS Leistungsart,
+		dbo.ErstelleFehler(22,DEFAULT,DEFAULT) AS Fehler
+	FROM
+		dbo.Bescheid AS B JOIN
+		dbo.Leistungsart AS L ON B.Leistungsart = L.ID JOIN
+		dbo.Abrechnung AS A ON A.Bescheid = B.ID JOIN
+		dbo.Kostensatz AS K ON A.Kostensatz = K.ID
+	WHERE
+		K.Platzhalter = 1
+	GROUP BY
+		B.ID, B.Leistungsart, B.Beginn, B.Ende, L.Platzhalter, dbo.YearDiff(B.Beginn,A.Datum)
+	HAVING
+		(dbo.YearDiff(B.Beginn,B.Ende) > dbo.YearDiff(B.Beginn,A.Datum) AND COUNT(*) > L.Platzhalter) OR
+		(dbo.YearDiff(B.Beginn,B.Ende) = dbo.YearDiff(B.Beginn,A.Datum) AND COUNT(*) > ROUND(L.Platzhalter*(DATEDIFF(month,DATEADD(year,dbo.YearDiff(B.Beginn,B.Ende),B.Beginn),B.Ende) + (CASE WHEN DATEPART(day,B.Ende) >= DATEPART(day,B.Beginn) THEN 1 ELSE 0 END))/12.0,0))
+)
+GO
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Bescheid_Typ]    Skriptdatum: 12/31/2015 14:14:04 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE FUNCTION [dbo].[Fehler__Bescheid_Typ]() RETURNS TABLE AS RETURN
+(
+	SELECT
+		B.ID AS Bescheid,
+		T.ID AS Bescheid_Typ,
+		dbo.ErstelleFehler(26,DEFAULT,DEFAULT) AS Fehler
+	FROM
+		dbo.Bescheid AS B JOIN
+		dbo.Bescheid_Typ AS T ON B.Typ = T.ID
+	WHERE
+		B.Maximum IS NULL AND T.Abrechnung = 1 OR
+		B.Maximum IS NOT NULL AND T.Abrechnung = 0
+)
+GO
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Bescheid_Typ]    Skriptdatum: 12/31/2015 14:14:05 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE FUNCTION [dbo].[Fehler_Bescheid_Typ]() RETURNS TABLE AS RETURN
+(
+	SELECT ID, dbo.ErstelleFehler(36,'Bescheid_Typ','Bezeichnung') AS Fehler
+	FROM dbo.Bescheid_Typ
 	WHERE dbo.IstEinzeiler(Bezeichnung) = 0
 UNION
-	SELECT ID, dbo.ErstelleFehler(38,'Kostensatz','Kürzel') AS Fehler
-	FROM dbo.Kostensatz
+	SELECT ID, dbo.ErstelleFehler(37,'Bescheid_Typ','Anschrift') AS Fehler
+	FROM dbo.Bescheid_Typ
+	WHERE dbo.IstMehrzeiler(Anschrift) = 0
+UNION
+	SELECT T1.ID, dbo.ErstelleFehler(16,'Bescheid_Typ','Bezeichnung') AS Fehler
+	FROM dbo.Bescheid_Typ AS T1
+	WHERE
+		EXISTS
+		(
+			SELECT *
+			FROM dbo.Bescheid_Typ AS T2
+			WHERE T1.ID <> T2.ID AND T1.Bezeichnung = T2.Bezeichnung
+		)
+)
+GO
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Einheit]    Skriptdatum: 12/31/2015 14:14:05 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE FUNCTION [dbo].[Fehler_Einheit]() RETURNS TABLE AS RETURN
+(
+	SELECT ID, dbo.ErstelleFehler(36,'Einheit','Bezeichnung') AS Fehler
+	FROM dbo.Einheit
+	WHERE dbo.IstEinzeiler(Bezeichnung) = 0
+UNION
+	SELECT ID, dbo.ErstelleFehler(38,'Einheit','Kürzel') AS Fehler
+	FROM dbo.Einheit
 	WHERE dbo.IstKürzel(Kürzel) = 0
 UNION
-	SELECT K1.ID, dbo.ErstelleFehler(16,'Kostensatz','Bezeichnung') AS Fehler
-	FROM dbo.Kostensatz AS K1
+	SELECT E1.ID, dbo.ErstelleFehler(16,'Einheit','Bezeichnung') AS Fehler
+	FROM dbo.Einheit AS E1
 	WHERE
 		EXISTS
 		(
 			SELECT *
-			FROM dbo.Kostensatz AS K2
-			WHERE K1.ID <> K2.ID AND K1.Bezeichnung = K2.Bezeichnung
+			FROM dbo.Einheit AS E2
+			WHERE E1.ID <> E2.ID AND E1.Bezeichnung = E2.Bezeichnung
 		)
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Leistungsart]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[Fehler_Leistungsart]() RETURNS TABLE AS RETURN
-(
-	SELECT ID, dbo.ErstelleFehler(36,'Leistungsart','Bezeichnung') AS Fehler
-	FROM dbo.Leistungsart
-	WHERE dbo.IstEinzeiler(Bezeichnung) = 0
-UNION
-	SELECT ID, dbo.ErstelleFehler(38,'Leistungsart','Kürzel') AS Fehler
-	FROM dbo.Leistungsart
-	WHERE dbo.IstKürzel(Kürzel) = 0
-UNION
-	SELECT ID, dbo.ErstelleFehler(39,'Leistungsart','Platzhalter') AS Fehler
-	FROM dbo.Leistungsart
-	WHERE Platzhalter < 0
-UNION
-	SELECT L1.ID, dbo.ErstelleFehler(16,'Leistungsart','Bezeichnung') AS Fehler
-	FROM dbo.Leistungsart AS L1
-	WHERE
-		EXISTS
-		(
-			SELECT *
-			FROM dbo.Leistungsart AS L2
-			WHERE L1.ID <> L2.ID AND L1.Bezeichnung = L2.Bezeichnung
-		)
-)
-GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Planung]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[Fehler_Planung]() RETURNS TABLE AS RETURN
-(
-	SELECT ID, dbo.ErstelleFehler(39,'Planung','Schätzung') AS Fehler
-	FROM dbo.Planung
-	WHERE Schätzung < 0
-UNION
-	SELECT ID, dbo.ErstelleFehler(40,'Planung','Monat') AS Fehler
-	FROM dbo.Planung
-	WHERE Monat NOT BETWEEN 1 AND 12
-UNION
-	SELECT P1.ID, dbo.ErstelleFehler(55,'Planung',DEFAULT) AS Fehler
-	FROM dbo.Planung AS P1
-	WHERE
-		EXISTS
-		(
-			SELECT *
-			FROM dbo.Planung AS P2
-			WHERE
-				P1.ID <> P2.ID AND
-				P1.Einrichtung = P2.Einrichtung AND
-				P1.Leistungsart = P2.Leistungsart AND
-				P1.Jahr = P2.Jahr AND
-				P1.Monat = P2.Monat
-		)
-)
-GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Praktikum]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[Fehler_Praktikum]() RETURNS TABLE AS RETURN
-(
-	SELECT ID, dbo.ErstelleFehler(4,'Praktikum','Von') AS Fehler
-	FROM dbo.Praktikum
-	WHERE dbo.Time(Von) <> 0
-UNION
-	SELECT ID, dbo.ErstelleFehler(4,'Praktikum','Bis') AS Fehler
-	FROM dbo.Praktikum
-	WHERE dbo.Time(Bis) <> 0
-UNION
-	SELECT ID, dbo.ErstelleFehler(29,'Praktikum',DEFAULT) AS Fehler
-	FROM dbo.Praktikum
-	WHERE Von > Bis
-)
-GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Rechnung]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[Fehler_Rechnung]() RETURNS TABLE AS RETURN
-(
-	SELECT ID, dbo.ErstelleFehler(36,'Rechnung','Bezeichnung') AS Fehler
-	FROM dbo.Rechnung
-	WHERE dbo.IstEinzeiler(Bezeichnung) = 0
-UNION
-	SELECT ID, dbo.ErstelleFehler(4,'Rechnung','Datum') AS Fehler
-	FROM dbo.Rechnung
-	WHERE dbo.Time(Datum) <> 0
-UNION
-	SELECT ID, dbo.ErstelleFehler(37,'Rechnung','Kommentar') AS Fehler
-	FROM dbo.Rechnung
-	WHERE dbo.IstMehrzeiler(Kommentar) = 0
-)
-GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Verrechnungssatz]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Verrechnungssatz]    Skriptdatum: 12/31/2015 14:14:07 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1570,91 +1823,7 @@ UNION
 
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Standort_Bereich]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[Fehler_Standort_Bereich]() RETURNS TABLE AS RETURN
-(
-	SELECT ID, dbo.ErstelleFehler(36,'Standort_Bereich','Bezeichnung') AS Fehler
-	FROM dbo.Standort_Bereich
-	WHERE dbo.IstEinzeiler(Bezeichnung) = 0
-UNION
-	SELECT ID, dbo.ErstelleFehler(50,'Standort_Bereich','Code') AS Fehler
-	FROM dbo.Standort_Bereich
-	WHERE Code NOT BETWEEN 'A' AND 'Z' COLLATE Latin1_General_BIN
-UNION
-	SELECT S1.ID, dbo.ErstelleFehler(16,'Standort_Bereich','Bezeichnung') AS Fehler
-	FROM dbo.Standort_Bereich AS S1
-	WHERE
-		EXISTS
-		(
-			SELECT *
-			FROM dbo.Standort_Bereich AS S2
-			WHERE S1.ID <> S2.ID AND S1.Bezeichnung = S2.Bezeichnung
-		)
-UNION
-	SELECT S1.ID, dbo.ErstelleFehler(16,'Standort_Bereich','Code') AS Fehler
-	FROM dbo.Standort_Bereich AS S1
-	WHERE
-		EXISTS
-		(
-			SELECT *
-			FROM dbo.Standort_Bereich AS S2
-			WHERE S1.ID <> S2.ID AND S1.Code = S2.Code
-		)
-)
-GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Teilnehmer]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[Fehler_Teilnehmer]() RETURNS TABLE AS RETURN
-(
-	SELECT ID, dbo.ErstelleFehler(36,'Teilnehmer','Vorname') AS Fehler
-	FROM dbo.Teilnehmer
-	WHERE dbo.IstEinzeiler(Vorname) = 0
-UNION
-	SELECT ID, dbo.ErstelleFehler(36,'Teilnehmer','Nachname') AS Fehler
-	FROM dbo.Teilnehmer
-	WHERE dbo.IstEinzeiler(Nachname) = 0
-UNION
-	SELECT ID, dbo.ErstelleFehler(4,'Teilnehmer','Geburtstag') AS Fehler
-	FROM dbo.Teilnehmer
-	WHERE dbo.Time(Geburtstag) <> 0
-UNION
-	SELECT ID, dbo.ErstelleFehler(48,'Teilnehmer','Klientennummer') AS Fehler
-	FROM dbo.Teilnehmer
-	WHERE dbo.IstKlientennummer(Klientennummer) = 0
-UNION
-	SELECT T1.ID, dbo.ErstelleFehler(16,'Teilnehmer','Klientennummer') AS Fehler
-	FROM dbo.Teilnehmer AS T1
-	WHERE
-		EXISTS
-		(
-			SELECT *
-			FROM dbo.Teilnehmer AS T2
-			WHERE T1.ID <> T2.ID AND T1.Klientennummer = T2.Klientennummer
-		)
-UNION
-	SELECT T1.ID, dbo.ErstelleFehler(55,'Teilnehmer',DEFAULT) AS Fehler
-	FROM dbo.Teilnehmer AS T1
-	WHERE
-		EXISTS
-		(
-			SELECT *
-			FROM dbo.Teilnehmer AS T2
-			WHERE
-				T1.ID <> T2.ID AND
-				T1.Vorname = T2.Vorname AND
-				T1.Nachname = T2.Nachname AND
-				T1.Geburtstag = T2.Geburtstag
-		)
-)
-GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Praktikum_Kategorie]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Praktikum_Kategorie]    Skriptdatum: 12/31/2015 14:14:06 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1676,809 +1845,7 @@ UNION
 		)
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Anwesenheit_Zeitspanne]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[Fehler__Anwesenheit_Zeitspanne]() RETURNS TABLE AS RETURN
-(
-	SELECT
-		A.ID AS Anwesenheit,
-		Z.ID AS Zeitspanne,
-		dbo.ErstelleFehler(58,DEFAULT,DEFAULT) AS Fehler
-	FROM
-		dbo.Anwesenheit AS A JOIN
-		dbo.Zeitspanne AS Z ON A.Zeitspanne = Z.ID
-	WHERE
-		A.Datum < Z.Eintritt OR (Z.Austritt IS NOT NULL AND A.Datum > Z.Austritt)
-)
-GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Abrechnung]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[Fehler_Abrechnung]() RETURNS TABLE AS RETURN
-(
-	SELECT ID, dbo.ErstelleFehler(4,'Abrechnung','Datum') AS Fehler
-	FROM dbo.Abrechnung
-	WHERE dbo.Time(Datum) <> 0
-UNION
-	SELECT ID, dbo.ErstelleFehler(5,'Abrechnung','Dauer') AS Fehler
-	FROM dbo.Abrechnung
-	WHERE Menge <= 0
-UNION
-	SELECT A1.ID, dbo.ErstelleFehler(55,'Abrechnung',DEFAULT) AS Fehler
-	FROM dbo.Abrechnung AS A1
-	WHERE
-		EXISTS
-		(
-			SELECT *
-			FROM dbo.Abrechnung AS A2
-			WHERE
-				A1.ID <> A2.ID AND
-				A1.Bescheid = A2.Bescheid AND
-				A1.Datum = A2.Datum
-		)
-)
-GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Zeitspanne_Austrittsgrund]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[Fehler_Zeitspanne_Austrittsgrund]() RETURNS TABLE AS RETURN
-(
-	SELECT ID, dbo.ErstelleFehler(36,'Zeitspanne_Austrittsgrund','Bezeichnung') AS Fehler
-	FROM dbo.Zeitspanne_Austrittsgrund
-	WHERE dbo.IstEinzeiler(Bezeichnung) = 0
-UNION
-	SELECT A1.ID, dbo.ErstelleFehler(16,'Zeitspanne_Austrittsgrund','Bezeichnung') AS Fehler
-	FROM dbo.Zeitspanne_Austrittsgrund AS A1
-	WHERE
-		EXISTS
-		(
-			SELECT *
-			FROM dbo.Zeitspanne_Austrittsgrund AS A2
-			WHERE A1.ID <> A2.ID AND A1.Bezeichnung = A2.Bezeichnung
-		)
-)
-GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Abrechnung_Bescheid]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[Fehler__Abrechnung_Bescheid]() RETURNS TABLE AS RETURN
-(
-	SELECT
-		A.ID AS Abrechnung,
-		B.ID AS Bescheid,
-		dbo.ErstelleFehler(12,DEFAULT,DEFAULT) AS Fehler
-	FROM
-		dbo.Abrechnung AS A JOIN
-		dbo.Bescheid AS B ON A.Bescheid = B.ID
-	WHERE
-		NOT (A.Datum BETWEEN B.Beginn AND B.Ende)
-)
-GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Bescheid_Maximum]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[Fehler__Bescheid_Maximum]() RETURNS TABLE AS RETURN
-(
-	SELECT
-		B.ID AS Bescheid,
-		dbo.ErstelleFehler(21,DEFAULT,DEFAULT) AS Fehler
-	FROM
-		dbo.Bescheid AS B JOIN
-		dbo.Abrechnung AS A ON A.Bescheid = B.ID
-	WHERE
-		B.Maximum IS NOT NULL
-	GROUP BY B.ID, B.Maximum
-	HAVING SUM(A.Menge) > B.Maximum
-)
-GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Abrechnung_Einheit]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[Fehler__Abrechnung_Einheit]() RETURNS TABLE AS RETURN
-(
-	SELECT
-		A.ID AS Abrechnung,
-		B.ID AS Bescheid,
-		L.ID AS Leistungsart,
-		E.ID AS Einheit,
-		dbo.ErstelleFehler(15,DEFAULT,DEFAULT) AS Fehler
-	FROM
-		dbo.Bescheid AS B JOIN
-		dbo.Leistungsart AS L ON B.Leistungsart = L.ID JOIN
-		dbo.Einheit AS E ON L.Einheit = E.ID JOIN
-		dbo.Abrechnung AS A ON A.Bescheid = B.ID
-	WHERE
-		A.Menge <> 1 AND
-		E.Diskret = 1
-)
-GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Abrechnung_Platzhalter]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[Fehler__Abrechnung_Platzhalter]() RETURNS TABLE AS RETURN
-(
-	SELECT
-		B.ID AS Bescheid,
-		B.Leistungsart AS Leistungsart,
-		dbo.ErstelleFehler(22,DEFAULT,DEFAULT) AS Fehler
-	FROM
-		dbo.Bescheid AS B JOIN
-		dbo.Leistungsart AS L ON B.Leistungsart = L.ID JOIN
-		dbo.Abrechnung AS A ON A.Bescheid = B.ID JOIN
-		dbo.Kostensatz AS K ON A.Kostensatz = K.ID
-	WHERE
-		K.Platzhalter = 1
-	GROUP BY
-		B.ID, B.Leistungsart, B.Beginn, B.Ende, L.Platzhalter, dbo.YearDiff(B.Beginn,A.Datum)
-	HAVING
-		(dbo.YearDiff(B.Beginn,B.Ende) > dbo.YearDiff(B.Beginn,A.Datum) AND COUNT(*) > L.Platzhalter) OR
-		(dbo.YearDiff(B.Beginn,B.Ende) = dbo.YearDiff(B.Beginn,A.Datum) AND COUNT(*) > ROUND(L.Platzhalter*(DATEDIFF(month,DATEADD(year,dbo.YearDiff(B.Beginn,B.Ende),B.Beginn),B.Ende) + (CASE WHEN DATEPART(day,B.Ende) >= DATEPART(day,B.Beginn) THEN 1 ELSE 0 END))/12.0,0))
-)
-GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Bescheid_Typ]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[Fehler__Bescheid_Typ]() RETURNS TABLE AS RETURN
-(
-	SELECT
-		B.ID AS Bescheid,
-		T.ID AS Bescheid_Typ,
-		dbo.ErstelleFehler(26,DEFAULT,DEFAULT) AS Fehler
-	FROM
-		dbo.Bescheid AS B JOIN
-		dbo.Bescheid_Typ AS T ON B.Typ = T.ID
-	WHERE
-		B.Maximum IS NULL AND T.Abrechnung = 1 OR
-		B.Maximum IS NOT NULL AND T.Abrechnung = 0
-)
-GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Bescheid_Typ]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[Fehler_Bescheid_Typ]() RETURNS TABLE AS RETURN
-(
-	SELECT ID, dbo.ErstelleFehler(36,'Bescheid_Typ','Bezeichnung') AS Fehler
-	FROM dbo.Bescheid_Typ
-	WHERE dbo.IstEinzeiler(Bezeichnung) = 0
-UNION
-	SELECT ID, dbo.ErstelleFehler(37,'Bescheid_Typ','Anschrift') AS Fehler
-	FROM dbo.Bescheid_Typ
-	WHERE dbo.IstMehrzeiler(Anschrift) = 0
-UNION
-	SELECT T1.ID, dbo.ErstelleFehler(16,'Bescheid_Typ','Bezeichnung') AS Fehler
-	FROM dbo.Bescheid_Typ AS T1
-	WHERE
-		EXISTS
-		(
-			SELECT *
-			FROM dbo.Bescheid_Typ AS T2
-			WHERE T1.ID <> T2.ID AND T1.Bezeichnung = T2.Bezeichnung
-		)
-)
-GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Zeitspanne]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[Fehler_Zeitspanne]() RETURNS TABLE AS RETURN
-(
-	SELECT ID, dbo.ErstelleFehler(4,'Zeitspanne','Eintritt') AS Fehler
-	FROM dbo.Zeitspanne
-	WHERE dbo.Time(Eintritt) <> 0
-UNION
-	SELECT ID, dbo.ErstelleFehler(4,'Zeitspanne','Austritt') AS Fehler
-	FROM dbo.Zeitspanne
-	WHERE dbo.Time(Austritt) <> 0
-UNION
-	SELECT ID, dbo.ErstelleFehler(37,'Zeitspanne','Austrittsnotiz') AS Fehler
-	FROM dbo.Zeitspanne
-	WHERE dbo.IstMehrzeiler(Austrittsnotiz) = 0
-UNION
-	SELECT ID, dbo.ErstelleFehler(4,'Zeitspanne','Überprüft') AS Fehler
-	FROM dbo.Zeitspanne
-	WHERE dbo.Time(Überprüft) <> 0
-UNION
-	SELECT ID, dbo.ErstelleFehler(29,'Zeitspanne',DEFAULT) AS Fehler
-	FROM dbo.Zeitspanne
-	WHERE Eintritt > Austritt
-UNION
-	SELECT ID, dbo.ErstelleFehler(59,'Zeitspanne',DEFAULT) AS Fehler
-	FROM dbo.Zeitspanne
-	WHERE Überprüft < Eintritt OR Austritt < Überprüft
-UNION
-	SELECT ID, dbo.ErstelleFehler(57,'Zeitspanne',DEFAULT) AS Fehler
-	FROM dbo.Zeitspanne
-	WHERE
-		Austritt IS NULL AND (Austrittsgrund IS NOT NULL OR Austrittsnotiz IS NOT NULL) OR
-		Austritt IS NOT NULL AND Austrittsgrund IS NULL
-UNION
-	SELECT Z1.ID, dbo.ErstelleFehler(55,'Zeitspanne',DEFAULT) AS Fehler
-	FROM dbo.Zeitspanne AS Z1
-	WHERE
-		EXISTS
-		(
-			SELECT *
-			FROM dbo.Zeitspanne AS Z2
-			WHERE
-				Z1.ID <> Z2.ID AND
-				Z1.Einrichtung = Z2.Einrichtung AND
-				Z1.Teilnehmer = Z2.Teilnehmer AND
-				(Z1.Eintritt <= Z2.Austritt OR Z2.Austritt IS NULL) AND (Z1.Austritt IS NULL OR Z1.Austritt >= Z2.Eintritt)
-		)
-)
-GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Einheit]    Skriptdatum: 12/16/2015 15:15:14 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[Fehler_Einheit]() RETURNS TABLE AS RETURN
-(
-	SELECT ID, dbo.ErstelleFehler(36,'Einheit','Bezeichnung') AS Fehler
-	FROM dbo.Einheit
-	WHERE dbo.IstEinzeiler(Bezeichnung) = 0
-UNION
-	SELECT ID, dbo.ErstelleFehler(38,'Einheit','Kürzel') AS Fehler
-	FROM dbo.Einheit
-	WHERE dbo.IstKürzel(Kürzel) = 0
-UNION
-	SELECT E1.ID, dbo.ErstelleFehler(16,'Einheit','Bezeichnung') AS Fehler
-	FROM dbo.Einheit AS E1
-	WHERE
-		EXISTS
-		(
-			SELECT *
-			FROM dbo.Einheit AS E2
-			WHERE E1.ID <> E2.ID AND E1.Bezeichnung = E2.Bezeichnung
-		)
-)
-GO
-/****** Objekt:  Trigger [ArchiviereEinheit]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[ArchiviereEinheit] ON [dbo].[Einheit] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-			*
-		FROM inserted AS I2
-		WHERE I1.ID = I2.ID
-		FOR XML PATH('Einheit')
-	)
-	FROM inserted AS I1
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			'Gelöscht' AS [@Aktion],
-			ID
-		FROM deleted AS D2
-		WHERE D1.ID = D2.ID
-		FOR XML PATH('Einheit')
-	)
-	FROM deleted AS D1
-	WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-END
-GO
-/****** Objekt:  Trigger [ArchiviereVerrechnungssatz]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[ArchiviereVerrechnungssatz] ON [dbo].[Verrechnungssatz] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-			*
-		FROM inserted AS I2
-		WHERE I1.ID = I2.ID
-		FOR XML PATH('Verrechnungssatz')
-	)
-	FROM inserted AS I1
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			'Gelöscht' AS [@Aktion],
-			ID
-		FROM deleted AS D2
-		WHERE D1.ID = D2.ID
-		FOR XML PATH('Verrechnungssatz')
-	)
-	FROM deleted AS D1
-	WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-END
-GO
-/****** Objekt:  Trigger [ArchiviereRechnung]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[ArchiviereRechnung] ON [dbo].[Rechnung] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-			*
-		FROM inserted AS I2
-		WHERE I1.ID = I2.ID
-		FOR XML PATH('Rechnung')
-	)
-	FROM inserted AS I1
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			'Gelöscht' AS [@Aktion],
-			ID
-		FROM deleted AS D2
-		WHERE D1.ID = D2.ID
-		FOR XML PATH('Rechnung')
-	)
-	FROM deleted AS D1
-	WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-END
-GO
-/****** Objekt:  Trigger [ArchiviereStandortBereich]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[ArchiviereStandortBereich] ON [dbo].[Standort_Bereich] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-			*
-		FROM inserted AS I2
-		WHERE I1.ID = I2.ID
-		FOR XML PATH('Standort_Bereich')
-	)
-	FROM inserted AS I1
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			'Gelöscht' AS [@Aktion],
-			ID
-		FROM deleted AS D2
-		WHERE D1.ID = D2.ID
-		FOR XML PATH('Standort_Bereich')
-	)
-	FROM deleted AS D1
-	WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-END
-GO
-/****** Objekt:  Trigger [ArchiviereStandort]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[ArchiviereStandort] ON [dbo].[Standort] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-			*
-		FROM inserted AS I2
-		WHERE I1.ID = I2.ID
-		FOR XML PATH('Standort')
-	)
-	FROM inserted AS I1
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			'Gelöscht' AS [@Aktion],
-			ID
-		FROM deleted AS D2
-		WHERE D1.ID = D2.ID
-		FOR XML PATH('Standort')
-	)
-	FROM deleted AS D1
-	WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-END
-GO
-/****** Objekt:  Trigger [ArchiviereKostensatz]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[ArchiviereKostensatz] ON [dbo].[Kostensatz] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-			*
-		FROM inserted AS I2
-		WHERE I1.ID = I2.ID
-		FOR XML PATH('Kostensatz')
-	)
-	FROM inserted AS I1
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			'Gelöscht' AS [@Aktion],
-			ID
-		FROM deleted AS D2
-		WHERE D1.ID = D2.ID
-		FOR XML PATH('Kostensatz')
-	)
-	FROM deleted AS D1
-	WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-END
-GO
-/****** Objekt:  Trigger [ArchivierePraktikum]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[ArchivierePraktikum] ON [dbo].[Praktikum] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-			*
-		FROM inserted AS I2
-		WHERE I1.ID = I2.ID
-		FOR XML PATH('Praktikum')
-	)
-	FROM inserted AS I1
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			'Gelöscht' AS [@Aktion],
-			ID
-		FROM deleted AS D2
-		WHERE D1.ID = D2.ID
-		FOR XML PATH('Praktikum')
-	)
-	FROM deleted AS D1
-	WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-END
-GO
-/****** Objekt:  Trigger [ArchivierePraktikumKategorie]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[ArchivierePraktikumKategorie] ON [dbo].[Praktikum_Kategorie] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-			*
-		FROM inserted AS I2
-		WHERE I1.ID = I2.ID
-		FOR XML PATH('Praktikum_Kategorie')
-	)
-	FROM inserted AS I1
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			'Gelöscht' AS [@Aktion],
-			ID
-		FROM deleted AS D2
-		WHERE D1.ID = D2.ID
-		FOR XML PATH('Praktikum_Kategorie')
-	)
-	FROM deleted AS D1
-	WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-END
-GO
-/****** Objekt:  Trigger [ArchiviereAbrechnung]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[ArchiviereAbrechnung] ON [dbo].[Abrechnung] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-			*
-		FROM inserted AS I2
-		WHERE I1.ID = I2.ID
-		FOR XML PATH('Abrechnung')
-	)
-	FROM inserted AS I1
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			'Gelöscht' AS [@Aktion],
-			ID
-		FROM deleted AS D2
-		WHERE D1.ID = D2.ID
-		FOR XML PATH('Abrechnung')
-	)
-	FROM deleted AS D1
-	WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-END
-GO
-/****** Objekt:  Trigger [ArchiviereZeitspanne]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[ArchiviereZeitspanne] ON [dbo].[Zeitspanne] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-			*
-		FROM inserted AS I2
-		WHERE I1.ID = I2.ID
-		FOR XML PATH('Zeitspanne')
-	)
-	FROM inserted AS I1
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			'Gelöscht' AS [@Aktion],
-			ID
-		FROM deleted AS D2
-		WHERE D1.ID = D2.ID
-		FOR XML PATH('Zeitspanne')
-	)
-	FROM deleted AS D1
-	WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-END
-GO
-/****** Objekt:  Trigger [ArchivierePlanung]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[ArchivierePlanung] ON [dbo].[Planung] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-			*
-		FROM inserted AS I2
-		WHERE I1.ID = I2.ID
-		FOR XML PATH('Planung')
-	)
-	FROM inserted AS I1
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			'Gelöscht' AS [@Aktion],
-			ID
-		FROM deleted AS D2
-		WHERE D1.ID = D2.ID
-		FOR XML PATH('Planung')
-	)
-	FROM deleted AS D1
-	WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-END
-GO
-/****** Objekt:  Trigger [ArchiviereLeistungsart]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[ArchiviereLeistungsart] ON [dbo].[Leistungsart] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-			*
-		FROM inserted AS I2
-		WHERE I1.ID = I2.ID
-		FOR XML PATH('Leistungsart')
-	)
-	FROM inserted AS I1
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			'Gelöscht' AS [@Aktion],
-			ID
-		FROM deleted AS D2
-		WHERE D1.ID = D2.ID
-		FOR XML PATH('Leistungsart')
-	)
-	FROM deleted AS D1
-	WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-END
-GO
-/****** Objekt:  Trigger [ArchiviereBescheidTyp]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[ArchiviereBescheidTyp] ON [dbo].[Bescheid_Typ] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-			*
-		FROM inserted AS I2
-		WHERE I1.ID = I2.ID
-		FOR XML PATH('Bescheid_Typ')
-	)
-	FROM inserted AS I1
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			'Gelöscht' AS [@Aktion],
-			ID
-		FROM deleted AS D2
-		WHERE D1.ID = D2.ID
-		FOR XML PATH('Bescheid_Typ')
-	)
-	FROM deleted AS D1
-	WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-END
-GO
-/****** Objekt:  Trigger [ArchiviereZeitspanneAustrittsgrund]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[ArchiviereZeitspanneAustrittsgrund] ON [dbo].[Zeitspanne_Austrittsgrund] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-			*
-		FROM inserted AS I2
-		WHERE I1.ID = I2.ID
-		FOR XML PATH('Zeitspanne_Austrittsgrund')
-	)
-	FROM inserted AS I1
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			'Gelöscht' AS [@Aktion],
-			ID
-		FROM deleted AS D2
-		WHERE D1.ID = D2.ID
-		FOR XML PATH('Zeitspanne_Austrittsgrund')
-	)
-	FROM deleted AS D1
-	WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-END
-GO
-/****** Objekt:  Trigger [ArchiviereBescheid]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[ArchiviereBescheid] ON [dbo].[Bescheid] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-			*
-		FROM inserted AS I2
-		WHERE I1.ID = I2.ID
-		FOR XML PATH('Bescheid')
-	)
-	FROM inserted AS I1
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			'Gelöscht' AS [@Aktion],
-			ID
-		FROM deleted AS D2
-		WHERE D1.ID = D2.ID
-		FOR XML PATH('Bescheid')
-	)
-	FROM deleted AS D1
-	WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-END
-GO
-/****** Objekt:  StoredProcedure [dbo].[WerfeFehler]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  StoredProcedure [dbo].[WerfeFehler]    Skriptdatum: 12/31/2015 14:14:02 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2529,47 +1896,12 @@ BEGIN
 		RAISERROR(@Meldung, 16, 1)
 END
 GO
-/****** Objekt:  Trigger [ArchiviereTeilnehmer]    Skriptdatum: 12/16/2015 15:15:15 ******/
+/****** Objekt:  Trigger [TesteAnwesenheit]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE TRIGGER [dbo].[ArchiviereTeilnehmer] ON [dbo].[Teilnehmer] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-			*
-		FROM inserted AS I2
-		WHERE I1.ID = I2.ID
-		FOR XML PATH('Teilnehmer')
-	)
-	FROM inserted AS I1
-
-	INSERT INTO dbo.Version(Zeile)
-	SELECT
-	(
-		SELECT
-			'Gelöscht' AS [@Aktion],
-			ID
-		FROM deleted AS D2
-		WHERE D1.ID = D2.ID
-		FOR XML PATH('Teilnehmer')
-	)
-	FROM deleted AS D1
-	WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-END
-GO
-/****** Objekt:  Trigger [TesteZeitspanneAustrittsgrund]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[TesteZeitspanneAustrittsgrund] ON [dbo].[Zeitspanne_Austrittsgrund] AFTER INSERT, UPDATE AS
+CREATE TRIGGER [dbo].[TesteAnwesenheit] ON [dbo].[Anwesenheit] AFTER INSERT, UPDATE, DELETE AS
 BEGIN
 	SET NOCOUNT ON
 
@@ -2577,8 +1909,73 @@ BEGIN
 		DECLARE @Fehler AS bigint
 
 		-- stimmt der Wert einer Spalte nicht?
-		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Zeitspanne_Austrittsgrund() AS F JOIN inserted AS I ON F.ID = I.ID
+		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Anwesenheit() AS F JOIN inserted AS I ON F.ID = I.ID
 		EXEC dbo.WerfeFehler @Fehler
+
+		-- ist ein Anwesenheitstag nicht vollständig in einer Zeitspanne?
+		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler__Anwesenheit_Zeitspanne() AS F JOIN inserted AS I ON F.Anwesenheit = I.ID
+		EXEC dbo.WerfeFehler @Fehler
+
+		-- ist der User nicht privilegiert?
+		IF NOT (IS_MEMBER('Sekretariat') = 1)
+		BEGIN
+			-- stimmt die Einrichtung?
+			SELECT TOP(1) @Fehler = dbo.ErstelleFehler(1,'Anwesenheit',DEFAULT)
+			FROM
+				dbo.Zeitspanne AS Z JOIN
+				(
+					SELECT Zeitspanne FROM inserted
+					UNION
+					SELECT Zeitspanne FROM deleted
+				) AS A ON A.Zeitspanne = Z.ID
+			WHERE
+				Z.Einrichtung NOT IN
+				(
+					SELECT Einrichtung
+					FROM dbo.Einrichtung
+					WHERE IS_MEMBER(SUSER_SNAME(Training)) = 1
+				)
+			EXEC dbo.WerfeFehler @Fehler
+
+			-- wurde ein überprüfter Tag geändert?
+			SELECT TOP(1) @Fehler = dbo.ErstelleFehler(64,'Anwesenheit','Datum')
+			FROM
+				dbo.Zeitspanne AS Z JOIN
+				(
+					SELECT Datum, Zeitspanne FROM inserted
+					UNION
+					SELECT Datum, Zeitspanne FROM deleted
+				) AS A ON A.Zeitspanne = Z.ID
+			WHERE
+				A.Datum <= Z.Überprüft
+			EXEC dbo.WerfeFehler @Fehler
+		END
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Anwesenheit')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Anwesenheit')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
 	END TRY
 	BEGIN CATCH
 		EXEC dbo.BerichteFehler
@@ -2586,7 +1983,7 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  StoredProcedure [dbo].[TesteAlles]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  StoredProcedure [dbo].[TesteAlles]    Skriptdatum: 12/31/2015 14:14:02 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2656,7 +2053,55 @@ BEGIN
 	EXEC dbo.WerfeFehler @Fehler
 END
 GO
-/****** Objekt:  Trigger [TestePlanung]    Skriptdatum: 12/16/2015 15:15:15 ******/
+/****** Objekt:  Trigger [TesteZeitspanneAustrittsgrund]    Skriptdatum: 12/31/2015 14:14:09 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TRIGGER [dbo].[TesteZeitspanneAustrittsgrund] ON [dbo].[Zeitspanne_Austrittsgrund] AFTER INSERT, UPDATE, DELETE AS
+BEGIN
+	SET NOCOUNT ON
+
+	BEGIN TRY
+		DECLARE @Fehler AS bigint
+
+		-- stimmt der Wert einer Spalte nicht?
+		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Zeitspanne_Austrittsgrund() AS F JOIN inserted AS I ON F.ID = I.ID
+		EXEC dbo.WerfeFehler @Fehler
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Zeitspanne_Austrittsgrund')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Zeitspanne_Austrittsgrund')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
+	END TRY
+	BEGIN CATCH
+		EXEC dbo.BerichteFehler
+		ROLLBACK TRANSACTION
+	END CATCH
+END
+GO
+/****** Objekt:  Trigger [TestePlanung]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2703,6 +2148,32 @@ BEGIN
 			WHERE P.Jahr <= YEAR(GETDATE())
 			EXEC dbo.WerfeFehler @Fehler
 		END
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Planung')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Planung')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
 	END TRY
 	BEGIN CATCH
 		EXEC dbo.BerichteFehler
@@ -2710,7 +2181,120 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteZeitspanne]    Skriptdatum: 12/16/2015 15:15:15 ******/
+/****** Objekt:  Trigger [TestePraktikum]    Skriptdatum: 12/31/2015 14:14:09 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TRIGGER [dbo].[TestePraktikum] ON [dbo].[Praktikum] AFTER INSERT, UPDATE, DELETE AS
+BEGIN
+	SET NOCOUNT ON
+
+	BEGIN TRY
+		DECLARE @Fehler AS bigint
+
+		-- stimmt der Wert einer Spalte nicht?
+		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Praktikum() AS F JOIN inserted AS I ON F.ID = I.ID
+		EXEC dbo.WerfeFehler @Fehler
+
+		-- stimmt die Einrichtung?
+		SELECT TOP(1) @Fehler = dbo.ErstelleFehler(1,'Praktikum',DEFAULT)
+		FROM
+			(
+				SELECT Einrichtung FROM inserted
+				UNION
+				SELECT Einrichtung FROM deleted
+			) AS P
+		WHERE
+			P.Einrichtung NOT IN
+			(
+				SELECT Einrichtung
+				FROM dbo.Einrichtung
+				WHERE IS_MEMBER(SUSER_SNAME(Integrationsassistenz)) = 1
+			)
+		EXEC dbo.WerfeFehler @Fehler
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Praktikum')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Praktikum')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
+	END TRY
+	BEGIN CATCH
+		EXEC dbo.BerichteFehler
+		ROLLBACK TRANSACTION
+	END CATCH
+END
+GO
+/****** Objekt:  Trigger [TesteEinrichtung]    Skriptdatum: 12/31/2015 14:14:09 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TRIGGER [dbo].[TesteEinrichtung] ON [dbo].[Einrichtung] AFTER INSERT, UPDATE, DELETE AS
+BEGIN
+	SET NOCOUNT ON
+
+	BEGIN TRY
+		DECLARE @Fehler AS bigint
+
+		-- stimmt der Wert einer Spalte nicht?
+		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Einrichtung() AS F JOIN inserted AS I ON F.ID = I.ID
+		EXEC dbo.WerfeFehler @Fehler
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Einrichtung')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Einrichtung')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
+	END TRY
+	BEGIN CATCH
+		EXEC dbo.BerichteFehler
+		ROLLBACK TRANSACTION
+	END CATCH
+END
+GO
+/****** Objekt:  Trigger [TesteZeitspanne]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2760,6 +2344,32 @@ BEGIN
 				(I.Überprüft IS NULL OR I.Überprüft < D.Überprüft)
 			EXEC dbo.WerfeFehler @Fehler
 		END
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Zeitspanne')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Zeitspanne')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
 	END TRY
 	BEGIN CATCH
 		EXEC dbo.BerichteFehler
@@ -2767,134 +2377,12 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TestePraktikum]    Skriptdatum: 12/16/2015 15:15:15 ******/
+/****** Objekt:  Trigger [TesteFeiertag]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE TRIGGER [dbo].[TestePraktikum] ON [dbo].[Praktikum] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	BEGIN TRY
-		DECLARE @Fehler AS bigint
-
-		-- stimmt der Wert einer Spalte nicht?
-		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Praktikum() AS F JOIN inserted AS I ON F.ID = I.ID
-		EXEC dbo.WerfeFehler @Fehler
-
-		-- stimmt die Einrichtung?
-		SELECT TOP(1) @Fehler = dbo.ErstelleFehler(1,'Praktikum',DEFAULT)
-		FROM
-			(
-				SELECT Einrichtung FROM inserted
-				UNION
-				SELECT Einrichtung FROM deleted
-			) AS P
-		WHERE
-			P.Einrichtung NOT IN
-			(
-				SELECT Einrichtung
-				FROM dbo.Einrichtung
-				WHERE IS_MEMBER(SUSER_SNAME(Integrationsassistenz)) = 1
-			)
-		EXEC dbo.WerfeFehler @Fehler
-	END TRY
-	BEGIN CATCH
-		EXEC dbo.BerichteFehler
-		ROLLBACK TRANSACTION
-	END CATCH
-END
-GO
-/****** Objekt:  Trigger [TesteEinrichtung]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[TesteEinrichtung] ON [dbo].[Einrichtung] AFTER INSERT, UPDATE AS
-BEGIN
-	SET NOCOUNT ON
-
-	BEGIN TRY
-		DECLARE @Fehler AS bigint
-
-		-- stimmt der Wert einer Spalte nicht?
-		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Einrichtung() AS F JOIN inserted AS I ON F.ID = I.ID
-		EXEC dbo.WerfeFehler @Fehler
-	END TRY
-	BEGIN CATCH
-		EXEC dbo.BerichteFehler
-		ROLLBACK TRANSACTION
-	END CATCH
-END
-GO
-/****** Objekt:  Trigger [TesteAnwesenheit]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[TesteAnwesenheit] ON [dbo].[Anwesenheit] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	BEGIN TRY
-		DECLARE @Fehler AS bigint
-
-		-- stimmt der Wert einer Spalte nicht?
-		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Anwesenheit() AS F JOIN inserted AS I ON F.ID = I.ID
-		EXEC dbo.WerfeFehler @Fehler
-
-		-- ist ein Anwesenheitstag nicht vollständig in einer Zeitspanne?
-		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler__Anwesenheit_Zeitspanne() AS F JOIN inserted AS I ON F.Anwesenheit = I.ID
-		EXEC dbo.WerfeFehler @Fehler
-
-		-- ist der User nicht privilegiert?
-		IF NOT (IS_MEMBER('Sekretariat') = 1)
-		BEGIN
-			-- stimmt die Einrichtung?
-			SELECT TOP(1) @Fehler = dbo.ErstelleFehler(1,'Anwesenheit',DEFAULT)
-			FROM
-				dbo.Zeitspanne AS Z JOIN
-				(
-					SELECT Zeitspanne FROM inserted
-					UNION
-					SELECT Zeitspanne FROM deleted
-				) AS A ON A.Zeitspanne = Z.ID
-			WHERE
-				Z.Einrichtung NOT IN
-				(
-					SELECT Einrichtung
-					FROM dbo.Einrichtung
-					WHERE IS_MEMBER(SUSER_SNAME(Training)) = 1
-				)
-			EXEC dbo.WerfeFehler @Fehler
-
-			-- wurde ein überprüfter Tag geändert?
-			SELECT TOP(1) @Fehler = dbo.ErstelleFehler(64,'Anwesenheit','Datum')
-			FROM
-				dbo.Zeitspanne AS Z JOIN
-				(
-					SELECT Datum, Zeitspanne FROM inserted
-					UNION
-					SELECT Datum, Zeitspanne FROM deleted
-				) AS A ON A.Zeitspanne = Z.ID
-			WHERE
-				A.Datum <= Z.Überprüft
-			EXEC dbo.WerfeFehler @Fehler
-		END
-	END TRY
-	BEGIN CATCH
-		EXEC dbo.BerichteFehler
-		ROLLBACK TRANSACTION
-	END CATCH
-END
-GO
-/****** Objekt:  Trigger [TesteFeiertag]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[TesteFeiertag] ON [dbo].[Feiertag] AFTER INSERT, UPDATE AS
+CREATE TRIGGER [dbo].[TesteFeiertag] ON [dbo].[Feiertag] AFTER INSERT, UPDATE, DELETE AS
 BEGIN
 	SET NOCOUNT ON
 
@@ -2904,6 +2392,32 @@ BEGIN
 		-- stimmt der Wert einer Spalte nicht?
 		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Feiertag() AS F JOIN inserted AS I ON F.ID = I.ID
 		EXEC dbo.WerfeFehler @Fehler
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Feiertag')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Feiertag')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
 	END TRY
 	BEGIN CATCH
 		EXEC dbo.BerichteFehler
@@ -2911,12 +2425,12 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TestePraktikumKategorie]    Skriptdatum: 12/16/2015 15:15:15 ******/
+/****** Objekt:  Trigger [TestePraktikumKategorie]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE TRIGGER [dbo].[TestePraktikumKategorie] ON [dbo].[Praktikum_Kategorie] AFTER INSERT, UPDATE AS
+CREATE TRIGGER [dbo].[TestePraktikumKategorie] ON [dbo].[Praktikum_Kategorie] AFTER INSERT, UPDATE, DELETE AS
 BEGIN
 	SET NOCOUNT ON
 
@@ -2926,6 +2440,32 @@ BEGIN
 		-- stimmt der Wert einer Spalte nicht?
 		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Praktikum_Kategorie() AS F JOIN inserted AS I ON F.ID = I.ID
 		EXEC dbo.WerfeFehler @Fehler
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Praktikum_Kategorie')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Praktikum_Kategorie')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
 	END TRY
 	BEGIN CATCH
 		EXEC dbo.BerichteFehler
@@ -2933,12 +2473,12 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteStandort]    Skriptdatum: 12/16/2015 15:15:15 ******/
+/****** Objekt:  Trigger [TesteStandort]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE TRIGGER [dbo].[TesteStandort] ON [dbo].[Standort] AFTER INSERT, UPDATE AS
+CREATE TRIGGER [dbo].[TesteStandort] ON [dbo].[Standort] AFTER INSERT, UPDATE, DELETE AS
 BEGIN
 	SET NOCOUNT ON
 
@@ -2948,6 +2488,32 @@ BEGIN
 		-- stimmt der Wert einer Spalte nicht?
 		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Standort() AS F JOIN inserted AS I ON F.ID = I.ID
 		EXEC dbo.WerfeFehler @Fehler
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Standort')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Standort')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
 	END TRY
 	BEGIN CATCH
 		EXEC dbo.BerichteFehler
@@ -2955,90 +2521,12 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteStandortBereich]    Skriptdatum: 12/16/2015 15:15:15 ******/
+/****** Objekt:  Trigger [TesteBescheid]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE TRIGGER [dbo].[TesteStandortBereich] ON [dbo].[Standort_Bereich] AFTER INSERT, UPDATE AS
-BEGIN
-	SET NOCOUNT ON
-
-	BEGIN TRY
-		DECLARE @Fehler AS bigint
-
-		-- stimmt der Wert einer Spalte nicht?
-		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Standort_Bereich() AS F JOIN inserted AS I ON F.ID = I.ID
-		EXEC dbo.WerfeFehler @Fehler
-	END TRY
-	BEGIN CATCH
-		EXEC dbo.BerichteFehler
-		ROLLBACK TRANSACTION
-	END CATCH
-END
-GO
-/****** Objekt:  Trigger [TesteTeilnehmer]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[TesteTeilnehmer] ON [dbo].[Teilnehmer] AFTER INSERT, UPDATE AS
-BEGIN
-	SET NOCOUNT ON
-
-	BEGIN TRY
-		DECLARE @Fehler bigint
-
-		-- stimmt der Wert einer Spalte nicht?
-		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Teilnehmer() AS F JOIN inserted AS I ON F.ID = I.ID
-		EXEC dbo.WerfeFehler @Fehler
-	END TRY
-	BEGIN CATCH
-		EXEC dbo.BerichteFehler
-		ROLLBACK TRANSACTION
-	END CATCH
-END
-GO
-/****** Objekt:  Trigger [TesteLeistungsart]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[TesteLeistungsart] ON [dbo].[Leistungsart] AFTER INSERT, UPDATE AS
-BEGIN
-	SET NOCOUNT ON
-
-	BEGIN TRY
-		DECLARE @Fehler AS bigint
-
-		-- stimmt der Wert einer Spalte nicht?
-		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Leistungsart() AS F JOIN inserted AS I ON F.ID = I.ID
-		EXEC dbo.WerfeFehler @Fehler
-
-		-- stimmt die Platzhalteangabe des Kostensatzes nicht mit der Leistungsart zusammen?
-		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler__Verrechnungssatz_Platzhalter() AS F JOIN inserted AS I ON F.Leistungsart = I.ID
-		EXEC dbo.WerfeFehler @Fehler
-
-		-- passt die Abrechnungsdauer nicht mit der Leistungseinheit zusammen?
-		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler__Abrechnung_Einheit() AS F JOIN inserted AS I ON F.Leistungsart = I.ID
-		EXEC dbo.WerfeFehler @Fehler
-
-		-- wurden die verfügbaren Platzhalte überschritten?
-		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler__Abrechnung_Platzhalter() AS F JOIN inserted AS I ON F.Leistungsart = I.ID
-		EXEC dbo.WerfeFehler @Fehler
-	END TRY
-	BEGIN CATCH
-		EXEC dbo.BerichteFehler
-		ROLLBACK TRANSACTION
-	END CATCH
-END
-GO
-/****** Objekt:  Trigger [TesteBescheid]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[TesteBescheid] ON [dbo].[Bescheid] AFTER INSERT, UPDATE AS
+CREATE TRIGGER [dbo].[TesteBescheid] ON [dbo].[Bescheid] AFTER INSERT, UPDATE, DELETE AS
 BEGIN
 	SET NOCOUNT ON
 
@@ -3068,6 +2556,32 @@ BEGIN
 		-- wurden die verfügbaren Platzhalte überschritten?
 		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler__Abrechnung_Platzhalter() AS F JOIN inserted AS I ON F.Bescheid = I.ID
 		EXEC dbo.WerfeFehler @Fehler
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Bescheid')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Bescheid')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
 	END TRY
 	BEGIN CATCH
 		EXEC dbo.BerichteFehler
@@ -3075,12 +2589,168 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteAbrechnung]    Skriptdatum: 12/16/2015 15:15:15 ******/
+/****** Objekt:  Trigger [TesteTeilnehmer]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE TRIGGER [dbo].[TesteAbrechnung] ON [dbo].[Abrechnung] AFTER INSERT, UPDATE AS
+CREATE TRIGGER [dbo].[TesteTeilnehmer] ON [dbo].[Teilnehmer] AFTER INSERT, UPDATE, DELETE AS
+BEGIN
+	SET NOCOUNT ON
+
+	BEGIN TRY
+		DECLARE @Fehler bigint
+
+		-- stimmt der Wert einer Spalte nicht?
+		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Teilnehmer() AS F JOIN inserted AS I ON F.ID = I.ID
+		EXEC dbo.WerfeFehler @Fehler
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Teilnehmer')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Teilnehmer')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
+	END TRY
+	BEGIN CATCH
+		EXEC dbo.BerichteFehler
+		ROLLBACK TRANSACTION
+	END CATCH
+END
+GO
+/****** Objekt:  Trigger [TesteStandortBereich]    Skriptdatum: 12/31/2015 14:14:09 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TRIGGER [dbo].[TesteStandortBereich] ON [dbo].[Standort_Bereich] AFTER INSERT, UPDATE, DELETE AS
+BEGIN
+	SET NOCOUNT ON
+
+	BEGIN TRY
+		DECLARE @Fehler AS bigint
+
+		-- stimmt der Wert einer Spalte nicht?
+		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Standort_Bereich() AS F JOIN inserted AS I ON F.ID = I.ID
+		EXEC dbo.WerfeFehler @Fehler
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Standort_Bereich')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Standort_Bereich')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
+	END TRY
+	BEGIN CATCH
+		EXEC dbo.BerichteFehler
+		ROLLBACK TRANSACTION
+	END CATCH
+END
+GO
+/****** Objekt:  Trigger [TesteLeistungsart]    Skriptdatum: 12/31/2015 14:14:09 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TRIGGER [dbo].[TesteLeistungsart] ON [dbo].[Leistungsart] AFTER INSERT, UPDATE, DELETE AS
+BEGIN
+	SET NOCOUNT ON
+
+	BEGIN TRY
+		DECLARE @Fehler AS bigint
+
+		-- stimmt der Wert einer Spalte nicht?
+		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Leistungsart() AS F JOIN inserted AS I ON F.ID = I.ID
+		EXEC dbo.WerfeFehler @Fehler
+
+		-- stimmt die Platzhalteangabe des Kostensatzes nicht mit der Leistungsart zusammen?
+		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler__Verrechnungssatz_Platzhalter() AS F JOIN inserted AS I ON F.Leistungsart = I.ID
+		EXEC dbo.WerfeFehler @Fehler
+
+		-- passt die Abrechnungsdauer nicht mit der Leistungseinheit zusammen?
+		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler__Abrechnung_Einheit() AS F JOIN inserted AS I ON F.Leistungsart = I.ID
+		EXEC dbo.WerfeFehler @Fehler
+
+		-- wurden die verfügbaren Platzhalte überschritten?
+		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler__Abrechnung_Platzhalter() AS F JOIN inserted AS I ON F.Leistungsart = I.ID
+		EXEC dbo.WerfeFehler @Fehler
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Leistungsart')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Leistungsart')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
+	END TRY
+	BEGIN CATCH
+		EXEC dbo.BerichteFehler
+		ROLLBACK TRANSACTION
+	END CATCH
+END
+GO
+/****** Objekt:  Trigger [TesteAbrechnung]    Skriptdatum: 12/31/2015 14:14:09 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TRIGGER [dbo].[TesteAbrechnung] ON [dbo].[Abrechnung] AFTER INSERT, UPDATE, DELETE AS
 BEGIN
 	SET NOCOUNT ON
 
@@ -3106,6 +2776,32 @@ BEGIN
 		-- wurden die verfügbaren Platzhalte überschritten?
 		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler__Abrechnung_Platzhalter() AS F JOIN inserted AS I ON F.Bescheid = I.Bescheid
 		EXEC dbo.WerfeFehler @Fehler
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Abrechnung')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Abrechnung')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
 	END TRY
 	BEGIN CATCH
 		EXEC dbo.BerichteFehler
@@ -3113,12 +2809,12 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteRechnung]    Skriptdatum: 12/16/2015 15:15:15 ******/
+/****** Objekt:  Trigger [TesteRechnung]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE TRIGGER [dbo].[TesteRechnung] ON [dbo].[Rechnung] AFTER INSERT, UPDATE AS
+CREATE TRIGGER [dbo].[TesteRechnung] ON [dbo].[Rechnung] AFTER INSERT, UPDATE, DELETE AS
 BEGIN
 	SET NOCOUNT ON
 
@@ -3128,6 +2824,32 @@ BEGIN
 		-- stimmt der Wert einer Spalte nicht?
 		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Rechnung() AS F JOIN inserted AS I ON F.ID = I.ID
 		EXEC dbo.WerfeFehler @Fehler
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Rechnung')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Rechnung')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
 	END TRY
 	BEGIN CATCH
 		EXEC dbo.BerichteFehler
@@ -3135,12 +2857,12 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteVerrechnungssatz]    Skriptdatum: 12/16/2015 15:15:15 ******/
+/****** Objekt:  Trigger [TesteVerrechnungssatz]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE TRIGGER [dbo].[TesteVerrechnungssatz] ON [dbo].[Verrechnungssatz] AFTER INSERT, UPDATE AS
+CREATE TRIGGER [dbo].[TesteVerrechnungssatz] ON [dbo].[Verrechnungssatz] AFTER INSERT, UPDATE, DELETE AS
 BEGIN
 	SET NOCOUNT ON
 
@@ -3154,6 +2876,32 @@ BEGIN
 		-- stimmt die Platzhalteangabe des Kostensatzes nicht mit der Leistungsart zusammen?
 		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler__Verrechnungssatz_Platzhalter() AS F JOIN inserted AS I ON F.Verrechnungssatz = I.ID
 		EXEC dbo.WerfeFehler @Fehler
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Verrechnungssatz')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Verrechnungssatz')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
 	END TRY
 	BEGIN CATCH
 		EXEC dbo.BerichteFehler
@@ -3161,12 +2909,12 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteEinheit]    Skriptdatum: 12/16/2015 15:15:15 ******/
+/****** Objekt:  Trigger [TesteEinheit]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE TRIGGER [dbo].[TesteEinheit] ON [dbo].[Einheit] AFTER INSERT, UPDATE AS
+CREATE TRIGGER [dbo].[TesteEinheit] ON [dbo].[Einheit] AFTER INSERT, UPDATE, DELETE AS
 BEGIN
 	SET NOCOUNT ON
 
@@ -3180,6 +2928,32 @@ BEGIN
 		-- passt die Abrechnungsdauer nicht mit der Leistungseinheit zusammen?
 		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler__Abrechnung_Einheit() AS F JOIN inserted AS I ON F.Einheit = I.ID
 		EXEC dbo.WerfeFehler @Fehler
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Einheit')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Einheit')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
 	END TRY
 	BEGIN CATCH
 		EXEC dbo.BerichteFehler
@@ -3187,38 +2961,12 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteBescheidTyp]    Skriptdatum: 12/16/2015 15:15:15 ******/
+/****** Objekt:  Trigger [TesteKostensatz]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE TRIGGER [dbo].[TesteBescheidTyp] ON [dbo].[Bescheid_Typ] AFTER INSERT, UPDATE AS
-BEGIN
-	SET NOCOUNT ON
-
-	BEGIN TRY
-		DECLARE @Fehler AS bigint
-
-		-- stimmt der Wert einer Spalte nicht?
-		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Bescheid__Typ() AS F JOIN inserted AS I ON F.ID = I.ID
-		EXEC dbo.WerfeFehler @Fehler
-
-		-- ist der Bescheid mit dem Typ inkompatibel?
-		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler__Bescheid_Typ() AS F JOIN inserted AS I ON F.Bescheid_Typ = I.ID
-		EXEC dbo.WerfeFehler @Fehler
-	END TRY
-	BEGIN CATCH
-		EXEC dbo.BerichteFehler
-		ROLLBACK TRANSACTION
-	END CATCH
-END
-GO
-/****** Objekt:  Trigger [TesteKostensatz]    Skriptdatum: 12/16/2015 15:15:15 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[TesteKostensatz] ON [dbo].[Kostensatz] AFTER INSERT, UPDATE AS
+CREATE TRIGGER [dbo].[TesteKostensatz] ON [dbo].[Kostensatz] AFTER INSERT, UPDATE, DELETE AS
 BEGIN
 	SET NOCOUNT ON
 
@@ -3236,6 +2984,32 @@ BEGIN
 		-- wurden die verfügbaren Platzhalte überschritten?
 		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler__Abrechnung_Platzhalter() AS F WHERE F.Bescheid IN (SELECT DISTINCT A.Bescheid FROM dbo.Abrechnung AS A JOIN inserted AS I ON A.Kostensatz = I.ID)
 		EXEC dbo.WerfeFehler @Fehler
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Kostensatz')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Kostensatz')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
 	END TRY
 	BEGIN CATCH
 		EXEC dbo.BerichteFehler
@@ -3243,26 +3017,78 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Check [CK_Fehler]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  Trigger [TesteBescheidTyp]    Skriptdatum: 12/31/2015 14:14:09 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TRIGGER [dbo].[TesteBescheidTyp] ON [dbo].[Bescheid_Typ] AFTER INSERT, UPDATE, DELETE AS
+BEGIN
+	SET NOCOUNT ON
+
+	BEGIN TRY
+		DECLARE @Fehler AS bigint
+
+		-- stimmt der Wert einer Spalte nicht?
+		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Bescheid__Typ() AS F JOIN inserted AS I ON F.ID = I.ID
+		EXEC dbo.WerfeFehler @Fehler
+
+		-- ist der Bescheid mit dem Typ inkompatibel?
+		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler__Bescheid_Typ() AS F JOIN inserted AS I ON F.Bescheid_Typ = I.ID
+		EXEC dbo.WerfeFehler @Fehler
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Bescheid_Typ')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Bescheid_Typ')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
+	END TRY
+	BEGIN CATCH
+		EXEC dbo.BerichteFehler
+		ROLLBACK TRANSACTION
+	END CATCH
+END
+GO
+/****** Objekt:  Check [CK_Fehler]    Skriptdatum: 12/31/2015 14:13:54 ******/
 ALTER TABLE [dbo].[Fehler]  WITH CHECK ADD  CONSTRAINT [CK_Fehler] CHECK  ((len(ltrim(rtrim([Meldung])))>(0)))
 GO
 ALTER TABLE [dbo].[Fehler] CHECK CONSTRAINT [CK_Fehler]
 GO
-/****** Objekt:  ForeignKey [FK_Abrechnung_Bescheid]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Abrechnung_Bescheid]    Skriptdatum: 12/31/2015 14:13:51 ******/
 ALTER TABLE [dbo].[Abrechnung]  WITH CHECK ADD  CONSTRAINT [FK_Abrechnung_Bescheid] FOREIGN KEY([Bescheid])
 REFERENCES [dbo].[Bescheid] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Abrechnung] CHECK CONSTRAINT [FK_Abrechnung_Bescheid]
 GO
-/****** Objekt:  ForeignKey [FK_Abrechnung_Kostensatz]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Abrechnung_Kostensatz]    Skriptdatum: 12/31/2015 14:13:51 ******/
 ALTER TABLE [dbo].[Abrechnung]  WITH CHECK ADD  CONSTRAINT [FK_Abrechnung_Kostensatz] FOREIGN KEY([Kostensatz])
 REFERENCES [dbo].[Kostensatz] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Abrechnung] CHECK CONSTRAINT [FK_Abrechnung_Kostensatz]
 GO
-/****** Objekt:  ForeignKey [FK_Abrechnung_Rechnung]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Abrechnung_Rechnung]    Skriptdatum: 12/31/2015 14:13:51 ******/
 ALTER TABLE [dbo].[Abrechnung]  WITH CHECK ADD  CONSTRAINT [FK_Abrechnung_Rechnung] FOREIGN KEY([Rechnung])
 REFERENCES [dbo].[Rechnung] ([ID])
 ON UPDATE CASCADE
@@ -3270,129 +3096,377 @@ ON DELETE CASCADE
 GO
 ALTER TABLE [dbo].[Abrechnung] CHECK CONSTRAINT [FK_Abrechnung_Rechnung]
 GO
-/****** Objekt:  ForeignKey [FK_Anwesenheit_Zeitspanne]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Anwesenheit_Zeitspanne]    Skriptdatum: 12/31/2015 14:13:52 ******/
 ALTER TABLE [dbo].[Anwesenheit]  WITH CHECK ADD  CONSTRAINT [FK_Anwesenheit_Zeitspanne] FOREIGN KEY([Zeitspanne])
 REFERENCES [dbo].[Zeitspanne] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Anwesenheit] CHECK CONSTRAINT [FK_Anwesenheit_Zeitspanne]
 GO
-/****** Objekt:  ForeignKey [FK_Bescheid_Bescheid_Typ]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Bescheid_Bescheid_Typ]    Skriptdatum: 12/31/2015 14:13:53 ******/
 ALTER TABLE [dbo].[Bescheid]  WITH CHECK ADD  CONSTRAINT [FK_Bescheid_Bescheid_Typ] FOREIGN KEY([Typ])
 REFERENCES [dbo].[Bescheid_Typ] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Bescheid] CHECK CONSTRAINT [FK_Bescheid_Bescheid_Typ]
 GO
-/****** Objekt:  ForeignKey [FK_Bescheid_Einrichtung]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Bescheid_Einrichtung]    Skriptdatum: 12/31/2015 14:13:53 ******/
 ALTER TABLE [dbo].[Bescheid]  WITH CHECK ADD  CONSTRAINT [FK_Bescheid_Einrichtung] FOREIGN KEY([Einrichtung])
 REFERENCES [dbo].[Einrichtung] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Bescheid] CHECK CONSTRAINT [FK_Bescheid_Einrichtung]
 GO
-/****** Objekt:  ForeignKey [FK_Bescheid_Leistungsart]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Bescheid_Leistungsart]    Skriptdatum: 12/31/2015 14:13:53 ******/
 ALTER TABLE [dbo].[Bescheid]  WITH CHECK ADD  CONSTRAINT [FK_Bescheid_Leistungsart] FOREIGN KEY([Leistungsart])
 REFERENCES [dbo].[Leistungsart] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Bescheid] CHECK CONSTRAINT [FK_Bescheid_Leistungsart]
 GO
-/****** Objekt:  ForeignKey [FK_Bescheid_Teilnehmer]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Bescheid_Teilnehmer]    Skriptdatum: 12/31/2015 14:13:53 ******/
 ALTER TABLE [dbo].[Bescheid]  WITH CHECK ADD  CONSTRAINT [FK_Bescheid_Teilnehmer] FOREIGN KEY([Teilnehmer])
 REFERENCES [dbo].[Teilnehmer] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Bescheid] CHECK CONSTRAINT [FK_Bescheid_Teilnehmer]
 GO
-/****** Objekt:  ForeignKey [FK_Leistungsart_Einheit]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Leistungsart_Einheit]    Skriptdatum: 12/31/2015 14:13:55 ******/
 ALTER TABLE [dbo].[Leistungsart]  WITH CHECK ADD  CONSTRAINT [FK_Leistungsart_Einheit] FOREIGN KEY([Einheit])
 REFERENCES [dbo].[Einheit] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Leistungsart] CHECK CONSTRAINT [FK_Leistungsart_Einheit]
 GO
-/****** Objekt:  ForeignKey [FK_Planung_Einrichtung]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Planung_Einrichtung]    Skriptdatum: 12/31/2015 14:13:56 ******/
 ALTER TABLE [dbo].[Planung]  WITH CHECK ADD  CONSTRAINT [FK_Planung_Einrichtung] FOREIGN KEY([Einrichtung])
 REFERENCES [dbo].[Einrichtung] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Planung] CHECK CONSTRAINT [FK_Planung_Einrichtung]
 GO
-/****** Objekt:  ForeignKey [FK_Planung_Leistungsart]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Planung_Leistungsart]    Skriptdatum: 12/31/2015 14:13:56 ******/
 ALTER TABLE [dbo].[Planung]  WITH CHECK ADD  CONSTRAINT [FK_Planung_Leistungsart] FOREIGN KEY([Leistungsart])
 REFERENCES [dbo].[Leistungsart] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Planung] CHECK CONSTRAINT [FK_Planung_Leistungsart]
 GO
-/****** Objekt:  ForeignKey [FK_Praktikum_Einrichtung]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Praktikum_Einrichtung]    Skriptdatum: 12/31/2015 14:13:57 ******/
 ALTER TABLE [dbo].[Praktikum]  WITH CHECK ADD  CONSTRAINT [FK_Praktikum_Einrichtung] FOREIGN KEY([Einrichtung])
 REFERENCES [dbo].[Einrichtung] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Praktikum] CHECK CONSTRAINT [FK_Praktikum_Einrichtung]
 GO
-/****** Objekt:  ForeignKey [FK_Praktikum_Praktikum_Kategorie]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Praktikum_Praktikum_Kategorie]    Skriptdatum: 12/31/2015 14:13:57 ******/
 ALTER TABLE [dbo].[Praktikum]  WITH CHECK ADD  CONSTRAINT [FK_Praktikum_Praktikum_Kategorie] FOREIGN KEY([Kategorie])
 REFERENCES [dbo].[Praktikum_Kategorie] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Praktikum] CHECK CONSTRAINT [FK_Praktikum_Praktikum_Kategorie]
 GO
-/****** Objekt:  ForeignKey [FK_Praktikum_Standort]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Praktikum_Standort]    Skriptdatum: 12/31/2015 14:13:57 ******/
 ALTER TABLE [dbo].[Praktikum]  WITH CHECK ADD  CONSTRAINT [FK_Praktikum_Standort] FOREIGN KEY([Standort])
 REFERENCES [dbo].[Standort] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Praktikum] CHECK CONSTRAINT [FK_Praktikum_Standort]
 GO
-/****** Objekt:  ForeignKey [FK_Praktikum_Teilnehmer]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Praktikum_Teilnehmer]    Skriptdatum: 12/31/2015 14:13:57 ******/
 ALTER TABLE [dbo].[Praktikum]  WITH CHECK ADD  CONSTRAINT [FK_Praktikum_Teilnehmer] FOREIGN KEY([Teilnehmer])
 REFERENCES [dbo].[Teilnehmer] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Praktikum] CHECK CONSTRAINT [FK_Praktikum_Teilnehmer]
 GO
-/****** Objekt:  ForeignKey [FK_Standort_Standort_Bereich]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Standort_Standort_Bereich]    Skriptdatum: 12/31/2015 14:13:58 ******/
 ALTER TABLE [dbo].[Standort]  WITH CHECK ADD  CONSTRAINT [FK_Standort_Standort_Bereich] FOREIGN KEY([Bereich])
 REFERENCES [dbo].[Standort_Bereich] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Standort] CHECK CONSTRAINT [FK_Standort_Standort_Bereich]
 GO
-/****** Objekt:  ForeignKey [FK_Verrechnungssatz_Kostensatz]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Verrechnungssatz_Kostensatz]    Skriptdatum: 12/31/2015 14:13:59 ******/
 ALTER TABLE [dbo].[Verrechnungssatz]  WITH CHECK ADD  CONSTRAINT [FK_Verrechnungssatz_Kostensatz] FOREIGN KEY([Kostensatz])
 REFERENCES [dbo].[Kostensatz] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Verrechnungssatz] CHECK CONSTRAINT [FK_Verrechnungssatz_Kostensatz]
 GO
-/****** Objekt:  ForeignKey [FK_Verrechnungssatz_Leistungsart]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Verrechnungssatz_Leistungsart]    Skriptdatum: 12/31/2015 14:13:59 ******/
 ALTER TABLE [dbo].[Verrechnungssatz]  WITH CHECK ADD  CONSTRAINT [FK_Verrechnungssatz_Leistungsart] FOREIGN KEY([Leistungsart])
 REFERENCES [dbo].[Leistungsart] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Verrechnungssatz] CHECK CONSTRAINT [FK_Verrechnungssatz_Leistungsart]
 GO
-/****** Objekt:  ForeignKey [FK_Zeitspanne_Einrichtung]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Zeitspanne_Einrichtung]    Skriptdatum: 12/31/2015 14:14:00 ******/
 ALTER TABLE [dbo].[Zeitspanne]  WITH CHECK ADD  CONSTRAINT [FK_Zeitspanne_Einrichtung] FOREIGN KEY([Einrichtung])
 REFERENCES [dbo].[Einrichtung] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Zeitspanne] CHECK CONSTRAINT [FK_Zeitspanne_Einrichtung]
 GO
-/****** Objekt:  ForeignKey [FK_Zeitspanne_Teilnehmer]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Zeitspanne_Teilnehmer]    Skriptdatum: 12/31/2015 14:14:00 ******/
 ALTER TABLE [dbo].[Zeitspanne]  WITH CHECK ADD  CONSTRAINT [FK_Zeitspanne_Teilnehmer] FOREIGN KEY([Teilnehmer])
 REFERENCES [dbo].[Teilnehmer] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Zeitspanne] CHECK CONSTRAINT [FK_Zeitspanne_Teilnehmer]
 GO
-/****** Objekt:  ForeignKey [FK_Zeitspanne_Zeitspanne_Austrittsgrund]    Skriptdatum: 12/16/2015 15:15:14 ******/
+/****** Objekt:  ForeignKey [FK_Zeitspanne_Zeitspanne_Austrittsgrund]    Skriptdatum: 12/31/2015 14:14:00 ******/
 ALTER TABLE [dbo].[Zeitspanne]  WITH CHECK ADD  CONSTRAINT [FK_Zeitspanne_Zeitspanne_Austrittsgrund] FOREIGN KEY([Austrittsgrund])
 REFERENCES [dbo].[Zeitspanne_Austrittsgrund] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Zeitspanne] CHECK CONSTRAINT [FK_Zeitspanne_Zeitspanne_Austrittsgrund]
+GO
+USE [master]
+GO
+GRANT CONNECT TO [app]
+GO
+GRANT SUBSCRIBE QUERY NOTIFICATIONS TO [app]
+GO
+GRANT CONNECT TO [Integrationsassistenz]
+GO
+GRANT CONNECT TO [Leitung]
+GO
+GRANT CONNECT TO [Rechnungswesen]
+GO
+GRANT CONNECT TO [Sekretariat]
+GO
+GRANT CONNECT TO [Training]
+GO
+USE [Teilnehmer_innen]
+GO
+GRANT DELETE ON [dbo].[Abrechnung] TO [Rechnungswesen]
+GO
+GRANT INSERT ON [dbo].[Abrechnung] TO [Rechnungswesen]
+GO
+GRANT UPDATE ON [dbo].[Abrechnung] TO [Rechnungswesen]
+GO
+GRANT DELETE ON [dbo].[Anwesenheit] TO [Sekretariat]
+GO
+GRANT INSERT ON [dbo].[Anwesenheit] TO [Sekretariat]
+GO
+GRANT SELECT ON [dbo].[Anwesenheit] TO [Sekretariat]
+GO
+GRANT UPDATE ON [dbo].[Anwesenheit] TO [Sekretariat]
+GO
+GRANT DELETE ON [dbo].[Anwesenheit] TO [Training]
+GO
+GRANT INSERT ON [dbo].[Anwesenheit] TO [Training]
+GO
+GRANT SELECT ON [dbo].[Anwesenheit] TO [Training]
+GO
+GRANT UPDATE ON [dbo].[Anwesenheit] TO [Training]
+GO
+GRANT SELECT ON [dbo].[Bescheid] TO [Leitung]
+GO
+GRANT SELECT ON [dbo].[Bescheid] TO [Rechnungswesen]
+GO
+GRANT DELETE ON [dbo].[Bescheid] TO [Sekretariat]
+GO
+GRANT INSERT ON [dbo].[Bescheid] TO [Sekretariat]
+GO
+GRANT SELECT ON [dbo].[Bescheid] TO [Sekretariat]
+GO
+GRANT UPDATE ON [dbo].[Bescheid] TO [Sekretariat]
+GO
+GRANT DELETE ON [dbo].[Bescheid_Typ] TO [Sekretariat]
+GO
+GRANT INSERT ON [dbo].[Bescheid_Typ] TO [Sekretariat]
+GO
+GRANT SELECT ON [dbo].[Bescheid_Typ] TO [Sekretariat]
+GO
+GRANT UPDATE ON [dbo].[Bescheid_Typ] TO [Sekretariat]
+GO
+GRANT SELECT ON [dbo].[Bescheid_Typ] ([ID]) TO [Leitung]
+GO
+GRANT SELECT ON [dbo].[Bescheid_Typ] ([Bezeichnung]) TO [Leitung]
+GO
+GRANT SELECT ON [dbo].[Bescheid_Typ] ([Version]) TO [Leitung]
+GO
+GRANT DELETE ON [dbo].[Einheit] TO [Rechnungswesen]
+GO
+GRANT INSERT ON [dbo].[Einheit] TO [Rechnungswesen]
+GO
+GRANT SELECT ON [dbo].[Einheit] TO [Rechnungswesen]
+GO
+GRANT UPDATE ON [dbo].[Einheit] TO [Rechnungswesen]
+GO
+GRANT SELECT ON [dbo].[Einrichtung] TO [public]
+GO
+GRANT DELETE ON [dbo].[Feiertag] TO [Sekretariat]
+GO
+GRANT INSERT ON [dbo].[Feiertag] TO [Sekretariat]
+GO
+GRANT SELECT ON [dbo].[Feiertag] TO [Sekretariat]
+GO
+GRANT UPDATE ON [dbo].[Feiertag] TO [Sekretariat]
+GO
+GRANT SELECT ON [dbo].[Feiertag] TO [Training]
+GO
+GRANT DELETE ON [dbo].[Kostensatz] TO [Rechnungswesen]
+GO
+GRANT INSERT ON [dbo].[Kostensatz] TO [Rechnungswesen]
+GO
+GRANT SELECT ON [dbo].[Kostensatz] TO [Rechnungswesen]
+GO
+GRANT UPDATE ON [dbo].[Kostensatz] TO [Rechnungswesen]
+GO
+GRANT DELETE ON [dbo].[Leistungsart] TO [Rechnungswesen]
+GO
+GRANT INSERT ON [dbo].[Leistungsart] TO [Rechnungswesen]
+GO
+GRANT SELECT ON [dbo].[Leistungsart] TO [Rechnungswesen]
+GO
+GRANT UPDATE ON [dbo].[Leistungsart] TO [Rechnungswesen]
+GO
+GRANT SELECT ON [dbo].[Leistungsart] ([ID]) TO [Leitung]
+GO
+GRANT SELECT ON [dbo].[Leistungsart] ([ID]) TO [Sekretariat]
+GO
+GRANT SELECT ON [dbo].[Leistungsart] ([Bezeichnung]) TO [Leitung]
+GO
+GRANT SELECT ON [dbo].[Leistungsart] ([Bezeichnung]) TO [Sekretariat]
+GO
+GRANT SELECT ON [dbo].[Leistungsart] ([Version]) TO [Leitung]
+GO
+GRANT SELECT ON [dbo].[Leistungsart] ([Version]) TO [Sekretariat]
+GO
+GRANT DELETE ON [dbo].[Planung] TO [Leitung]
+GO
+GRANT INSERT ON [dbo].[Planung] TO [Leitung]
+GO
+GRANT SELECT ON [dbo].[Planung] TO [Leitung]
+GO
+GRANT UPDATE ON [dbo].[Planung] TO [Leitung]
+GO
+GRANT DELETE ON [dbo].[Planung] TO [Rechnungswesen]
+GO
+GRANT INSERT ON [dbo].[Planung] TO [Rechnungswesen]
+GO
+GRANT SELECT ON [dbo].[Planung] TO [Rechnungswesen]
+GO
+GRANT UPDATE ON [dbo].[Planung] TO [Rechnungswesen]
+GO
+GRANT DELETE ON [dbo].[Praktikum] TO [Integrationsassistenz]
+GO
+GRANT INSERT ON [dbo].[Praktikum] TO [Integrationsassistenz]
+GO
+GRANT SELECT ON [dbo].[Praktikum] TO [Integrationsassistenz]
+GO
+GRANT UPDATE ON [dbo].[Praktikum] TO [Integrationsassistenz]
+GO
+GRANT SELECT ON [dbo].[Praktikum_Kategorie] TO [Integrationsassistenz]
+GO
+GRANT DELETE ON [dbo].[Praktikum_Kategorie] TO [Sekretariat]
+GO
+GRANT INSERT ON [dbo].[Praktikum_Kategorie] TO [Sekretariat]
+GO
+GRANT SELECT ON [dbo].[Praktikum_Kategorie] TO [Sekretariat]
+GO
+GRANT UPDATE ON [dbo].[Praktikum_Kategorie] TO [Sekretariat]
+GO
+GRANT DELETE ON [dbo].[Rechnung] TO [Rechnungswesen]
+GO
+GRANT INSERT ON [dbo].[Rechnung] TO [Rechnungswesen]
+GO
+GRANT SELECT ON [dbo].[Rechnung] TO [Rechnungswesen]
+GO
+GRANT UPDATE ON [dbo].[Rechnung] TO [Rechnungswesen]
+GO
+GRANT DELETE ON [dbo].[Standort] TO [Integrationsassistenz]
+GO
+GRANT INSERT ON [dbo].[Standort] TO [Integrationsassistenz]
+GO
+GRANT SELECT ON [dbo].[Standort] TO [Integrationsassistenz]
+GO
+GRANT UPDATE ON [dbo].[Standort] TO [Integrationsassistenz]
+GO
+GRANT SELECT ON [dbo].[Standort_Bereich] TO [Integrationsassistenz]
+GO
+GRANT DELETE ON [dbo].[Standort_Bereich] TO [Sekretariat]
+GO
+GRANT INSERT ON [dbo].[Standort_Bereich] TO [Sekretariat]
+GO
+GRANT SELECT ON [dbo].[Standort_Bereich] TO [Sekretariat]
+GO
+GRANT UPDATE ON [dbo].[Standort_Bereich] TO [Sekretariat]
+GO
+GRANT SELECT ON [dbo].[Teilnehmer] TO [Integrationsassistenz]
+GO
+GRANT SELECT ON [dbo].[Teilnehmer] TO [Leitung]
+GO
+GRANT SELECT ON [dbo].[Teilnehmer] TO [Rechnungswesen]
+GO
+GRANT DELETE ON [dbo].[Teilnehmer] TO [Sekretariat]
+GO
+GRANT INSERT ON [dbo].[Teilnehmer] TO [Sekretariat]
+GO
+GRANT SELECT ON [dbo].[Teilnehmer] TO [Sekretariat]
+GO
+GRANT UPDATE ON [dbo].[Teilnehmer] TO [Sekretariat]
+GO
+GRANT SELECT ON [dbo].[Teilnehmer] TO [Training]
+GO
+GRANT DELETE ON [dbo].[Verrechnungssatz] TO [Rechnungswesen]
+GO
+GRANT INSERT ON [dbo].[Verrechnungssatz] TO [Rechnungswesen]
+GO
+GRANT SELECT ON [dbo].[Verrechnungssatz] TO [Rechnungswesen]
+GO
+GRANT UPDATE ON [dbo].[Verrechnungssatz] TO [Rechnungswesen]
+GO
+GRANT SELECT ON [dbo].[Version] TO [app]
+GO
+GRANT SELECT ON [dbo].[Zeitspanne] TO [Leitung]
+GO
+GRANT DELETE ON [dbo].[Zeitspanne] TO [Sekretariat]
+GO
+GRANT INSERT ON [dbo].[Zeitspanne] TO [Sekretariat]
+GO
+GRANT SELECT ON [dbo].[Zeitspanne] TO [Sekretariat]
+GO
+GRANT UPDATE ON [dbo].[Zeitspanne] TO [Sekretariat]
+GO
+GRANT SELECT ON [dbo].[Zeitspanne] ([ID]) TO [Training]
+GO
+GRANT SELECT ON [dbo].[Zeitspanne] ([Einrichtung]) TO [Training]
+GO
+GRANT SELECT ON [dbo].[Zeitspanne] ([Teilnehmer]) TO [Training]
+GO
+GRANT SELECT ON [dbo].[Zeitspanne] ([Eintritt]) TO [Training]
+GO
+GRANT SELECT ON [dbo].[Zeitspanne] ([Überprüft]) TO [Training]
+GO
+GRANT UPDATE ON [dbo].[Zeitspanne] ([Austritt]) TO [Leitung]
+GO
+GRANT SELECT ON [dbo].[Zeitspanne] ([Austritt]) TO [Training]
+GO
+GRANT UPDATE ON [dbo].[Zeitspanne] ([Austrittsgrund]) TO [Leitung]
+GO
+GRANT UPDATE ON [dbo].[Zeitspanne] ([Austrittsnotiz]) TO [Leitung]
+GO
+GRANT SELECT ON [dbo].[Zeitspanne] ([Version]) TO [Training]
+GO
+GRANT DELETE ON [dbo].[Zeitspanne_Austrittsgrund] TO [Sekretariat]
+GO
+GRANT INSERT ON [dbo].[Zeitspanne_Austrittsgrund] TO [Sekretariat]
+GO
+GRANT SELECT ON [dbo].[Zeitspanne_Austrittsgrund] TO [Sekretariat]
+GO
+GRANT UPDATE ON [dbo].[Zeitspanne_Austrittsgrund] TO [Sekretariat]
+GO
+GRANT SELECT ON [dbo].[Zeitspanne_Austrittsgrund] ([ID]) TO [Leitung]
+GO
+GRANT SELECT ON [dbo].[Zeitspanne_Austrittsgrund] ([Bezeichnung]) TO [Leitung]
+GO
+GRANT SELECT ON [dbo].[Zeitspanne_Austrittsgrund] ([Version]) TO [Leitung]
+GO
+GRANT EXECUTE ON [dbo].[ErstelleAbrechnung] TO [Rechnungswesen]
+GO
+GRANT EXECUTE ON [dbo].[PlatzhalterProJahr] TO [public]
 GO
