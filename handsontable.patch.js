@@ -29,8 +29,9 @@ Handsontable.DataMap.prototype.getCopyable = function (row, prop) {
     if (result === '' || result === null) {
         return '';
     }
-    var meta = this.instance.getCellMeta(row, this.propToCol(prop));
-    return meta.formatCopyable ? meta.formatCopyable(result, row, prop) : result;
+    var col = this.propToCol(prop);
+    var meta = this.instance.getCellMeta(row, col);
+    return meta.formatCopyable ? meta.formatCopyable(result, row, col, prop) : result;
 };
 
 /******************************************************************************/

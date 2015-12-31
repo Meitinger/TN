@@ -765,35 +765,35 @@ angular.module('tn', [])
 
             // create the callbacks
             var isSyncCall = true;
-            var asyncWrapper = function (fn, arg) {
-                return function () {
-                    if (isSyncCall) {
-                        $rootScope.$evalAsync(function () {
-                            fn(arg);
-                        });
-                    }
-                    else {
-                        fn(arg);
-                    }
-                };
+            var doWork = function (work) {
+                if (isSyncCall) {
+                    $rootScope.$evalAsync(work);
+                }
+                else {
+                    work();
+                }
             };
             var succeed = function () {
-                if (setError) {
-                    delete row.$error;
-                }
-                delete row.$action;
-                deferred.resolve(row);
+                doWork(function () {
+                    if (setError) {
+                        delete row.$error;
+                    }
+                    delete row.$action;
+                    deferred.resolve(row);
+                });
             };
             var fail = function (error) {
-                if (setError) {
-                    row.$error = error;
-                }
-                delete row.$action;
-                deferred.reject(error.message);
+                doWork(function () {
+                    if (setError) {
+                        row.$error = error;
+                    }
+                    delete row.$action;
+                    deferred.reject(error.message);
+                });
             };
 
             // run the action
-            fn(row, asyncWrapper(succeed), asyncWrapper(fail));
+            fn(row, succeed, fail);
             isSyncCall = false;
 
             // return the promise
@@ -1182,8 +1182,11 @@ angular.module('tn', [])
                 // insert or update a row
                 return rowAction(row, row.$id < 0 ? insertRow : updateRow, true);
             })),
-            deleteRow: throwIfDisposed(throwIfNoColumns(function (row) {
-                return rowAction(row, deleteRow, false);
+            deleteRow: throwIfDisposed(throwIfNoColumns(function (row, setError) {
+                ArgumentException.check(setError, 'setError', Boolean, true);
+
+                // delete a row and only store the error if requested
+                return rowAction(row, deleteRow, setError);
             }))
         };
 
@@ -1323,7 +1326,7 @@ angular.module('tn', [])
                 value = '(' + cellProperties.referencedTable + ' #' + value + ' nicht geladen)';
             }
         }
-        Handsontable.renderers.AutocompleteRenderer(instance, TD, row, col, prop, value, cellProperties);
+        (cellProperties.readOnly ? Handsontable.renderers.TextRenderer : Handsontable.renderers.AutocompleteRenderer)(instance, TD, row, col, prop, value, cellProperties);
     };
     var labelsComparer = function (sortOrder) {
         // return the numeric comparer if there are no labels
@@ -1720,8 +1723,21 @@ angular.module('tn', [])
 .controller('AttendanceController', function ($scope, $element, $filter, Roles, dataSet) {
     var ctr = this;
     var hot = null;
+    var hotRenderQueued = false;
 
-    // date helper functions
+    // helper functions
+    var queueRender = function () {
+        // make sure render only gets called once in a tick
+        if (hot && !hotRenderQueued) {
+            hotRenderQueued = true;
+            $scope.$evalAsync(function () {
+                hotRenderQueued = false;
+                if (hot) {
+                    hot.render();
+                }
+            });
+        }
+    };
     var getDateFromWeekDay = function (weekDay) {
         return new Date(ctr.monday.getTime() + (((weekDay + 6) % 7) * (24 * 60 * 60 * 1000)));
     };
@@ -1786,9 +1802,7 @@ angular.module('tn', [])
 
         // store the result and render
         weekDays.formatted[weekDay] = result;
-        if (hot) {
-            hot.render();
-        }
+        queueRender();
     };
     var getWeekDays = function (zeitspanneId) {
         // create the weekdays if they don't exist
@@ -1801,65 +1815,49 @@ angular.module('tn', [])
         }
         return attendance[zeitspanneId];
     };
-    var changeAnwesenheitAsync = function (zeitspanneId, weekDay, fn) {
-        $scope.$evalAsync(function () {
-            // get or create the row object
-            var zeroTime = new Date(1900, 0, 1);
-            var weekDays = getWeekDays(zeitspanneId);
-            var row;
-            if (weekDay in weekDays) {
-                row = weekDays[weekDay];
-                if (row.$action) {
-                    UIkit.modal.alert('Die Zeile wird bereits geändert.');
-                    return;
-                }
+    var changeAnwesenheit = function (zeitspanneId, weekDay, fn) {
+        // get or create the row object
+        var zeroTime = new Date(1900, 0, 1);
+        var weekDays = getWeekDays(zeitspanneId);
+        var row;
+        if (weekDay in weekDays) {
+            row = weekDays[weekDay];
+            if (row.$action) {
+                UIkit.modal.alert('Die Zeile wird bereits geändert.');
+                return;
             }
-            else {
-                row = {
-                    Zeitspanne: zeitspanneId,
-                    Datum: getDateFromWeekDay(weekDay),
-                    Vormittags: false,
-                    Nachmittags: false,
-                    Nachts: false,
-                    Zusatz: zeroTime
-                };
-                anwesenheit.newRow(row);
-            }
-
-            // change the row
-            fn(row);
-
-            // define a callback that updates the row
-            var reformatAnwesenheit = function () {
-                // make sure the row is sill the same
-                if (weekDay in weekDays && weekDays[weekDay] === row) {
-                    formatAnwesenheit(weekDays, weekDay);
-                }
+        }
+        else {
+            row = {
+                Zeitspanne: zeitspanneId,
+                Datum: getDateFromWeekDay(weekDay),
+                Vormittags: false,
+                Nachmittags: false,
+                Nachts: false,
+                Zusatz: zeroTime
             };
+            anwesenheit.newRow(row);
+        }
 
-            // save or delete the row if its empty
-            if (!row.Vormittags && !row.Nachmittags && !row.Nachts && row.Zusatz.getTime() === zeroTime.getTime()) {
-                anwesenheit.deleteRow(row).then(
-                null,
-                function (error) {
-                    // also set an error and update the row
-                    row.$error = {
-                        statement: 0,
-                        message: error,
-                        table: 'Anwesenheit',
-                        column: null
-                    };
-                    reformatAnwesenheit();
-                }
-            );
-            }
-            else {
-                anwesenheit.saveRow(row).then(null, reformatAnwesenheit);
-            }
+        // change the row
+        fn(row);
 
-            // update the row to indicate the action
-            reformatAnwesenheit();
-        });
+        // define a callback that updates the row
+        var reformatAnwesenheit = function () {
+            // make sure the row is sill the same
+            if (weekDay in weekDays && weekDays[weekDay] === row) {
+                formatAnwesenheit(weekDays, weekDay);
+            }
+        };
+
+        // save or delete the row if its empty
+        var promise = !row.Vormittags && !row.Nachmittags && !row.Nachts && row.Zusatz.getTime() === zeroTime.getTime() ?
+            anwesenheit.deleteRow(row, true) :
+            anwesenheit.saveRow(row);
+        promise.then(null, reformatAnwesenheit);
+
+        // update the row to indicate the action
+        reformatAnwesenheit();
     };
     var handleZeitspanneRowChange = function (table, oldRow, newRow) {
         // remove the html from the old row
@@ -1873,9 +1871,7 @@ angular.module('tn', [])
         }
 
         // rerender
-        if (hot) {
-            hot.render();
-        }
+        queueRender();
     };
     var handleAnwesenheitRowChange = function (table, oldRow, newRow) {
         // define a helper function
@@ -1930,9 +1926,9 @@ angular.module('tn', [])
             }
         }
 
-        // redraw the header if possible and necessary
-        if (hot && render) {
-            hot.render();
+        // redraw the header if necessary
+        if (render) {
+            queueRender();
         }
     };
 
@@ -1968,23 +1964,18 @@ angular.module('tn', [])
 
             // make sure the weekday is editable
             var propMatch = change[1].match(/^\$Anwesenheit\.([0-6])$/);
-            if (!propMatch) {
-                return;
+            if (propMatch) {
+                var weekDay = Number(propMatch[1]);
+                if (!hot.getCellMeta(change[0], 2 + ((weekDay + 6) % 7)).readOnly) {
+                    // make sure the format is value
+                    var valueMatch = change[3].match(/^<span class="bitmask-([01])([01])([01])( missing)?">(\d\d):(\d\d)<\/span>/);
+                    if (valueMatch && Number(valueMatch[5]) < 24 && Number(valueMatch[6]) < 60) {
+                        // change the attributes
+                        var zeitspanneId = hot.getSourceDataAtRow(change[0]).$id;
+                        changeAnwesenheit(zeitspanneId, weekDay, createSetter(Number(valueMatch[1]) === 1, Number(valueMatch[2]) === 1, Number(valueMatch[3]) === 1, new Date(1900, 0, 1, Number(valueMatch[5]), Number(valueMatch[6]))));
+                    }
+                }
             }
-            var weekDay = Number(propMatch[1]);
-            if (hot.getCellMeta(change[0], 2 + ((weekDay + 6) % 7)).readOnly) {
-                return;
-            }
-
-            // make sure the format is value
-            var valueMatch = change[3].match(/^<span class="bitmask-([01])([01])([01])( missing)?">(\d\d):(\d\d)<\/span>/);
-            if (!valueMatch || valueMatch[5] >= 24 || valueMatch[6] >= 60) {
-                return;
-            }
-
-            // change the attributes
-            var zeitspanneId = hot.getSourceDataAtRow(change[0]).$id;
-            changeAnwesenheitAsync(zeitspanneId, weekDay, createSetter(Number(valueMatch[1]) === 1, Number(valueMatch[2]) === 1, Number(valueMatch[3]) === 1, new Date(1900, 0, 1, Number(valueMatch[5]), Number(valueMatch[6]))));
         }
         return false;
     };
@@ -2014,7 +2005,7 @@ angular.module('tn', [])
             UIkit.modal.prompt("Zusatz:", oldTime, function (newTime) {
                 var match = newTime.match(/^(\d\d):(\d\d)$/);
                 if (match && Number(match[1]) < 24 && Number(match[2]) < 60) {
-                    changeAnwesenheitAsync(zeitspanneId, weekDay, function (row) {
+                    changeAnwesenheit(zeitspanneId, weekDay, function (row) {
                         row.Zusatz = new Date(1900, 0, 1, Number(match[1]), Number(match[2]));
                     });
                 }
@@ -2025,7 +2016,7 @@ angular.module('tn', [])
         }
         else {
             // toggle the states
-            changeAnwesenheitAsync(zeitspanneId, weekDay, function (row) {
+            changeAnwesenheit(zeitspanneId, weekDay, function (row) {
                 if (pos < 22) {
                     if (row.Vormittags && row.Nachmittags) {
                         row.Vormittags = false;
@@ -2046,6 +2037,14 @@ angular.module('tn', [])
             });
         }
     };
+    var hotFormatCopyable = function (value) {
+        // parse the single html value and return each component as a value on its on
+        var match = value.match(/^<span class="bitmask-([01])([01])([01])( missing)?">(\d\d:\d\d)<\/span>/);
+        if (!match || match[4] && this.readOnly) {
+            return '\t\t\t';
+        }
+        return match[1] + '\t' + match[2] + '\t' + match[3] + '\t' + match[5];
+    };
     var hotColumns = (function () {
         // create the two main columns and add the day columns
         var columns = [
@@ -2053,7 +2052,13 @@ angular.module('tn', [])
             { data: 'Teilnehmer', width: 250, readOnly: true }
         ];
         for (var i = 1; i <= 7; i++) {
-            columns.push({ data: '$Anwesenheit.' + (i % 7), width: 100, renderer: "html", editor: false });
+            columns.push({
+                data: '$Anwesenheit.' + (i % 7),
+                width: 100,
+                renderer: "html",
+                formatCopyable: hotFormatCopyable,
+                editor: false
+            });
         }
         return columns;
     })();
