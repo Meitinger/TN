@@ -36,7 +36,6 @@ Handsontable.DataMap.prototype.getCopyable = function (row, prop) {
 
 /******************************************************************************/
 
-Handsontable.CheckboxCell.validator = void 0;
 Handsontable.CheckboxCell.formatCopyable = function (value) {
     return value ? '1' : '0';
 };
@@ -54,7 +53,9 @@ Handsontable.CheckboxCell.comparer = function (sortOrder) {
 
 /******************************************************************************/
 
-Handsontable.TextCell.validator = void 0;
+Handsontable.editors.TextEditor.prototype.getValue = function () {
+    return this.TEXTAREA.value === '' ? null : this.TEXTAREA.value;
+};
 Handsontable.TextCell.formatCopyable = function (value) {
     return '"' + value.replace(/"/g, '""') + '"';
 };
@@ -73,7 +74,16 @@ Handsontable.TextCell.comparer = function (sortOrder) {
 
 /******************************************************************************/
 
-Handsontable.NumericCell.validator = void 0;
+Handsontable.editors.NumericEditor.prototype.getValue = function () {
+    if (this.TEXTAREA.value === '') {
+        return null;
+    }
+    return this.TEXTAREA.value;
+
+    // try to convert to number or return string
+};
+// validator: return true if number or null
+// allowInvalid: false
 Handsontable.NumericCell.formatCopyable = function (value) {
     return value.toLocaleString();
 };
@@ -81,13 +91,26 @@ Handsontable.NumericCell.renderer = function (instance, TD, row, col, prop, valu
     if (value === null) {
         value = '';
     } else {
+        var format = true;
         if (typeof value !== 'number') {
-            value = Number(value);
+            var converted = Number(value);
+            if (isNaN(converted)) {
+                format = false;
+            }
+            else {
+                value = converted;
+            }
         }
-        if (cellProperties.language !== void 0 && numeral.language() !== cellProperties.language) {
-            numeral.language(cellProperties.language);
+        else if (isNaN(value)) {
+            value = 'NaN';
+            format = false;
         }
-        value = numeral(value).format(cellProperties.format || '0');
+        if (format) {
+            if (cellProperties.language !== void 0 && numeral.language() !== cellProperties.language) {
+                numeral.language(cellProperties.language);
+            }
+            value = numeral(value).format(cellProperties.format || '0');
+        }
     }
     Handsontable.renderers.TextRenderer(instance, TD, row, col, prop, value, cellProperties);
 };

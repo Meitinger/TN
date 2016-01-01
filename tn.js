@@ -1209,7 +1209,8 @@ angular.module('tn', [])
                          '  c.scale,\n' +
                          '  CASE WHEN c.is_nullable = 1 THEN 0 ELSE 1 END AS required,\n' +
                          '  d.definition AS defaultValue,\n' +
-                         '  CASE WHEN HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'UPDATE\',c.name,\'COLUMN\') = 1 THEN 0 ELSE 1 END AS readOnly,\n' +
+                         '  (SELECT value FROM fn_listextendedproperty(\'width\', \'schema\', @Schema, \'table\', @Table, \'column\', c.name)) AS width,\n' +
+                         '  CASE WHEN HAS_PERMS_BY_NAME(@Schema + N\'.\' + @Table,\'OBJECT\',\'UPDATE\',c.name,\'COLUMN\') = 1 THEN 0 ELSE 1 END AS readOnly,\n' +
                          '  OBJECT_NAME(f.referenced_object_id) AS referencedTable\n' +
                          'FROM\n' +
                          '  sys.columns AS c\n' +
@@ -1220,13 +1221,14 @@ angular.module('tn', [])
                          '  LEFT OUTER JOIN\n' +
                          '  sys.default_constraints AS d ON d.parent_object_id = c.object_id AND d.parent_column_id = c.column_id\n' +
                          'WHERE\n' +
-                         '  c.object_id = OBJECT_ID(@Table) AND\n' +
-                         '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'SELECT\',c.name,\'COLUMN\') = 1 AND\n' +
+                         '  c.object_id = OBJECT_ID(@Schema + N\'.\' + @Table) AND\n' +
+                         '  HAS_PERMS_BY_NAME(@Schema + N\'.\' + @Table,\'OBJECT\',\'SELECT\',c.name,\'COLUMN\') = 1 AND\n' +
                          '  c.is_computed = 0\n' +
                          'ORDER BY c.column_id',
-                parameters: { 'Table': 'dbo.' + name },
+                parameters: { 'Schema': 'dbo', 'Table': name },
                 cancelOn: disposePromise
             }).then(function (data) {
+
                 // check and store the columns
                 if (data.length === 0) {
                     throw new UnauthorizedAccessException('Keine sichtbaren Spalten in Tabelle ' + name + '.');
@@ -1401,7 +1403,7 @@ angular.module('tn', [])
 
         // clear all previous options
         var child;
-        while (child = this.select.lastChild) {
+        while ((child = this.select.lastChild) != void 0) {
             this.select.removeChild(child);
         }
 
@@ -1432,7 +1434,8 @@ angular.module('tn', [])
             }
         }
 
-        // enable sorting, resizing and limit row rendering
+        // disable observing changes, enable sorting, resizing and limit row rendering
+        settings.observeChanges = false;
         settings.columnSorting = true;
         settings.manualColumnResize = true;
         settings.viewportColumnRenderingOffset = 2;
@@ -1457,6 +1460,9 @@ angular.module('tn', [])
                         if (tableColumn.required) {
                             column.required = true;
                         }
+                        if (!column.width) {
+                            column.width = tableColumn.width || 100;
+                        }
                         column.language = 'de';
 
                         // set the type specific attributes
@@ -1471,6 +1477,12 @@ angular.module('tn', [])
                                     column.className = void 0;
                                     column.referencedTable = tableColumn.referencedTable;
                                     column.formatCopyable = formatLabel;
+                                    if (tableColumn.referencedTable in references) {
+                                        references[tableColumn.referencedTable].push(hotInstance);
+                                    }
+                                    else {
+                                        references[tableColumn.referencedTable] = [hotInstance];
+                                    }
                                 }
                                 break;
                             case 'char':
@@ -1536,7 +1548,7 @@ angular.module('tn', [])
             label[newRow.$id] = ReferenceLabels[table.name](newRow);
         }
     };
-    var loadViewDate = function (tableName, data) {
+    var loadViewData = function (tableName, data) {
         // load the data into all views of a certain table
         var hotInstances = references[tableName];
         for (var i = hotInstances.length - 1; i >= 0; i--) {
@@ -1553,9 +1565,9 @@ angular.module('tn', [])
             sql.query({
                 description: 'Berechtigungen für Tabelle ' + table.name + ' abfragen',
                 command: 'SELECT\n' +
-                     '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'INSERT\') AS allowNew,\n' +
-                     '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'UPDATE\') AS allowEdit,\n' +
-                     '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'DELETE\') AS allowDelete',
+                         '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'INSERT\') AS allowNew,\n' +
+                         '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'UPDATE\') AS allowEdit,\n' +
+                         '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'DELETE\') AS allowDelete',
                 parameters: { 'Table': 'dbo.' + table.name }
             }).then(function (data) {
                 dataSet.permissions[table.name] = data;
@@ -1564,7 +1576,7 @@ angular.module('tn', [])
 
         // provide existing views with data
         if (table.name in references) {
-            loadViewDate(table.name, table.rows);
+            loadViewData(table.name, table.rows);
         }
         else {
             references[table.name] = [];
@@ -1579,12 +1591,12 @@ angular.module('tn', [])
             if (!table.isDisposed()) {
                 table.addRowChangeListener(rowChangeForReferences);
             }
-            rowChangeForReferences(table, null, null);
+            rowChangeForReferences(table);
         });
     };
     var internalRemoveTable = function (table) {
         // remove the table as view source and unhook the handlers
-        loadViewDate(table.name, []);
+        loadViewData(table.name, []);
         if (table.name in ReferenceLabels) {
             table.removeRowChangeListener(rowChangeForLabels);
             delete labels[table.name];
@@ -1593,7 +1605,7 @@ angular.module('tn', [])
             if (!table.isDisposed()) {
                 table.removeRowChangeListener(rowChangeForReferences);
             }
-            rowChangeForReferences(table, null, null);
+            rowChangeForReferences(table);
         });
     };
 
@@ -1716,11 +1728,11 @@ angular.module('tn', [])
             references[tableName].push(hotInstance);
             tables[tableName].ready(function () {
                 // make sure the table and instance still exist before initializing the view
-                if (tableName in tables) {
-                    var hotInstances = references[tableName];
+                if (hotInstance.tableName in tables) {
+                    var hotInstances = references[hotInstance.tableName];
                     for (var i = hotInstances.length - 1; i >= 0; i--) {
                         if (hotInstances[i] === hotInstance) {
-                            initializeView(tables[tableName], hotInstance, settings);
+                            initializeView(tables[hotInstance.tableName], hotInstance, settings);
                             break;
                         }
                     }
@@ -1731,12 +1743,30 @@ angular.module('tn', [])
         destroyView: function (hotInstance) {
             ArgumentException.check(hotInstance, 'hotInstance', Handsontable.Core);
 
-            // delete the entry, unhook and destroy the handson table
+            // find the view in the underlying table reference
             if (hotInstance.tableName in references) {
                 var hotInstances = references[hotInstance.tableName];
                 for (var i = hotInstances.length - 1; i >= 0; i--) {
                     if (hotInstances[i] === hotInstance) {
+                        // remove the entry
                         hotInstances.splice(i, 1);
+
+                        // remove all foreign key entries
+                        var columns = hotInstance.getSettings().columns;
+                        for (var j = columns.length - 1; j >= 0; j--) {
+                            var column = columns[j];
+                            if (column.referencedTable in references) {
+                                var referencingHotInstances = references[column.referencedTable];
+                                for (var k = referencingHotInstances.length - 1; k >= 0; k--) {
+                                    if (referencingHotInstances[k] === hotInstance) {
+                                        referencingHotInstances.splice(k, 1);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        // destroy the view
                         hotInstance.destroy();
                         return;
                     }
@@ -2079,8 +2109,8 @@ angular.module('tn', [])
     var hotColumns = (function () {
         // create the two main columns and add the day columns
         var columns = [
-            { data: 'Einrichtung', width: 150, readOnly: true },
-            { data: 'Teilnehmer', width: 250, readOnly: true }
+            { data: 'Einrichtung', readOnly: true },
+            { data: 'Teilnehmer', readOnly: true }
         ];
         for (var i = 1; i <= 7; i++) {
             columns.push({
