@@ -2023,6 +2023,11 @@ angular.module('tn', [])
         for (var i = changes.length - 1; i >= 0; i--) {
             var change = changes[i];
 
+            // ensure the value is string
+            if (change[3] == void 0 || change[3].constructor !== String) {
+                continue;
+            }
+
             // make sure the weekday is editable
             var propMatch = change[1].match(/^\$Anwesenheit\.([0-6])$/);
             if (propMatch) {
