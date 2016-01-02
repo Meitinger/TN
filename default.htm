@@ -46,8 +46,8 @@
     </nav>
     <div style="height:calc(70vh - 77px);">
         <div data-ng-repeat="tab in main.tabs" data-ng-switch="tab.type">
-            <div data-ng-switch-when="table" data-ng-show="main.currentTab == $index">
-                <div style="width:100%; height:calc(70vh - 77px); overflow:hidden;" data-ng-controller="TableController as tbl"></div>
+            <div data-ng-switch-when="table" data-ng-show="main.currentTab == $index" data-ng-controller="TableController as tbl">
+                <div style="width:100%; height:calc(70vh - 77px); overflow:hidden;"></div>
             </div>
             <form class="uk-form" data-ng-switch-when="attendance" data-ng-if="main.currentTab == $index" data-ng-controller="AttendanceController as atn">
                 <div style="width:100%; white-space:nowrap;">

@@ -289,7 +289,7 @@ angular.module('tn', [])
 	                    // ensure a single record set if requested
 	                    if (singleSet) {
 	                        if (data.length !== 1) {
-	                            throw new InvalidDataException('Kein oder mehrere Recordsets wurden zurückgegeben.');
+	                            throw new InvalidDataException('Keine oder mehrere Recordsets wurden zurückgegeben.');
 	                        }
 	                        data = data[0];
 	                    }
@@ -650,7 +650,7 @@ angular.module('tn', [])
                     var columnName = columns[j].name;
                     var value = newRow[columnName];
                     if (value === void 0) {
-                        throw new InvalidDataException('Wert für Spalte "' + columnName + '" nicht gefunden.');
+                        throw new InvalidDataException('Der Wert für Spalte "' + columnName + '" von Tabelle "' + name + '" wurde nicht zurückgegeben.');
                     }
                     clonedEntry[columnName] = value;
                 }
@@ -751,7 +751,7 @@ angular.module('tn', [])
 
             // check the row
             if (!(row.$id in rowIndex) || rowIndex[row.$id] !== row) {
-                throw new ArgumentException('Die Zeile befindet sich nicht (mehr) in der Tabelle.', 'row');
+                throw new ArgumentException('Die Zeile #' + row.$id + ' befindet sich nicht (mehr) in der Tabelle "' + name + '".', 'row');
             }
 
             // create the deferred object
@@ -759,7 +759,7 @@ angular.module('tn', [])
 
             // make sure there is no other action and store this promise
             if (row.$action) {
-                throw new InvalidOperationException('Es ist bereits ein Vorgang bei dieser Zeile aktiv.');
+                throw new InvalidOperationException('Es ist bereits ein Vorgang bei Zeile #' + row.$id + ' in Tabelle "' + name + '" aktiv.');
             }
             row.$action = deferred.promise;
 
@@ -1110,7 +1110,6 @@ angular.module('tn', [])
                     disposed = true;
                 }
             },
-            isDisposed: function () { return disposed; },
             name: name,
             filter: filter,
             columns: [],
@@ -1231,13 +1230,13 @@ angular.module('tn', [])
 
                 // check and store the columns
                 if (data.length === 0) {
-                    throw new UnauthorizedAccessException('Keine sichtbaren Spalten in Tabelle ' + name + '.');
+                    throw new UnauthorizedAccessException('Keine sichtbaren Spalten in Tabelle "' + name + '".');
                 }
                 if (data[0].name !== 'ID') {
-                    throw new InvalidDataException('Die erste sichtbare ' + name + '-Spalte ist nicht "ID".');
+                    throw new InvalidDataException('Die erste sichtbare Spalte in Tabelle "' + name + '" ist nicht "ID".');
                 }
                 if (data[data.length - 1].name !== 'Version') {
-                    throw new InvalidDataException('Die letzte sichtbare ' + name + '-Spalte ist nicht "Version".');
+                    throw new InvalidDataException('Die letzte sichtbare Spalte in Tabelle "' + name + '" ist nicht "Version".');
                 }
                 var queryCommand = 'SELECT ';
                 for (var i = 1; i < data.length - 1; i++) {
@@ -1436,6 +1435,7 @@ angular.module('tn', [])
 
         // disable observing changes, enable sorting, resizing and limit row rendering
         settings.observeChanges = false;
+        settings.observeDOMVisibility = false;
         settings.columnSorting = true;
         settings.manualColumnResize = true;
         settings.viewportColumnRenderingOffset = 2;
@@ -1518,7 +1518,7 @@ angular.module('tn', [])
                                 column.type = 'checkbox';
                                 break;
                             default:
-                                throw new InvalidOperationException('Spaltentyp "' + tableColumn.type + '" wird nicht unterstützt.');
+                                throw new InvalidOperationException('Der Typ "' + tableColumn.type + '" von Spalte "' + tableColumn.name + '" in Tabelle "' + table.name + '" wird nicht unterstützt.');
                         }
                     }
                 }
@@ -1531,21 +1531,22 @@ angular.module('tn', [])
     };
 
     // helper functions to render foreign keys and base tables
-    var rowChangeForReferences = function (table) {
+    var rowChange = function (table, oldRow, newRow) {
+        // update the labels
+        if (table.name in labels) {
+            var label = labels[table.name];
+            if (oldRow) {
+                delete label[oldRow.$id];
+            }
+            if (newRow) {
+                label[newRow.$id] = ReferenceLabels[table.name](newRow);
+            }
+        }
+
         // render all referencing hot tables
         var hotInstances = references[table.name];
         for (var i = hotInstances.length - 1; i >= 0; i--) {
             hotInstances[i].render();
-        }
-    };
-    var rowChangeForLabels = function (table, oldRow, newRow) {
-        // update the labels
-        var label = labels[table.name];
-        if (oldRow) {
-            delete label[oldRow.$id];
-        }
-        if (newRow) {
-            label[newRow.$id] = ReferenceLabels[table.name](newRow);
         }
     };
     var loadViewData = function (tableName, data) {
@@ -1558,55 +1559,71 @@ angular.module('tn', [])
             }
         }
     };
-    var internalAddTable = function (table) {
+    var internalCreateTable = function (name, filter) {
         // get the permissions if not in the cache
-        if (!(table.name in dataSet.permissions)) {
-            dataSet.permissions[table.name] = {};
+        if (!(name in dataSet.permissions)) {
+            dataSet.permissions[name] = {};
             sql.query({
-                description: 'Berechtigungen für Tabelle ' + table.name + ' abfragen',
+                description: 'Berechtigungen für Tabelle ' + name + ' abfragen',
                 command: 'SELECT\n' +
                          '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'INSERT\') AS allowNew,\n' +
                          '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'UPDATE\') AS allowEdit,\n' +
                          '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'DELETE\') AS allowDelete',
-                parameters: { 'Table': 'dbo.' + table.name }
+                parameters: { 'Table': 'dbo.' + name }
             }).then(function (data) {
-                dataSet.permissions[table.name] = data;
+                dataSet.permissions[name] = data;
             });
         }
 
-        // provide existing views with data
-        if (table.name in references) {
-            loadViewData(table.name, table.rows);
-        }
-        else {
-            references[table.name] = [];
+        // make sure the view array exists
+        if (!(name in references)) {
+            references[name] = [];
         }
 
-        // hook the listeners
-        if (table.name in ReferenceLabels) {
-            labels[table.name] = {};
-            table.addRowChangeListener(rowChangeForLabels);
-        }
-        table.ready(function () {
-            if (!table.isDisposed()) {
-                table.addRowChangeListener(rowChangeForReferences);
+        // create and add the table
+        var newTable = table(name, filter);
+        tables[name] = newTable;
+
+        // wait for the table to be ready
+        newTable.ready(function () {
+            // make sure the same table is still loaded
+            if (name in tables && tables[name] === newTable) {
+                // build all labels if there is a reference
+                if (name in ReferenceLabels) {
+                    var label = {};
+                    var rows = newTable.rows;
+                    for (var i = rows.length - 1; i >= 0; i--) {
+                        var row = rows[i];
+                        label[row.$id] = ReferenceLabels[name](row);
+                    }
+                    labels[name] = label;
+                }
+
+                // hook the listener and call it to render all views
+                newTable.addRowChangeListener(rowChange);
+                rowChange(newTable, null, null);
             }
-            rowChangeForReferences(table);
         });
+
+        // populate the views
+        loadViewData(name, newTable.rows);
+        return newTable;
     };
-    var internalRemoveTable = function (table) {
-        // remove the table as view source and unhook the handlers
-        loadViewData(table.name, []);
-        if (table.name in ReferenceLabels) {
-            table.removeRowChangeListener(rowChangeForLabels);
-            delete labels[table.name];
-        }
-        table.ready(function () {
-            if (!table.isDisposed()) {
-                table.removeRowChangeListener(rowChangeForReferences);
+    var internalDestroyTable = function (oldTable) {
+        // clear the views
+        loadViewData(oldTable.name, []);
+
+        // delete the table from the list and try to remove the listener
+        delete tables[oldTable.name];
+        if (oldTable.removeRowChangeListener(rowChange)) {
+            // if it was registered also delete the labels if a reference exists
+            if (oldTable.name in ReferenceLabels) {
+                delete labels[oldTable.name];
             }
-            rowChangeForReferences(table);
-        });
+        }
+
+        // dispose the table
+        oldTable.dispose();
     };
 
     // define the data set functions
@@ -1631,68 +1648,60 @@ angular.module('tn', [])
         load: function (definitions) {
             ArgumentException.check(definitions, 'definitions', Array);
 
-            // store the old tables and reset the map
-            var oldTables = tables;
-            tables = {};
+            // store the old tables
+            var oldTables = {};
+            for (var name in tables) {
+                oldTables[name] = tables[name];
+            }
+            var newTables = {};
 
             // build the new maps
             for (var i = definitions.length - 1; i >= 0; i--) {
                 var definition = definitions[i];
 
                 // ensure the table wasn't defined twice
-                if (definition.name in tables) {
-                    throw new InvalidOperationException('Die Tabelle ' + definition.name + ' wurde versucht mehrfach zu laden.');
+                if (definition.name in newTables) {
+                    throw new InvalidOperationException('Es wurde versucht die Tabelle "' + definition.name + '" mehrfach zu laden.');
                 }
 
                 // check if the table can be reused
                 if (definition.name in oldTables) {
                     if (oldTables[definition.name].filter === definition.filter) {
-                        tables[definition.name] = oldTables[definition.name];
+                        // reuse the table
+                        newTables[definition.name] = oldTables[definition.name];
                     }
                     else {
                         // unload the old table before loading it with a different filter
-                        internalRemoveTable(oldTables[definition.name]);
-                        oldTables[definition.name].dispose();
-                        tables[definition.name] = table(definition.name, definition.filter);
-                        internalAddTable(tables[definition.name]);
+                        internalDestroyTable(oldTables[definition.name]);
+                        newTables[definition.name] = internalCreateTable(definition.name, definition.filter);
                     }
                     delete oldTables[definition.name];
                 }
                 else {
-                    tables[definition.name] = table(definition.name, definition.filter);
-                    internalAddTable(tables[definition.name]);
+                    newTables[definition.name] = internalCreateTable(definition.name, definition.filter);
                 }
             }
 
             // remove old unused tables
-            for (var tableName in oldTables) {
-                internalRemoveTable(oldTables[tableName]);
-                oldTables[tableName].dispose();
+            for (var oldName in oldTables) {
+                internalDestroyTable(oldTables[oldName]);
             }
         },
         addTable: function (name, filter) {
-            // ensure the tables wasn't already loaded
+            // ensure the tables isn't already loaded before creating it
             if (name in tables) {
-                throw new InvalidOperationException('Die Tabelle ' + name + ' existiert bereits.');
+                throw new InvalidOperationException('Die Tabelle "' + name + '" existiert bereits.');
             }
-
-            // add the table and hook its listener
-            tables[name] = table(name, filter);
-            internalAddTable(tables[name]);
-            return tables[name];
+            return internalCreateTable(name, filter);
         },
-        removeTable: function (table) {
-            ArgumentException.check(table, 'table', Object);
+        removeTable: function (oldTable) {
+            ArgumentException.check(oldTable, 'oldTable', Object);
 
-            // ensure the table is loaded
-            if (!(table.name in tables) || tables[table.name] !== table) {
-                throw new InvalidOperationException('Die Tabelle wurde nicht geladen.');
+            // ensure the table is loaded before destroying it
+            if (!(oldTable.name in tables) || tables[oldTable.name] !== oldTable) {
+                throw new InvalidOperationException('Die Tabelle "' + oldTable.name + '" wurde nicht geladen.');
             }
-
-            // remove the listener and delete the entry
-            internalRemoveTable(table);
-            delete tables[table.name];
-            table.dispose();
+            internalDestroyTable(oldTable);
         },
         primaryFilter: function (role, superRole) {
             ArgumentException.check(role, 'role', String);
@@ -1772,7 +1781,7 @@ angular.module('tn', [])
                     }
                 }
             }
-            throw new ArgumentException('Die Tabellenansicht wurde nicht gefunden.', 'hotInstance');
+            throw new ArgumentException('Die Ansicht für Tabelle "' + hotInstance.tableName + '" wurde nicht gefunden.', 'hotInstance');
         }
     };
 
@@ -2234,25 +2243,39 @@ angular.module('tn', [])
 })
 
 // controller for an ordinary table view
-.controller('TableController', function ($scope, $element, dataSet) {
+.controller('TableController', function ($scope, $element, $timeout, dataSet) {
+    var cleanup = false;
     var hot = null;
 
-    // create the view if this is the first time the tab is shown
+    // create the view with a delay to ensure the DOM elements are *really* visible
     var createIfCurrentTab = function () {
-        if (!hot && $scope.$index === $scope.main.currentTab) {
-            hot = dataSet.createView($scope.tab.name, $element[0], {
-                beforeChange: function (changes, source) {
-                    // only allow changes by editors
-                    return source === 'edit' || source === 'undo';
-                }
-            });
-        }
+        $timeout(function () {
+            // do nothing if the user switched the menu or the tab
+            if (cleanup || $scope.$index !== $scope.main.currentTab) {
+                return;
+            }
+
+            // either create or rerender the view
+            if (!hot) {
+                var children = $element.children();
+                hot = dataSet.createView($scope.tab.name, children[children.length - 1], {
+                    beforeChange: function (changes, source) {
+                        // only allow changes by editors
+                        return source === 'edit' || source === 'undo';
+                    }
+                });
+            }
+            else {
+                hot.render();
+            }
+        });
     };
     createIfCurrentTab();
 
     // watch for tab changes and cleanups
     $scope.$watch('main.currentTab', createIfCurrentTab);
     $scope.$on('cleanup', function () {
+        cleanup = true;
         if (hot) {
             dataSet.destroyView(hot);
             hot = null;
