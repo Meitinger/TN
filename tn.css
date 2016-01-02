@@ -25,6 +25,40 @@
     padding-left: 38px;
     background-repeat: no-repeat;
 }
+.handsontable th i
+{
+    width: 1em;
+    text-align: center;
+}
+.handsontable td i
+{
+    line-height: 21px;
+    float: right;
+}
+.handsontable td i:after
+{
+    clear: right;
+}
+.handsontable td.htNumeric i
+{
+    float: left;
+}
+.handsontable td.htNumeric i:after
+{
+    clear: left;
+}
+.handsontable i.uk-icon-trash
+{
+    cursor: pointer;
+}
+.handsontable i.uk-icon-refresh
+{
+    cursor: wait;
+}
+.handsontable i.uk-icon-exclamation-triangle
+{
+    cursor: help;
+}
 .handsontable td.attendance span.bitmask-000
 {
     background-image: url(000.png);

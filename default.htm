@@ -66,12 +66,13 @@
             </form>
         </div>
     </div>
-    <div style="height:36px">
+    <div style="height:36px;">
         <ul class="uk-tab uk-tab-bottom" data-uk-tab="" data-ng-if="main.currentNav &gt; -1">
             <li data-ng-class="main.currentTab == $index ? 'uk-active' : ''" data-ng-repeat="tab in main.tabs"><a data-ng-click="main.gotoTab($index)">{{tab.name}}</a></li>
         </ul>
+        <div style="clear:right;"></div>
     </div>
-    <div class="uk-panel uk-panel-box" data-ng-controller="LogController as log" style="box-sizing: border-box; height:30vh;">
+    <div class="uk-panel uk-panel-box" data-ng-controller="LogController as log" style="box-sizing:border-box; height:30vh;">
     	<div data-ng-if="!log.notification.lastSyncTime &amp;&amp; !log.notification.error" class="uk-panel-badge uk-badge">Initialisierung</div>
         <div data-ng-if="!log.notification.lastSyncTime &amp;&amp; log.notification.error" class="uk-panel-badge uk-badge uk-badge-warning" data-uk-tooltip="data-uk-tooltip" title="Fehler: {{log.notification.error}}">Initialisierung (Fehler)</div>
         <div data-ng-if="log.notification.lastSyncTime &amp;&amp; !log.notification.error" class="uk-panel-badge uk-badge uk-badge-success" data-uk-tooltip="data-uk-tooltip" title="Letzte Synchronisierung: {{(log.notification.lastSyncTime | date: 'medium') || 'nie'}}&#x000a;Letzte Änderung: {{(log.notification.lastEventTime | date: 'medium') || 'noch keine'}}">Synchronisiert</div>

@@ -189,7 +189,6 @@ angular.module('tn', [])
                         value = value ? '1' : '0';
                         break;
                     case 'string':
-                        value = encodeURIComponent(value);
                         break;
                     case 'object':
                         if (value instanceof Date) {
@@ -200,9 +199,9 @@ angular.module('tn', [])
                             value = '';
                             break;
                         }
-                        // fallthru
+                        throw new ArgumentException('Objekttyp nicht unterstützt.', 'args.parameters.' + name);
                     default:
-                        throw new ArgumentException('Typ nicht unterstützt.', 'args.parameters.' + name);
+                        throw new ArgumentException('Typ "' + typeof value + '" nicht unterstützt.', 'args.parameters.' + name);
                 }
                 encodedParameters.push(encodeURIComponent(name) + '=' + encodeURIComponent(value));
             }
@@ -764,39 +763,23 @@ angular.module('tn', [])
             row.$action = deferred.promise;
 
             // create the callbacks
-            var isSyncCall = true;
-            var doWork = function (work) {
-                if (isSyncCall) {
-                    $rootScope.$evalAsync(work);
-                }
-                else {
-                    work();
-                }
-            };
             var succeed = function () {
-                doWork(function () {
-                    if (setError) {
-                        delete row.$error;
-                    }
-                    delete row.$action;
-                    deferred.resolve(row);
-                });
+                if (setError) {
+                    delete row.$error;
+                }
+                delete row.$action;
+                deferred.resolve(row);
             };
             var fail = function (error) {
-                doWork(function () {
-                    if (setError) {
-                        row.$error = error;
-                    }
-                    delete row.$action;
-                    deferred.reject(error.message);
-                });
+                if (setError) {
+                    row.$error = error;
+                }
+                delete row.$action;
+                deferred.reject(error.message);
             };
 
-            // run the action
+            // run the action and return the promise
             fn(row, succeed, fail);
-            isSyncCall = false;
-
-            // return the promise
             return deferred.promise;
         };
 
@@ -1401,10 +1384,7 @@ angular.module('tn', [])
         sortOptions.sort(function (a, b) { return -compareString(a[1], b[1]); });
 
         // clear all previous options
-        var child;
-        while ((child = this.select.lastChild) != void 0) {
-            this.select.removeChild(child);
-        }
+        angular.element(this.select).empty();
 
         // add the null option together with all the other options
         sortOptions.push(['', '']);
@@ -1421,7 +1401,7 @@ angular.module('tn', [])
     };
     var initializeView = function (table, hotInstance, settings) {
         // create the columns array if necessary
-        if (!settings.columns) {
+        if (settings.columns === void 0) {
             settings.columns = [];
             for (var j = 0; j < table.columns.length; j++) {
                 if (table.columns[j].type !== 'varbinary') {
@@ -1457,12 +1437,8 @@ angular.module('tn', [])
                         if (tableColumn.readOnly) {
                             column.readOnly = true;
                         }
-                        if (tableColumn.required) {
-                            column.required = true;
-                        }
-                        if (!column.width) {
-                            column.width = tableColumn.width || 100;
-                        }
+                        var width = Number(tableColumn.width);
+                        column.width = isNaN(width) || width <= 0 ? 100 : width;
                         column.language = 'de';
 
                         // set the type specific attributes
@@ -1498,21 +1474,17 @@ angular.module('tn', [])
                                 break;
                             case 'decimal':
                                 column.type = 'numeric';
-                                if (!column.format) {
-                                    column.format = '0';
-                                    if (tableColumn.scale > 0) {
-                                        column.format += '.';
-                                        for (var n = tableColumn.scale; n > 0; n--) {
-                                            column.format += '0';
-                                        }
+                                column.format = '0';
+                                if (tableColumn.scale > 0) {
+                                    column.format += '.';
+                                    for (var n = tableColumn.scale; n > 0; n--) {
+                                        column.format += '0';
                                     }
                                 }
                                 break;
                             case 'money':
                                 column.type = 'numeric';
-                                if (!column.format) {
-                                    column.format = '$ 0,0.00';
-                                }
+                                column.format = '$ 0,0.00';
                                 break;
                             case 'bit':
                                 column.type = 'checkbox';
@@ -1560,6 +1532,11 @@ angular.module('tn', [])
         }
     };
     var internalCreateTable = function (name, filter) {
+        // make sure the view array exists
+        if (!(name in references)) {
+            references[name] = [];
+        }
+
         // get the permissions if not in the cache
         if (!(name in dataSet.permissions)) {
             dataSet.permissions[name] = {};
@@ -1571,13 +1548,16 @@ angular.module('tn', [])
                          '  HAS_PERMS_BY_NAME(@Table,\'OBJECT\',\'DELETE\') AS allowDelete',
                 parameters: { 'Table': 'dbo.' + name }
             }).then(function (data) {
-                dataSet.permissions[name] = data;
+                // store the permissions and render all views of this table again
+                dataSet.permissions[name] = data[0];
+                var hotInstances = references[name];
+                for (var i = hotInstances.length - 1; i >= 0; i--) {
+                    var hotInstance = hotInstances[i];
+                    if (hotInstance.tableName === name) {
+                        hotInstance.render();
+                    }
+                }
             });
-        }
-
-        // make sure the view array exists
-        if (!(name in references)) {
-            references[name] = [];
         }
 
         // create and add the table
@@ -1687,6 +1667,15 @@ angular.module('tn', [])
                 internalDestroyTable(oldTables[oldName]);
             }
         },
+        getTable: function (name) {
+            ArgumentException.check(name, 'name', String);
+
+            // make sure the table is loaded before returning it
+            if (!(name in tables)) {
+                throw new InvalidOperationException('Die Tabelle "' + name + '" ist nicht geladen.');
+            }
+            return tables[name];
+        },
         addTable: function (name, filter) {
             // ensure the tables isn't already loaded before creating it
             if (name in tables) {
@@ -1702,6 +1691,22 @@ angular.module('tn', [])
                 throw new InvalidOperationException('Die Tabelle "' + oldTable.name + '" wurde nicht geladen.');
             }
             internalDestroyTable(oldTable);
+        },
+        actionIcon: '<i class="uk-icon-refresh uk-icon-spin"></i>',
+        errorIcon: function (message) {
+            ArgumentException.check(message, 'message', String);
+
+            // escape the message and embed it as tooltip
+            var entityMap = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;',
+                '/': '&#47;'
+            };
+            message = message.replace(/[&<>"'\/]/g, function (ch) { return entityMap[ch]; });
+            return '<i data-uk-tooltip="data-uk-tooltip" title="' + message + '" class="uk-icon-exclamation-triangle"></i>';
         },
         primaryFilter: function (role, superRole) {
             ArgumentException.check(role, 'role', String);
@@ -1732,7 +1737,12 @@ angular.module('tn', [])
             }
 
             // create and return the instance
-            var hotInstance = new Handsontable(parentElement, { data: [] });
+            var hotInstance = new Handsontable(parentElement, {
+                // we have to set the headers upfront
+                rowHeaders: settings.rowHeaders,
+                colHeaders: settings.colHeaders,
+                data: []
+            });
             hotInstance.tableName = tableName;
             references[tableName].push(hotInstance);
             tables[tableName].ready(function () {
@@ -1839,19 +1849,6 @@ angular.module('tn', [])
     var zeitspanne = null;
     var anwesenheit = null;
     var formatAnwesenheit = function (weekDays, weekDay) {
-        // escape all entitites
-        var escapeHtml = function (s) {
-            var entityMap = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#39;',
-                '/': '&#47;'
-            };
-            return s.replace(/[&<>"'\/]/g, function (ch) { return entityMap[ch]; });
-        };
-
         // format the day to html
         var result = '<span class="bitmask-';
         if (weekDay in weekDays) {
@@ -1860,10 +1857,10 @@ angular.module('tn', [])
             result += formatTime(row.Zusatz);
             result += '</span>';
             if (row.$action) {
-                result += ' <i style="cursor:wait;" class="uk-icon-refresh uk-icon-spin"></i>';
+                result += dataSet.actionIcon;
             }
             else if (row.$error) {
-                result += ' <i style="cursor:help;" data-uk-tooltip="data-uk-tooltip" title="' + escapeHtml(row.$error.message) + '" class="uk-icon-exclamation-triangle"></i>';
+                result += dataSet.errorIcon(row.$error.message);
             }
         }
         else {
@@ -2029,29 +2026,31 @@ angular.module('tn', [])
         };
 
         // go over all changes
-        for (var i = changes.length - 1; i >= 0; i--) {
-            var change = changes[i];
+        $scope.$apply(function () {
+            for (var i = changes.length - 1; i >= 0; i--) {
+                var change = changes[i];
 
-            // ensure the value is string
-            if (change[3] == void 0 || change[3].constructor !== String) {
-                continue;
-            }
+                // ensure the value is string
+                if (change[3] == void 0 || change[3].constructor !== String) {
+                    continue;
+                }
 
-            // make sure the weekday is editable
-            var propMatch = change[1].match(/^\$Anwesenheit\.([0-6])$/);
-            if (propMatch) {
-                var weekDay = Number(propMatch[1]);
-                if (!hot.getCellMeta(change[0], 2 + ((weekDay + 6) % 7)).readOnly) {
-                    // make sure the format is value
-                    var valueMatch = change[3].match(/^<span class="bitmask-([01])([01])([01])( missing)?">(\d\d):(\d\d)<\/span>/);
-                    if (valueMatch && Number(valueMatch[5]) < 24 && Number(valueMatch[6]) < 60) {
-                        // change the attributes
-                        var zeitspanneId = hot.getSourceDataAtRow(change[0]).$id;
-                        changeAnwesenheit(zeitspanneId, weekDay, createSetter(Number(valueMatch[1]) === 1, Number(valueMatch[2]) === 1, Number(valueMatch[3]) === 1, new Date(1900, 0, 1, Number(valueMatch[5]), Number(valueMatch[6]))));
+                // make sure the weekday is editable
+                var propMatch = change[1].match(/^\$Anwesenheit\.([0-6])$/);
+                if (propMatch) {
+                    var weekDay = Number(propMatch[1]);
+                    if (!hot.getCellMeta(change[0], 2 + ((weekDay + 6) % 7)).readOnly) {
+                        // make sure the format is value
+                        var valueMatch = change[3].match(/^<span class="bitmask-([01])([01])([01])( missing)?">(\d\d):(\d\d)<\/span>/);
+                        if (valueMatch && Number(valueMatch[5]) < 24 && Number(valueMatch[6]) < 60) {
+                            // change the attributes
+                            var zeitspanneId = hot.getSourceDataAtRow(change[0]).$id;
+                            changeAnwesenheit(zeitspanneId, weekDay, createSetter(Number(valueMatch[1]) === 1, Number(valueMatch[2]) === 1, Number(valueMatch[3]) === 1, new Date(1900, 0, 1, Number(valueMatch[5]), Number(valueMatch[6]))));
+                        }
                     }
                 }
             }
-        }
+        });
         return false;
     };
     var hotMouseDown = function (event, coords, TD) {
@@ -2080,8 +2079,10 @@ angular.module('tn', [])
             UIkit.modal.prompt('Zusatz:', oldTime, function (newTime) {
                 var match = newTime.match(/^(\d\d):(\d\d)$/);
                 if (match && Number(match[1]) < 24 && Number(match[2]) < 60) {
-                    changeAnwesenheit(zeitspanneId, weekDay, function (row) {
-                        row.Zusatz = new Date(1900, 0, 1, Number(match[1]), Number(match[2]));
+                    $scope.$apply(function () {
+                        changeAnwesenheit(zeitspanneId, weekDay, function (row) {
+                            row.Zusatz = new Date(1900, 0, 1, Number(match[1]), Number(match[2]));
+                        });
                     });
                 }
                 else {
@@ -2091,24 +2092,26 @@ angular.module('tn', [])
         }
         else {
             // toggle the states
-            changeAnwesenheit(zeitspanneId, weekDay, function (row) {
-                if (pos < 22) {
-                    if (row.Vormittags && row.Nachmittags) {
-                        row.Vormittags = false;
-                    }
-                    else if (row.Vormittags) {
-                        row.Nachmittags = true;
-                    }
-                    else if (row.Nachmittags) {
-                        row.Nachmittags = false;
+            $scope.$apply(function () {
+                changeAnwesenheit(zeitspanneId, weekDay, function (row) {
+                    if (pos < 22) {
+                        if (row.Vormittags && row.Nachmittags) {
+                            row.Vormittags = false;
+                        }
+                        else if (row.Vormittags) {
+                            row.Nachmittags = true;
+                        }
+                        else if (row.Nachmittags) {
+                            row.Nachmittags = false;
+                        }
+                        else {
+                            row.Vormittags = true;
+                        }
                     }
                     else {
-                        row.Vormittags = true;
+                        row.Nachts = !row.Nachts;
                     }
-                }
-                else {
-                    row.Nachts = !row.Nachts;
-                }
+                });
             });
         }
     };
@@ -2227,6 +2230,7 @@ angular.module('tn', [])
         dataSet.ready(function () {
             hot = dataSet.createView('Zeitspanne', hotContainer, {
                 colHeaders: hotHeaders,
+                rowHeaders: false,
                 columns: hotColumns,
                 cells: hotCells,
                 beforeChange: hotBeforeChange,
@@ -2247,6 +2251,83 @@ angular.module('tn', [])
     var cleanup = false;
     var hot = null;
 
+    // define hot callbacks
+    var renderIfHot = function () {
+        // render if the view still exists
+        if (hot) {
+            hot.render();
+        } 
+    }
+    var afterChange = function (changes) {
+        // ignore the first load
+        if (!changes) {
+            return;
+        }
+
+        // get all changed rows
+        var rows = {};
+        for (var i = changes.length - 1; i >= 0; i--) {
+            var row = hot.getSourceDataAtRow(changes[i][0]);
+            if (!(row.$id in rows)) {
+                rows[row.$id] = row;
+            }
+        }
+
+        // update all changed rows and reflect the status
+        var table = dataSet.getTable(hot.tableName);
+        for (var id in rows) {
+            table.saveRow(rows[id]).then(null, renderIfHot);
+        }
+        hot.render();
+    };
+    var beforeChange = function (changes, source) {
+        // TODO: make the changes here with $apply and always return false
+
+        // only allow changes by editors
+        return source === 'edit' || source === 'undo';
+    };
+    var afterRenderer = function (TD, row, col, prop) {
+        // add the error icon if there is one
+        var sqlRow = hot.getSourceDataAtRow(row);
+        if (sqlRow.$error && sqlRow.$error.column === prop && sqlRow.$error.table === hot.tableName) {
+            TD.innerHTML += dataSet.errorIcon(sqlRow.$error.message);
+        }
+    };
+    var rowHeaders = function (index) {
+        // get the row
+        var result = '';
+        var row = hot.getSourceDataAtRow(index);
+
+        // add the delete icon if allowed
+        if (hot.tableName in dataSet.permissions && dataSet.permissions[hot.tableName].allowDelete) {
+            result += '<i title="Zeile löschen" data-uk-tooltip="data-uk-tooltip" class="uk-icon-trash"></i>';
+        }
+
+        // reflect the state of the row with an icon
+        if (row.$action) {
+            result += dataSet.actionIcon;
+        }
+        else if (row.$error) {
+            // only show the error if it cannot be shown in a column
+            var showError = true;
+            if (row.$error.table === hot.tableName && row.$error.column) {
+                var columns = hot.getSettings().columns;
+                for (var i = columns.length - 1; i >= 0; i--) {
+                    if (columns[i].data === row.$error.column) {
+                        showError = false;
+                        break;
+                    }
+                }
+            }
+            if (showError) {
+                result += dataSet.errorIcon(row.$error.message);
+            }
+        }
+
+        // return the html
+        return result;
+    };
+
     // create the view with a delay to ensure the DOM elements are *really* visible
     var createIfCurrentTab = function () {
         $timeout(function () {
@@ -2259,10 +2340,10 @@ angular.module('tn', [])
             if (!hot) {
                 var children = $element.children();
                 hot = dataSet.createView($scope.tab.name, children[children.length - 1], {
-                    beforeChange: function (changes, source) {
-                        // only allow changes by editors
-                        return source === 'edit' || source === 'undo';
-                    }
+                    afterChange: afterChange,
+                    beforeChange: beforeChange,
+                    afterRenderer: afterRenderer,
+                    rowHeaders: rowHeaders
                 });
             }
             else {
