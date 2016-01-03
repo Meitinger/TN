@@ -90,6 +90,37 @@ function ObjectDisposedException(objectName) {
 ObjectDisposedException.prototype = Object.create(InvalidOperationException.prototype);
 ObjectDisposedException.prototype.constructor = ObjectDisposedException;
 
+Date.create = (function () {
+    var dates = {};
+    return function () {
+        var date;
+        switch (arguments.length) {
+            case 0:
+                date = new Date();
+                break;
+            case 1:
+                if (typeof arguments[0] === 'number' && arguments[0] in dates) {
+                    return dates[arguments[0]];
+                }
+                date = new Date(arguments[0]);
+                break;
+            case 2:
+                date = new Date(arguments[0], arguments[1]);
+                break;
+            default:
+                date = new Date(arguments[0], arguments[1], arguments[2], arguments[3] || 0, arguments[4] || 0, arguments[5] || 0, arguments[6] || 0);
+                break;
+        }
+        var value = date.valueOf();
+        if (value in dates) {
+            return dates[value];
+        }
+        date = Object.freeze(date);
+        dates[value] = date;
+        return date;
+    };
+})();
+
 // function that reports an error
 UIkit.modal.error = function (src, msg, trace) {
     UIkit.modal.error = function () { };
@@ -232,7 +263,7 @@ angular.module('tn', [])
             // set the state and reset the error
             command.state = SqlState.Execute;
             delete command.error;
-            command.lastExecuteTime = new Date();
+            command.lastExecuteTime = Object.freeze(new Date());
             $http(config).then(
 	            function (response) {
 	                // ensure not cancelled
@@ -279,7 +310,7 @@ angular.module('tn', [])
 	                                    if (value == void 0 || value.constructor !== String || !(dateMatch = value.match(/^(\d\d\d\d)-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)\.(\d\d\d)Z$/))) {
 	                                        throw new InvalidDataException('Datum "' + dateName + '" in Zeile ' + (j + 1) + ' des Recorsets #' + (i + 1) + ' ist ungültig.');
 	                                    }
-	                                    record[dateName] = new Date(Number(dateMatch[1]), Number(dateMatch[2]) - 1, Number(dateMatch[3]), Number(dateMatch[4]), Number(dateMatch[5]), Number(dateMatch[6]), Number(dateMatch[7]));
+	                                    record[dateName] = Date.create(Number(dateMatch[1]), Number(dateMatch[2]) - 1, Number(dateMatch[3]), Number(dateMatch[4]), Number(dateMatch[5]), Number(dateMatch[6]), Number(dateMatch[7]));
 	                                }
 	                            }
 	                        }
@@ -529,14 +560,14 @@ angular.module('tn', [])
                 var first = lastEventId === -1;
                 delete notification.error;
                 lastEventId = newLastEventId;
-                notification.lastSyncTime = new Date();
+                notification.lastSyncTime = Object.freeze(new Date());
 
                 // notify any readiness listeners and update the event time
                 if (first) {
                     readyEvent.resolve();
                 }
                 if (hasEvents) {
-                    notification.lastEventTime = new Date();
+                    notification.lastEventTime = Object.freeze(new Date());
                 }
 
                 // notify the listeners
@@ -1471,6 +1502,7 @@ angular.module('tn', [])
                             case 'datetime':
                                 column.type = 'date';
                                 column.dateFormat = 'DD.MM.YYYY';
+                                column.dateFactory = Date.create;
                                 break;
                             case 'decimal':
                                 column.type = 'numeric';
@@ -1819,13 +1851,13 @@ angular.module('tn', [])
         }
     };
     var getDateFromWeekDay = function (weekDay) {
-        return new Date(ctr.monday.getTime() + (((weekDay + 6) % 7) * (24 * 60 * 60 * 1000)));
+        return Date.create(ctr.monday.getTime() + (((weekDay + 6) % 7) * (24 * 60 * 60 * 1000)));
     };
     var getMondayByWeekOffset = function (offset) {
-        return new Date(ctr.monday.getTime() + (offset * 7 * 24 * 60 * 60 * 1000));
+        return Date.create(ctr.monday.getTime() + (offset * 7 * 24 * 60 * 60 * 1000));
     };
     var getSundayByWeekOffset = function (offset) {
-        return new Date(ctr.monday.getTime() + (((offset * 7) + 6) * 24 * 60 * 60 * 1000));
+        return Date.create(ctr.monday.getTime() + (((offset * 7) + 6) * 24 * 60 * 60 * 1000));
     };
     var formatTime = function (time) {
         // formats a date object into a 00:00 time string
@@ -1884,7 +1916,7 @@ angular.module('tn', [])
     };
     var changeAnwesenheit = function (zeitspanneId, weekDay, fn) {
         // get or create the row object
-        var zeroTime = new Date(1900, 0, 1);
+        var zeroTime = Date.create(1900, 0, 1);
         var weekDays = getWeekDays(zeitspanneId);
         var row;
         if (weekDay in weekDays) {
@@ -2045,7 +2077,7 @@ angular.module('tn', [])
                         if (valueMatch && Number(valueMatch[5]) < 24 && Number(valueMatch[6]) < 60) {
                             // change the attributes
                             var zeitspanneId = hot.getSourceDataAtRow(change[0]).$id;
-                            changeAnwesenheit(zeitspanneId, weekDay, createSetter(Number(valueMatch[1]) === 1, Number(valueMatch[2]) === 1, Number(valueMatch[3]) === 1, new Date(1900, 0, 1, Number(valueMatch[5]), Number(valueMatch[6]))));
+                            changeAnwesenheit(zeitspanneId, weekDay, createSetter(Number(valueMatch[1]) === 1, Number(valueMatch[2]) === 1, Number(valueMatch[3]) === 1, Date.create(1900, 0, 1, Number(valueMatch[5]), Number(valueMatch[6]))));
                         }
                     }
                 }
@@ -2081,7 +2113,7 @@ angular.module('tn', [])
                 if (match && Number(match[1]) < 24 && Number(match[2]) < 60) {
                     $scope.$apply(function () {
                         changeAnwesenheit(zeitspanneId, weekDay, function (row) {
-                            row.Zusatz = new Date(1900, 0, 1, Number(match[1]), Number(match[2]));
+                            row.Zusatz = Date.create(1900, 0, 1, Number(match[1]), Number(match[2]));
                         });
                     });
                 }
@@ -2191,7 +2223,7 @@ angular.module('tn', [])
     };
 
     // define the date variables and functions
-    ctr.monday = (function (today) { return new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay() + 6) % 7)); })(new Date());
+    ctr.monday = (function (today) { return Date.create(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay() + 6) % 7)); })(new Date());
     ctr.sunday = getSundayByWeekOffset(0);
     ctr.maxMonday = getMondayByWeekOffset(2);
     ctr.weeks = [];
@@ -2256,8 +2288,8 @@ angular.module('tn', [])
         // render if the view still exists
         if (hot) {
             hot.render();
-        } 
-    }
+        }
+    };
     var afterChange = function (changes) {
         // ignore the first load
         if (!changes) {
@@ -2268,28 +2300,26 @@ angular.module('tn', [])
         var rows = {};
         for (var i = changes.length - 1; i >= 0; i--) {
             var row = hot.getSourceDataAtRow(changes[i][0]);
-            if (!(row.$id in rows)) {
-                rows[row.$id] = row;
-            }
+            rows[row.$id] = row;
         }
 
         // update all changed rows and reflect the status
         var table = dataSet.getTable(hot.tableName);
-        for (var id in rows) {
-            table.saveRow(rows[id]).then(null, renderIfHot);
-        }
+        $scope.$apply(function () {
+            for (var id in rows) {
+                table.saveRow(rows[id]).then(null, renderIfHot);
+            }
+        });
         hot.render();
     };
     var beforeChange = function (changes, source) {
-        // TODO: make the changes here with $apply and always return false
-
         // only allow changes by editors
         return source === 'edit' || source === 'undo';
     };
     var afterRenderer = function (TD, row, col, prop) {
         // add the error icon if there is one
         var sqlRow = hot.getSourceDataAtRow(row);
-        if (sqlRow.$error && sqlRow.$error.column === prop && sqlRow.$error.table === hot.tableName) {
+        if (sqlRow.$error && !sqlRow.$action && sqlRow.$error.column === prop && sqlRow.$error.table === hot.tableName) {
             TD.innerHTML += dataSet.errorIcon(sqlRow.$error.message);
         }
     };
