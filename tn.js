@@ -91,14 +91,19 @@ ObjectDisposedException.prototype = Object.create(InvalidOperationException.prot
 ObjectDisposedException.prototype.constructor = ObjectDisposedException;
 
 Date.create = (function () {
+    var setReplacement = function () {
+        throw new InvalidOperationException('Das Datum ist gesperrt.');
+    };
     var dates = {};
     return function () {
+        // create the actual date
         var date;
         switch (arguments.length) {
             case 0:
                 date = new Date();
                 break;
             case 1:
+                // if the ticks constructor is used check the cache immeditally
                 if (typeof arguments[0] === 'number' && arguments[0] in dates) {
                     return dates[arguments[0]];
                 }
@@ -111,11 +116,33 @@ Date.create = (function () {
                 date = new Date(arguments[0], arguments[1], arguments[2], arguments[3] || 0, arguments[4] || 0, arguments[5] || 0, arguments[6] || 0);
                 break;
         }
+
+        // check if the date is in the cache
         var value = date.valueOf();
         if (value in dates) {
             return dates[value];
         }
+
+        // lock and freeze the object
+        date.setDate = setReplacement;
+        date.setFullYear = setReplacement;
+        date.setHours = setReplacement;
+        date.setMilliseconds = setReplacement;
+        date.setMinutes = setReplacement;
+        date.setMonth = setReplacement;
+        date.setSeconds = setReplacement;
+        date.setTime = setReplacement;
+        date.setUTCDate = setReplacement;
+        date.setUTCFullYear = setReplacement;
+        date.setUTCHours = setReplacement;
+        date.setUTCMilliseconds = setReplacement;
+        date.setUTCMinutes = setReplacement;
+        date.setUTCMonth = setReplacement;
+        date.setUTCSeconds = setReplacement;
+        date.setYear = setReplacement;
         date = Object.freeze(date);
+
+        // add the date to the cache and return it
         dates[value] = date;
         return date;
     };
