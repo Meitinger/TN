@@ -619,9 +619,10 @@ angular.module('tn', [])
 })
 
 // define the table factory
-.factory('table', function ($q, $rootScope, sql, notification) {
-    return function (name, filter) {
-        var table;
+.factory('Table', function ($q, $rootScope, sql, notification) {
+    return function Table(name, filter) {
+        var table = this;
+
         ArgumentException.check(name, 'name', String);
         ArgumentException.check(filter, 'filter', String, true);
 
@@ -1136,99 +1137,97 @@ angular.module('tn', [])
             }
         };
 
-        // return the table object
-        table = {
-            dispose: function () {
-                // dispose the object
-                if (!disposed) {
-                    disposeDeferred.resolve('Tabelle wird nicht mehr verwendet.');
-                    if (notificationPromise) {
-                        notification.cancel(notificationPromise);
-                        notificationPromise = null;
-                    }
-                    rowIndex = void 0;
-                    delete table.rows;
-                    disposed = true;
+        // set the public functions
+        table.dispose = function () {
+            // dispose the object
+            if (!disposed) {
+                disposeDeferred.resolve('Tabelle wird nicht mehr verwendet.');
+                if (notificationPromise) {
+                    notification.cancel(notificationPromise);
+                    notificationPromise = null;
                 }
-            },
-            name: name,
-            filter: filter,
-            columns: [],
-            rows: [],
-            ready: throwIfDisposed(function (fn) {
-                ArgumentException.check(fn, 'fn', Function, true);
-
-                // set the callback if given and return the promise
-                if (fn) {
-                    readyEvent.promise.then(fn);
-                }
-                return readyEvent.promise;
-            }),
-            addRowChangeListener: throwIfDisposed(function (fn) {
-                ArgumentException.check(fn, 'fn', Function);
-
-                // add the listener
-                for (var i = changeListeners.length - 1; i >= 0; i--) {
-                    if (changeListeners[i] === fn) {
-                        return false;
-                    }
-                }
-                changeListeners.push(fn);
-                return true;
-            }),
-            removeRowChangeListener: throwIfDisposed(function (fn) {
-                ArgumentException.check(fn, 'fn', Function);
-
-                // remove the listener
-                for (var i = changeListeners.length - 1; i >= 0; i--) {
-                    if (changeListeners[i] === fn) {
-                        changeListeners.splice(i, 1);
-                        return true;
-                    }
-                }
-                return false;
-            }),
-            getRowById: function (id) {
-                // inline check for faster execution speed
-                if (disposed) {
-                    throw new ObjectDisposedException('Tabelle ' + name);
-                }
-                // return the row at the index
-                return rowIndex[id];
-            },
-            newRow: throwIfDisposed(throwIfNoColumns(function (row) {
-                ArgumentException.check(row, 'row', Object, true);
-
-                // create and add a row
-                if (!row) {
-                    row = {};
-                }
-                for (var i = table.columns.length - 1; i >= 0; i--) {
-                    var column = table.columns[i];
-                    var columnName = column.name;
-                    if (row[columnName] === void 0 && column.defaultValue === null && !column.required) {
-                        row[columnName] = null;
-                    }
-                }
-                row.$id = nextNewRowId--;
-                row.$version = '0x0000000000000000';
-                row.$orig = {};
-                table.rows.push(row);
-                rowIndex[row.$id] = row;
-                notifyAsync(null, row);
-                return row;
-            })),
-            saveRow: throwIfDisposed(throwIfNoColumns(function (row) {
-                // insert or update a row
-                return rowAction(row, row.$id < 0 ? insertRow : updateRow, true);
-            })),
-            deleteRow: throwIfDisposed(throwIfNoColumns(function (row, setError) {
-                ArgumentException.check(setError, 'setError', Boolean, true);
-
-                // delete a row and only store the error if requested
-                return rowAction(row, deleteRow, setError);
-            }))
+                rowIndex = void 0;
+                delete table.rows;
+                disposed = true;
+            }
         };
+        table.name = name;
+        table.filter = filter;
+        table.columns = [];
+        table.rows = [];
+        table.ready = throwIfDisposed(function (fn) {
+            ArgumentException.check(fn, 'fn', Function, true);
+
+            // set the callback if given and return the promise
+            if (fn) {
+                readyEvent.promise.then(fn);
+            }
+            return readyEvent.promise;
+        });
+        table.addRowChangeListener = throwIfDisposed(function (fn) {
+            ArgumentException.check(fn, 'fn', Function);
+
+            // add the listener
+            for (var i = changeListeners.length - 1; i >= 0; i--) {
+                if (changeListeners[i] === fn) {
+                    return false;
+                }
+            }
+            changeListeners.push(fn);
+            return true;
+        });
+        table.removeRowChangeListener = throwIfDisposed(function (fn) {
+            ArgumentException.check(fn, 'fn', Function);
+
+            // remove the listener
+            for (var i = changeListeners.length - 1; i >= 0; i--) {
+                if (changeListeners[i] === fn) {
+                    changeListeners.splice(i, 1);
+                    return true;
+                }
+            }
+            return false;
+        });
+        table.getRowById = function (id) {
+            // inline check for faster execution speed
+            if (disposed) {
+                throw new ObjectDisposedException('Tabelle ' + name);
+            }
+            // return the row at the index
+            return rowIndex[id];
+        };
+        table.newRow = throwIfDisposed(throwIfNoColumns(function (row) {
+            ArgumentException.check(row, 'row', Object, true);
+
+            // create and add a row
+            if (!row) {
+                row = {};
+            }
+            for (var i = table.columns.length - 1; i >= 0; i--) {
+                var column = table.columns[i];
+                var columnName = column.name;
+                if (row[columnName] === void 0 && column.defaultValue === null && !column.required) {
+                    row[columnName] = null;
+                }
+            }
+            row.$id = nextNewRowId--;
+            row.$version = '0x0000000000000000';
+            row.$orig = {};
+            table.rows.push(row);
+            rowIndex[row.$id] = row;
+            notifyAsync(null, row);
+            return row;
+        }));
+        table.saveRow = throwIfDisposed(throwIfNoColumns(function (row) {
+            // insert or update a row
+            return rowAction(row, row.$id < 0 ? insertRow : updateRow, true);
+        }));
+        table.deleteRow = throwIfDisposed(throwIfNoColumns(function (row, setError) {
+            ArgumentException.check(setError, 'setError', Boolean, true);
+
+            // delete a row and only store the error if requested
+            return rowAction(row, deleteRow, setError);
+        }));
 
         // initialize the table when ready
         notification.ready(function () {
@@ -1329,14 +1328,11 @@ angular.module('tn', [])
                 });
             });
         });
-
-        // return the table object
-        return table;
     };
 })
 
 // define dataset functions
-.service('dataSet', function ($q, ReferenceLabels, sql, table) {
+.service('dataSet', function ($q, ReferenceLabels, sql, Table) {
     var Div = document.createElement('div').constructor;
     var dataSet;
 
@@ -1345,220 +1341,314 @@ angular.module('tn', [])
     var references = {};
     var labels = {};
 
-    // update the settings of a new handsontable
-    var labelsRenderer = function (instance, TD, row, col, prop, value, cellProperties) {
-        // find the label
-        if (value === null) {
-            value = '';
-        }
-        else {
-            if (typeof value !== 'number') {
-                value = Number(value);
-            }
-            if (cellProperties.referencedTable in labels) {
-                var label = labels[cellProperties.referencedTable];
-                if (value in label) {
-                    value = label[value];
-                }
-                else {
-                    value = '(' + cellProperties.referencedTable + ' #' + value + ' fehlt)';
-                }
+    // define the view object
+    var View = function View(tableName, parentElement, settings) {
+        var view = this;
+
+        // fast and umlaut-aware string comparer (if possible)
+        var compareString = (function () {
+            if (window.Intl && window.Intl.Collator) {
+                var collator = new Intl.Collator('de');
+                return collator.compare;
             }
             else {
-                value = '(' + cellProperties.referencedTable + ' #' + value + ' nicht geladen)';
+                return function (a, b) {
+                    a = a.toLowerCase();
+                    b = b.toLowerCase();
+                    return a < b ? -1 : b < a ? 1 : 0;
+                };
             }
-        }
-        (cellProperties.readOnly ? Handsontable.renderers.TextRenderer : Handsontable.renderers.AutocompleteRenderer)(instance, TD, row, col, prop, value, cellProperties);
-    };
-    var compareString = (function () {
-        if (window.Intl && window.Intl.Collator) {
-            var collator = new Intl.Collator('de');
-            return collator.compare;
-        }
-        else {
-            return function (a, b) {
-                a = a.toLowerCase();
-                b = b.toLowerCase();
-                return a < b ? -1 : b < a ? 1 : 0;
-            };
-        }
-    })();
-    var labelsComparer = function (sortOrder) {
-        // return the numeric comparer if there are no labels
-        if (!(this.referencedTable in labels)) {
-            return Handsontable.NumericCell.comparer(sortOrder);
-        }
+        })();
 
-        // generate the flags and compare function
-        var label = labels[this.referencedTable];
-        var aNotB = sortOrder ? 1 : -1;
-        var bNotA = sortOrder ? -1 : 1;
-        return function (a, b) {
-            if (a[1] !== null && b[1] !== null) {
-                var hasA = a[1] in label;
-                var hasB = b[1] in label;
-                if (hasA && hasB) {
-                    return sortOrder ? compareString(label[a[1]], label[b[1]]) : compareString(label[b[1]], label[a[1]]);
+        // label column type methods
+        var labelsRenderer = function (instance, TD, row, col, prop, value, cellProperties) {
+            // find the label
+            if (value === null) {
+                value = '';
+            }
+            else {
+                if (typeof value !== 'number') {
+                    value = Number(value);
                 }
-                else if (hasA) {
+                if (cellProperties.referencedTable in labels) {
+                    var label = labels[cellProperties.referencedTable];
+                    if (value in label) {
+                        value = label[value];
+                    }
+                    else {
+                        value = '(' + cellProperties.referencedTable + ' #' + value + ' fehlt)';
+                    }
+                }
+                else {
+                    value = '(' + cellProperties.referencedTable + ' #' + value + ' nicht geladen)';
+                }
+            }
+            (cellProperties.readOnly ? Handsontable.renderers.TextRenderer : Handsontable.renderers.AutocompleteRenderer)(instance, TD, row, col, prop, value, cellProperties);
+        };
+        var labelsComparer = function (sortOrder) {
+            // return the numeric comparer if there are no labels
+            if (!(this.referencedTable in labels)) {
+                return Handsontable.NumericCell.comparer(sortOrder);
+            }
+
+            // generate the flags and compare function
+            var label = labels[this.referencedTable];
+            var aNotB = sortOrder ? 1 : -1;
+            var bNotA = sortOrder ? -1 : 1;
+            return function (a, b) {
+                if (a[1] !== null && b[1] !== null) {
+                    var hasA = a[1] in label;
+                    var hasB = b[1] in label;
+                    if (hasA && hasB) {
+                        return sortOrder ? compareString(label[a[1]], label[b[1]]) : compareString(label[b[1]], label[a[1]]);
+                    }
+                    else if (hasA) {
+                        return aNotB;
+                    }
+                    else if (hasB) {
+                        return bNotA;
+                    }
+                    else {
+                        return sortOrder ? a[1] - b[1] : b[1] - a[1];
+                    }
+                }
+                else if (a[1] !== null) {
                     return aNotB;
                 }
-                else if (hasB) {
+                else if (b[1] !== null) {
                     return bNotA;
                 }
                 else {
-                    return sortOrder ? a[1] - b[1] : b[1] - a[1];
+                    return 0;
+                }
+            };
+        };
+        var labelsFormatCopyable = function (value) {
+            if (this.referencedTable in labels) {
+                var label = labels[this.referencedTable];
+                if (value in label) {
+                    return '"' + label[value].replace(/"/g, '""') + '"';
                 }
             }
-            else if (a[1] !== null) {
-                return aNotB;
+            return value.toLocaleString();
+        };
+
+        // editor for label columns
+        var LabelsEditor = Handsontable.editors.SelectEditor.prototype.extend();
+        LabelsEditor.prototype.prepare = function () {
+            Handsontable.editors.BaseEditor.prototype.prepare.apply(this, arguments);
+            // get and sort the options
+            var options = this.cellProperties.referencedTable in labels ? labels[this.cellProperties.referencedTable] : {};
+            var sortOptions = [];
+            for (var value in options) {
+                sortOptions.push([value, options[value]]);
             }
-            else if (b[1] !== null) {
-                return bNotA;
-            }
-            else {
-                return 0;
+            sortOptions.sort(function (a, b) { return -compareString(a[1], b[1]); });
+
+            // clear all previous options
+            angular.element(this.select).empty();
+
+            // add the null option together with all the other options
+            sortOptions.push(['', '']);
+            for (var i = sortOptions.length - 1; i >= 0; i--) {
+                var optionElement = document.createElement('OPTION');
+                optionElement.value = sortOptions[i][0];
+                optionElement.text = sortOptions[i][1];
+                this.select.appendChild(optionElement);
             }
         };
-    };
-    var formatLabel = function (value) {
-        if (this.referencedTable in labels) {
-            var label = labels[this.referencedTable];
-            if (value in label) {
-                return '"' + label[value].replace(/"/g, '""') + '"';
+        LabelsEditor.prototype.getValue = function () {
+            // return null or a number
+            return this.select.value === '' ? null : Number(this.select.value);
+        };
+
+        // state variables
+        var instance = null;
+        var disposed = false;
+        var hookedTable = null;
+        var queuedRender = false;
+
+        // helpers
+        var throwIfDisposed = function (fn) {
+            return function () {
+                if (disposed) {
+                    throw new ObjectDisposedException('Ansicht ' + tableName);
+                }
+                return fn.apply(this, arguments);
+            };
+        };
+        var render = function () {
+            queuedRender = false;
+            if (instance) {
+                instance.render();
             }
-        }
-        return value.toLocaleString();
-    };
-    var LabelsEditor = Handsontable.editors.SelectEditor.prototype.extend();
-    LabelsEditor.prototype.prepare = function () {
-        Handsontable.editors.BaseEditor.prototype.prepare.apply(this, arguments);
-        // get and sort the options
-        var options = this.cellProperties.referencedTable in labels ? labels[this.cellProperties.referencedTable] : {};
-        var sortOptions = [];
-        for (var value in options) {
-            sortOptions.push([value, options[value]]);
-        }
-        sortOptions.sort(function (a, b) { return -compareString(a[1], b[1]); });
-
-        // clear all previous options
-        angular.element(this.select).empty();
-
-        // add the null option together with all the other options
-        sortOptions.push(['', '']);
-        for (var i = sortOptions.length - 1; i >= 0; i--) {
-            var optionElement = document.createElement('OPTION');
-            optionElement.value = sortOptions[i][0];
-            optionElement.text = sortOptions[i][1];
-            this.select.appendChild(optionElement);
-        }
-    };
-    LabelsEditor.prototype.getValue = function () {
-        // return null or a number
-        return this.select.value === '' ? null : Number(this.select.value);
-    };
-    var initializeView = function (table, hotInstance, settings) {
-        // create the columns array if necessary
-        if (settings.columns === void 0) {
-            settings.columns = [];
-            for (var j = 0; j < table.columns.length; j++) {
-                if (table.columns[j].type !== 'varbinary') {
-                    settings.columns.push({
-                        data: table.columns[j].name,
-                        title: table.columns[j].name
-                    });
+        };
+        var createInstance = function (table) {
+            // create the columns array if necessary
+            if (settings.columns === void 0) {
+                settings.columns = [];
+                for (var j = 0; j < table.columns.length; j++) {
+                    if (table.columns[j].type !== 'varbinary') {
+                        settings.columns.push({
+                            data: table.columns[j].name,
+                            title: table.columns[j].name
+                        });
+                    }
                 }
             }
-        }
 
-        // disable observing changes, enable sorting, resizing and limit row rendering
-        settings.observeChanges = false;
-        settings.observeDOMVisibility = false;
-        settings.columnSorting = true;
-        settings.manualColumnResize = true;
-        settings.viewportColumnRenderingOffset = 2;
-        settings.viewportRowRenderingOffset = 10;
+            // disable observing changes, enable sorting, resizing and limit row rendering
+            settings.observeChanges = false;
+            settings.observeDOMVisibility = false;
+            settings.columnSorting = true;
+            settings.manualColumnResize = true;
+            settings.viewportColumnRenderingOffset = 2;
+            settings.viewportRowRenderingOffset = 10;
 
-        // adjust all columns
-        for (var k = settings.columns.length - 1; k >= 0; k--) {
-            var column = settings.columns[k];
+            // adjust all columns
+            for (var k = settings.columns.length - 1; k >= 0; k--) {
+                var column = settings.columns[k];
 
-            // always show the sort indicator
-            column.sortIndicator = true;
+                // always show the sort indicator
+                column.sortIndicator = true;
 
-            // check if the hot column matches a table column
-            if (typeof column.data === 'string') {
-                for (var l = table.columns.length - 1; l >= 0; l--) {
-                    var tableColumn = table.columns[l];
-                    if (tableColumn.name === column.data) {
-                        // set the common attributes
-                        if (tableColumn.readOnly) {
-                            column.readOnly = true;
-                        }
-                        var width = Number(tableColumn.width);
-                        column.width = isNaN(width) || width <= 0 ? 100 : width;
-                        column.language = 'de';
+                // check if the hot column matches a table column
+                if (typeof column.data === 'string') {
+                    for (var l = table.columns.length - 1; l >= 0; l--) {
+                        var tableColumn = table.columns[l];
+                        if (tableColumn.name === column.data) {
+                            // set the common attributes
+                            if (tableColumn.readOnly) {
+                                column.readOnly = true;
+                            }
+                            var width = Number(tableColumn.width);
+                            column.width = isNaN(width) || width <= 0 ? 100 : width;
+                            column.language = 'de';
 
-                        // set the type specific attributes
-                        switch (tableColumn.type) {
-                            case 'int':
-                                column.type = 'numeric';
-                                column.format = '0';
-                                if (tableColumn.referencedTable) {
-                                    column.editor = LabelsEditor;
-                                    column.renderer = labelsRenderer;
-                                    column.comparer = labelsComparer;
-                                    column.className = void 0;
-                                    column.referencedTable = tableColumn.referencedTable;
-                                    column.formatCopyable = formatLabel;
-                                    if (tableColumn.referencedTable in references) {
-                                        references[tableColumn.referencedTable].push(hotInstance);
+                            // set the type specific attributes
+                            switch (tableColumn.type) {
+                                case 'int':
+                                    column.type = 'numeric';
+                                    column.format = '0';
+                                    if (tableColumn.referencedTable) {
+                                        column.editor = LabelsEditor;
+                                        column.renderer = labelsRenderer;
+                                        column.comparer = labelsComparer;
+                                        column.className = void 0;
+                                        column.referencedTable = tableColumn.referencedTable;
+                                        column.formatCopyable = labelsFormatCopyable;
+                                        if (tableColumn.referencedTable in references) {
+                                            references[tableColumn.referencedTable].push(view);
+                                        }
+                                        else {
+                                            references[tableColumn.referencedTable] = [view];
+                                        }
                                     }
-                                    else {
-                                        references[tableColumn.referencedTable] = [hotInstance];
+                                    break;
+                                case 'char':
+                                case 'varchar':
+                                case 'nchar':
+                                case 'nvarchar':
+                                    column.type = 'text';
+                                    column.trimWhitespace = true;
+                                    break;
+                                case 'datetime':
+                                    column.type = 'date';
+                                    column.dateFormat = 'DD.MM.YYYY';
+                                    column.dateFactory = Date.create;
+                                    break;
+                                case 'decimal':
+                                    column.type = 'numeric';
+                                    column.format = '0';
+                                    if (tableColumn.scale > 0) {
+                                        column.format += '.';
+                                        for (var n = tableColumn.scale; n > 0; n--) {
+                                            column.format += '0';
+                                        }
                                     }
-                                }
-                                break;
-                            case 'char':
-                            case 'varchar':
-                            case 'nchar':
-                            case 'nvarchar':
-                                column.type = 'text';
-                                column.trimWhitespace = true;
-                                break;
-                            case 'datetime':
-                                column.type = 'date';
-                                column.dateFormat = 'DD.MM.YYYY';
-                                column.dateFactory = Date.create;
-                                break;
-                            case 'decimal':
-                                column.type = 'numeric';
-                                column.format = '0';
-                                if (tableColumn.scale > 0) {
-                                    column.format += '.';
-                                    for (var n = tableColumn.scale; n > 0; n--) {
-                                        column.format += '0';
-                                    }
-                                }
-                                break;
-                            case 'money':
-                                column.type = 'numeric';
-                                column.format = '$ 0,0.00';
-                                break;
-                            case 'bit':
-                                column.type = 'checkbox';
-                                break;
-                            default:
-                                throw new InvalidOperationException('Der Typ "' + tableColumn.type + '" von Spalte "' + tableColumn.name + '" in Tabelle "' + table.name + '" wird nicht unterstützt.');
+                                    break;
+                                case 'money':
+                                    column.type = 'numeric';
+                                    column.format = '$ 0,0.00';
+                                    break;
+                                case 'bit':
+                                    column.type = 'checkbox';
+                                    break;
+                                default:
+                                    throw new InvalidOperationException('Der Typ "' + tableColumn.type + '" von Spalte "' + tableColumn.name + '" in Tabelle "' + table.name + '" wird nicht unterstützt.');
+                            }
                         }
                     }
                 }
             }
-        }
 
-        // set the settings and load the data
-        hotInstance.updateSettings(settings);
-        hotInstance.loadData(table.rows);
+            // finalize the settings and create the instance
+            settings.data = table.rows;
+            return new Handsontable(parentElement, settings);
+        };
+
+        // methods for hooking and unhooking
+        view.isTableName = throwIfDisposed(function (name) {
+            return name === tableName;
+        });
+        view.hook = throwIfDisposed(function (table) {
+            if (hookedTable) {
+                throw new InvalidOperationException('Die Ansicht für Tabelle "' + tableName + '" ist bereits gebunden.');
+            }
+            hookedTable = table;
+            if (instance) {
+                instance.loadData(table.rows);
+            }
+            else {
+                instance = createInstance(table);
+            }
+        });
+        view.unhook = throwIfDisposed(function (table) {
+            if (hookedTable !== table) {
+                throw new InvalidOperationException('Die Ansicht für Tabelle "' + tableName + '" ist an eine andere Tabelleninstanz gebunden.');
+            }
+            hookedTable = null;
+            instance.loadData([]);
+        });
+
+        // method for disposing the view
+        view.dispose = throwIfDisposed(function () {
+            disposed = true;
+
+            // unhook and destroy the instance
+            hookedTable = null;
+            if (instance) {
+                instance.destroy();
+                instance = null;
+            }
+
+            // remove any references
+            for (var name in references) {
+                var views = references[name];
+                for (var i = views.length - 1; i >= 0; i--) {
+                    if (views[i] === view) {
+                        views.splice(i, 1);
+                    }
+                }
+            }
+        });
+
+        // method that schedules a render for later
+
+        view.invalidate = function () {
+            if (instance && !queuedRender) {
+                queuedRender = true;
+                setTimeout(render, 0);
+            }
+        };
+
+        // add the view to the table references
+        if (tableName in references) {
+            references[tableName].push(view);
+        }
+        else {
+            references[tableName] = [view];
+        }
     };
 
     // helper functions to render foreign keys and base tables
@@ -1575,19 +1665,9 @@ angular.module('tn', [])
         }
 
         // render all referencing hot tables
-        var hotInstances = references[table.name];
-        for (var i = hotInstances.length - 1; i >= 0; i--) {
-            hotInstances[i].render();
-        }
-    };
-    var loadViewData = function (tableName, data) {
-        // load the data into all views of a certain table
-        var hotInstances = references[tableName];
-        for (var i = hotInstances.length - 1; i >= 0; i--) {
-            var hotInstance = hotInstances[i];
-            if (hotInstance.tableName === tableName) {
-                hotInstance.loadData(data);
-            }
+        var views = references[table.name];
+        for (var i = views.length - 1; i >= 0; i--) {
+            views[i].invalidate();
         }
     };
     var internalCreateTable = function (name, filter) {
@@ -1609,28 +1689,28 @@ angular.module('tn', [])
             }).then(function (data) {
                 // store the permissions and render all views of this table again
                 dataSet.permissions[name] = data[0];
-                var hotInstances = references[name];
-                for (var i = hotInstances.length - 1; i >= 0; i--) {
-                    var hotInstance = hotInstances[i];
-                    if (hotInstance.tableName === name) {
-                        hotInstance.render();
+                var views = references[name];
+                for (var i = views.length - 1; i >= 0; i--) {
+                    var view = views[i];
+                    if (view.isTableName(name)) {
+                        view.invalidate();
                     }
                 }
             });
         }
 
         // create and add the table
-        var newTable = table(name, filter);
-        tables[name] = newTable;
+        var table = new Table(name, filter);
+        tables[name] = table;
 
         // wait for the table to be ready
-        newTable.ready(function () {
+        table.ready(function () {
             // make sure the same table is still loaded
-            if (name in tables && tables[name] === newTable) {
+            if (name in tables && tables[name] === table) {
                 // build all labels if there is a reference
                 if (name in ReferenceLabels) {
                     var label = {};
-                    var rows = newTable.rows;
+                    var rows = table.rows;
                     for (var i = rows.length - 1; i >= 0; i--) {
                         var row = rows[i];
                         label[row.$id] = ReferenceLabels[name](row);
@@ -1638,31 +1718,51 @@ angular.module('tn', [])
                     labels[name] = label;
                 }
 
-                // hook the listener and call it to render all views
-                newTable.addRowChangeListener(rowChange);
-                rowChange(newTable, null, null);
+                // hook the listener and create all views or invalidate foreign views
+                table.addRowChangeListener(rowChange);
+                var views = references[name];
+                for (var j = views.length - 1; j >= 0; j--) {
+                    var view = views[j];
+                    if (view.isTableName(name)) {
+                        view.hook(table);
+                    }
+                    else {
+                        view.invalidate();
+                    }
+                }
             }
         });
 
-        // populate the views
-        loadViewData(name, newTable.rows);
-        return newTable;
+        // return the table
+        return table;
     };
-    var internalDestroyTable = function (oldTable) {
-        // clear the views
-        loadViewData(oldTable.name, []);
+    var internalDestroyTable = function (table) {
+        // delete the table from the list
+        var name = table.name;
+        delete tables[name];
 
-        // delete the table from the list and try to remove the listener
-        delete tables[oldTable.name];
-        if (oldTable.removeRowChangeListener(rowChange)) {
+        // try to unhooks the listener (only successful if ready event was triggered)
+        if (table.removeRowChangeListener(rowChange)) {
             // if it was registered also delete the labels if a reference exists
-            if (oldTable.name in ReferenceLabels) {
-                delete labels[oldTable.name];
+            if (name in ReferenceLabels) {
+                delete labels[name];
+            }
+
+            // clear the views and invalidate foreign views
+            var views = references[name];
+            for (var i = views.length - 1; i >= 0; i--) {
+                var view = views[i];
+                if (view.isTableName(name)) {
+                    view.unhook(table);
+                }
+                else {
+                    view.invalidate();
+                }
             }
         }
 
         // dispose the table
-        oldTable.dispose();
+        table.dispose();
     };
 
     // define the data set functions
@@ -1686,10 +1786,11 @@ angular.module('tn', [])
         },
         load: function (definitions) {
             ArgumentException.check(definitions, 'definitions', Array);
+            var name;
 
             // store the old tables
             var oldTables = {};
-            for (var name in tables) {
+            for (name in tables) {
                 oldTables[name] = tables[name];
             }
             var newTables = {};
@@ -1697,33 +1798,34 @@ angular.module('tn', [])
             // build the new maps
             for (var i = definitions.length - 1; i >= 0; i--) {
                 var definition = definitions[i];
+                name = definition.name;
 
                 // ensure the table wasn't defined twice
-                if (definition.name in newTables) {
-                    throw new InvalidOperationException('Es wurde versucht die Tabelle "' + definition.name + '" mehrfach zu laden.');
+                if (name in newTables) {
+                    throw new InvalidOperationException('Es wurde versucht die Tabelle "' + name + '" mehrfach zu laden.');
                 }
 
                 // check if the table can be reused
-                if (definition.name in oldTables) {
-                    if (oldTables[definition.name].filter === definition.filter) {
+                if (name in oldTables) {
+                    if (oldTables[name].filter === definition.filter) {
                         // reuse the table
-                        newTables[definition.name] = oldTables[definition.name];
+                        newTables[name] = oldTables[name];
                     }
                     else {
                         // unload the old table before loading it with a different filter
-                        internalDestroyTable(oldTables[definition.name]);
-                        newTables[definition.name] = internalCreateTable(definition.name, definition.filter);
+                        internalDestroyTable(oldTables[name]);
+                        newTables[name] = internalCreateTable(name, definition.filter);
                     }
-                    delete oldTables[definition.name];
+                    delete oldTables[name];
                 }
                 else {
-                    newTables[definition.name] = internalCreateTable(definition.name, definition.filter);
+                    newTables[name] = internalCreateTable(name, definition.filter);
                 }
             }
 
             // remove old unused tables
-            for (var oldName in oldTables) {
-                internalDestroyTable(oldTables[oldName]);
+            for (name in oldTables) {
+                internalDestroyTable(oldTables[name]);
             }
         },
         getTable: function (name) {
@@ -1742,14 +1844,14 @@ angular.module('tn', [])
             }
             return internalCreateTable(name, filter);
         },
-        removeTable: function (oldTable) {
-            ArgumentException.check(oldTable, 'oldTable', Object);
+        removeTable: function (table) {
+            ArgumentException.check(table, 'table', Table);
 
             // ensure the table is loaded before destroying it
-            if (!(oldTable.name in tables) || tables[oldTable.name] !== oldTable) {
-                throw new InvalidOperationException('Die Tabelle "' + oldTable.name + '" wurde nicht geladen.');
+            if (!(table.name in tables) || tables[table.name] !== table) {
+                throw new InvalidOperationException('Die Tabelle "' + table.name + '" wurde nicht geladen.');
             }
-            internalDestroyTable(oldTable);
+            internalDestroyTable(table);
         },
         actionIcon: '<i class="uk-icon-refresh uk-icon-spin"></i>',
         errorIcon: function (message) {
@@ -1790,67 +1892,22 @@ angular.module('tn', [])
             ArgumentException.check(parentElement, 'parentElement', Div);
             ArgumentException.check(settings, 'settings', Object);
 
-            // ensure the table is loaded
-            if (!(tableName in tables)) {
-                throw new InvalidOperationException('Die Tabelle "' + tableName + '" ist nicht eingeladen.');
-            }
-
-            // create and return the instance
-            var hotInstance = new Handsontable(parentElement, {
-                // we have to set the headers upfront
-                rowHeaders: settings.rowHeaders,
-                colHeaders: settings.colHeaders,
-                data: []
-            });
-            hotInstance.tableName = tableName;
-            references[tableName].push(hotInstance);
-            tables[tableName].ready(function () {
-                // make sure the table and instance still exist before initializing the view
-                if (hotInstance.tableName in tables) {
-                    var hotInstances = references[hotInstance.tableName];
-                    for (var i = hotInstances.length - 1; i >= 0; i--) {
-                        if (hotInstances[i] === hotInstance) {
-                            initializeView(tables[hotInstance.tableName], hotInstance, settings);
-                            break;
-                        }
-                    }
+            // create the view and make sure it gets loaded if the table exists and is ready
+            var view = new View(tableName, parentElement, settings);
+            if (tableName in tables) {
+                var table = tables[tableName];
+                if (table.removeRowChangeListener(rowChange)) {
+                    table.addRowChangeListener(rowChange);
+                    view.hook(table);
                 }
-            });
-            return hotInstance;
+            }
+            return view;
         },
-        destroyView: function (hotInstance) {
-            ArgumentException.check(hotInstance, 'hotInstance', Handsontable.Core);
+        destroyView: function (view) {
+            ArgumentException.check(view, 'view', View);
 
-            // find the view in the underlying table reference
-            if (hotInstance.tableName in references) {
-                var hotInstances = references[hotInstance.tableName];
-                for (var i = hotInstances.length - 1; i >= 0; i--) {
-                    if (hotInstances[i] === hotInstance) {
-                        // remove the entry
-                        hotInstances.splice(i, 1);
-
-                        // remove all foreign key entries
-                        var columns = hotInstance.getSettings().columns;
-                        for (var j = columns.length - 1; j >= 0; j--) {
-                            var column = columns[j];
-                            if (column.referencedTable in references) {
-                                var referencingHotInstances = references[column.referencedTable];
-                                for (var k = referencingHotInstances.length - 1; k >= 0; k--) {
-                                    if (referencingHotInstances[k] === hotInstance) {
-                                        referencingHotInstances.splice(k, 1);
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-
-                        // destroy the view
-                        hotInstance.destroy();
-                        return;
-                    }
-                }
-            }
-            throw new ArgumentException('Die Ansicht für Tabelle "' + hotInstance.tableName + '" wurde nicht gefunden.', 'hotInstance');
+            // dispose the view
+            view.dispose();
         }
     };
 
@@ -1862,21 +1919,8 @@ angular.module('tn', [])
 .controller('AttendanceController', function ($scope, $element, $filter, Roles, dataSet) {
     var ctr = this;
     var hot = null;
-    var hotRenderQueued = false;
 
     // helper functions
-    var queueRender = function () {
-        // make sure render only gets called once in a tick
-        if (hot && !hotRenderQueued) {
-            hotRenderQueued = true;
-            $scope.$evalAsync(function () {
-                hotRenderQueued = false;
-                if (hot) {
-                    hot.render();
-                }
-            });
-        }
-    };
     var getDateFromWeekDay = function (weekDay) {
         return Date.create(ctr.monday.getTime() + (((weekDay + 6) % 7) * (24 * 60 * 60 * 1000)));
     };
@@ -1928,7 +1972,7 @@ angular.module('tn', [])
 
         // store the result and render
         weekDays.formatted[weekDay] = result;
-        queueRender();
+        hot.invalidate();
     };
     var getWeekDays = function (zeitspanneId) {
         // create the weekdays if they don't exist
@@ -1997,7 +2041,7 @@ angular.module('tn', [])
         }
 
         // rerender
-        queueRender();
+        hot.invalidate();
     };
     var handleAnwesenheitRowChange = function (table, oldRow, newRow) {
         // define a helper function
@@ -2054,12 +2098,11 @@ angular.module('tn', [])
 
         // redraw the header if necessary
         if (render) {
-            queueRender();
+            hot.invalidate();
         }
     };
 
     // handson table variable and build function
-    var hotContainer = (function (children) { return children[children.length - 1]; })($element.children());
     var hotHeaders = function (col) {
         switch (col) {
             case 0: return 'Einrichtung';
@@ -2085,6 +2128,7 @@ angular.module('tn', [])
         };
 
         // go over all changes
+        var instance = this;
         $scope.$apply(function () {
             for (var i = changes.length - 1; i >= 0; i--) {
                 var change = changes[i];
@@ -2098,12 +2142,12 @@ angular.module('tn', [])
                 var propMatch = change[1].match(/^\$Anwesenheit\.([0-6])$/);
                 if (propMatch) {
                     var weekDay = Number(propMatch[1]);
-                    if (!hot.getCellMeta(change[0], 2 + ((weekDay + 6) % 7)).readOnly) {
+                    if (!instance.getCellMeta(change[0], 2 + ((weekDay + 6) % 7)).readOnly) {
                         // make sure the format is value
                         var valueMatch = change[3].match(/^<span class="bitmask-([01])([01])([01])( missing)?">(\d\d):(\d\d)<\/span>/);
                         if (valueMatch && Number(valueMatch[5]) < 24 && Number(valueMatch[6]) < 60) {
                             // change the attributes
-                            var zeitspanneId = hot.getSourceDataAtRow(change[0]).$id;
+                            var zeitspanneId = instance.getSourceDataAtRow(change[0]).$id;
                             changeAnwesenheit(zeitspanneId, weekDay, createSetter(Number(valueMatch[1]) === 1, Number(valueMatch[2]) === 1, Number(valueMatch[3]) === 1, Date.create(1900, 0, 1, Number(valueMatch[5]), Number(valueMatch[6]))));
                         }
                     }
@@ -2114,12 +2158,12 @@ angular.module('tn', [])
     };
     var hotMouseDown = function (event, coords, TD) {
         // check the cell
-        if (coords.row < 0 || coords.col < 2 || hot.getCellMeta(coords.row, coords.col).readOnly) {
+        if (coords.row < 0 || coords.col < 2 || this.getCellMeta(coords.row, coords.col).readOnly) {
             return;
         }
 
         // get the common variable and calculate the position
-        var zeitspanneId = hot.getSourceDataAtRow(coords.row).$id;
+        var zeitspanneId = this.getSourceDataAtRow(coords.row).$id;
         var weekDay = (coords.col - 1) % 7;
         var pos = event.clientX;
         for (var parent = TD; parent; parent = parent.offsetParent) {
@@ -2200,27 +2244,25 @@ angular.module('tn', [])
         return columns;
     })();
     var hotCells = function (row, col) {
-        var cellProperties = {};
         if (col > 1) {
             // mark days outside the Zeitspanne as readonly
             var weekDay = (col - 1) % 7;
             var date = getDateFromWeekDay(weekDay).getTime();
-            var sourceRow = hot.getSourceDataAtRow(row);
-            cellProperties.readOnly = !sourceRow || date < sourceRow.Eintritt.getTime() || sourceRow.Austritt && date > sourceRow.Austritt.getTime();
+            var sourceRow = this.instance.getSourceDataAtRow(row);
+            this.readOnly = !sourceRow || date < sourceRow.Eintritt.getTime() || sourceRow.Austritt && date > sourceRow.Austritt.getTime();
 
             // set the class name depending on the day
-            cellProperties.className = 'attendance';
+            this.className = 'attendance';
             if (weekDay in holidays) {
-                cellProperties.className += ' holiday';
+                this.className += ' holiday';
             }
             else if (col === 7) {
-                cellProperties.className += ' saturday';
+                this.className += ' saturday';
             }
             else if (col === 8) {
-                cellProperties.className += ' sunday';
+                this.className += ' sunday';
             }
         }
-        return cellProperties;
     };
 
     // cleanup helper function
@@ -2228,10 +2270,6 @@ angular.module('tn', [])
         ctr.weeks = [];
         attendance = {};
         holidays = {};
-        if (hot) {
-            dataSet.destroyView(hot);
-            hot = null;
-        }
         if (zeitspanne) {
             zeitspanne.removeRowChangeListener(handleZeitspanneRowChange);
             dataSet.removeTable(zeitspanne);
@@ -2278,28 +2316,40 @@ angular.module('tn', [])
         }
 
         // fetch all data that depends on the week
-        zeitspanne = dataSet.addTable('Zeitspanne', 'Eintritt <= ' + end + ' AND (Austritt IS NULL OR Austritt >= ' + begin + ') AND (' + dataSet.secondaryFilter(Roles.Coaching, Roles.Administration) + ')');
-        zeitspanne.addRowChangeListener(handleZeitspanneRowChange);
-        anwesenheit = dataSet.addTable('Anwesenheit', 'Datum BETWEEN ' + begin + ' AND ' + end);
-        anwesenheit.addRowChangeListener(handleAnwesenheitRowChange);
-        feiertag = dataSet.addTable('Feiertag', 'Datum BETWEEN ' + begin + ' AND ' + end);
-        feiertag.addRowChangeListener(handleFeiertagRowChange);
-
-        // create the hot table when ready
-        dataSet.ready(function () {
-            hot = dataSet.createView('Zeitspanne', hotContainer, {
-                colHeaders: hotHeaders,
-                rowHeaders: false,
-                columns: hotColumns,
-                cells: hotCells,
-                beforeChange: hotBeforeChange,
-                afterOnCellMouseDown: hotMouseDown
+        var createReady = function (targetTable, rowChangeHandler) {
+            targetTable.ready(function (table) {
+                if (table === targetTable) {
+                    var rows = table.rows;
+                    for (var i = rows.length - 1; i >= 0; i--) {
+                        rowChangeHandler(table, null, rows[i]);
+                    }
+                    table.addRowChangeListener(rowChangeHandler);
+                }
             });
-        });
+        };
+        zeitspanne = dataSet.addTable('Zeitspanne', 'Eintritt <= ' + end + ' AND (Austritt IS NULL OR Austritt >= ' + begin + ') AND (' + dataSet.secondaryFilter(Roles.Coaching, Roles.Administration) + ')');
+        createReady(zeitspanne, handleZeitspanneRowChange);
+        anwesenheit = dataSet.addTable('Anwesenheit', 'Datum BETWEEN ' + begin + ' AND ' + end);
+        createReady(anwesenheit, handleAnwesenheitRowChange);
+        feiertag = dataSet.addTable('Feiertag', 'Datum BETWEEN ' + begin + ' AND ' + end);
+        createReady(feiertag, handleFeiertagRowChange);
     };
 
     // make sure everything gets cleaned up
-    $scope.$on('cleanup', cleanup);
+    $scope.$on('cleanup', function () {
+        dataSet.destroyView(hot);
+        cleanup();
+    });
+
+    // create the view
+    hot = dataSet.createView('Zeitspanne', (function (children) { return children[children.length - 1]; })($element.children()), {
+        colHeaders: hotHeaders,
+        rowHeaders: false,
+        columns: hotColumns,
+        cells: hotCells,
+        beforeChange: hotBeforeChange,
+        afterOnCellMouseDown: hotMouseDown
+    });
 
     // show the current month
     ctr.updateWeek(0);
@@ -2309,14 +2359,9 @@ angular.module('tn', [])
 .controller('TableController', function ($scope, $element, $timeout, dataSet) {
     var cleanup = false;
     var hot = null;
+    var tableName = null;
 
     // define hot callbacks
-    var renderIfHot = function () {
-        // render if the view still exists
-        if (hot) {
-            hot.render();
-        }
-    };
     var afterChange = function (changes) {
         // ignore the first load
         if (!changes) {
@@ -2326,18 +2371,18 @@ angular.module('tn', [])
         // get all changed rows
         var rows = {};
         for (var i = changes.length - 1; i >= 0; i--) {
-            var row = hot.getSourceDataAtRow(changes[i][0]);
+            var row = this.getSourceDataAtRow(changes[i][0]);
             rows[row.$id] = row;
         }
 
         // update all changed rows and reflect the status
-        var table = dataSet.getTable(hot.tableName);
+        var table = dataSet.getTable(tableName);
         $scope.$apply(function () {
             for (var id in rows) {
-                table.saveRow(rows[id]).then(null, renderIfHot);
+                table.saveRow(rows[id]).then(null, hot.invalidate);
             }
         });
-        hot.render();
+        hot.invalidate();
     };
     var beforeChange = function (changes, source) {
         // only allow changes by editors
@@ -2345,18 +2390,18 @@ angular.module('tn', [])
     };
     var afterRenderer = function (TD, row, col, prop) {
         // add the error icon if there is one
-        var sqlRow = hot.getSourceDataAtRow(row);
-        if (sqlRow.$error && !sqlRow.$action && sqlRow.$error.column === prop && sqlRow.$error.table === hot.tableName) {
+        var sqlRow = this.getSourceDataAtRow(row);
+        if (sqlRow.$error && !sqlRow.$action && sqlRow.$error.column === prop && sqlRow.$error.table === tableName) {
             TD.innerHTML += dataSet.errorIcon(sqlRow.$error.message);
         }
     };
     var rowHeaders = function (index) {
         // get the row
         var result = '';
-        var row = hot.getSourceDataAtRow(index);
+        var row = this.getSourceDataAtRow(index);
 
         // add the delete icon if allowed
-        if (hot.tableName in dataSet.permissions && dataSet.permissions[hot.tableName].allowDelete) {
+        if (tableName in dataSet.permissions && dataSet.permissions[tableName].allowDelete) {
             result += '<i title="Zeile löschen" data-uk-tooltip="data-uk-tooltip" class="uk-icon-trash"></i>';
         }
 
@@ -2367,8 +2412,8 @@ angular.module('tn', [])
         else if (row.$error) {
             // only show the error if it cannot be shown in a column
             var showError = true;
-            if (row.$error.table === hot.tableName && row.$error.column) {
-                var columns = hot.getSettings().columns;
+            if (row.$error.table === tableName && row.$error.column) {
+                var columns = this.getSettings().columns;
                 for (var i = columns.length - 1; i >= 0; i--) {
                     if (columns[i].data === row.$error.column) {
                         showError = false;
@@ -2395,8 +2440,9 @@ angular.module('tn', [])
 
             // either create or rerender the view
             if (!hot) {
+                tableName = $scope.tab.name;
                 var children = $element.children();
-                hot = dataSet.createView($scope.tab.name, children[children.length - 1], {
+                hot = dataSet.createView(tableName, children[children.length - 1], {
                     afterChange: afterChange,
                     beforeChange: beforeChange,
                     afterRenderer: afterRenderer,
@@ -2404,7 +2450,7 @@ angular.module('tn', [])
                 });
             }
             else {
-                hot.render();
+                hot.invalidate();
             }
         });
     };
@@ -2416,7 +2462,6 @@ angular.module('tn', [])
         cleanup = true;
         if (hot) {
             dataSet.destroyView(hot);
-            hot = null;
         }
     });
 })
