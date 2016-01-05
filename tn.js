@@ -1367,15 +1367,10 @@ angular.module('tn', [])
                 value = '';
             }
             else {
-                if (typeof value !== 'number') {
-                    value = Number(value);
-                }
-                if (cellProperties.referencedTable in labels) {
-                    var label = labels[cellProperties.referencedTable];
-                    if (value in label) {
-                        value = label[value];
-                    }
-                    else {
+                var label = labels[cellProperties.referencedTable];
+                if (label != void 0) {
+                    value = label[value];
+                    if (value == void 0) {
                         value = '(' + cellProperties.referencedTable + ' #' + value + ' fehlt)';
                     }
                 }
@@ -1383,7 +1378,12 @@ angular.module('tn', [])
                     value = '(' + cellProperties.referencedTable + ' #' + value + ' nicht geladen)';
                 }
             }
-            (cellProperties.readOnly ? Handsontable.renderers.TextRenderer : Handsontable.renderers.AutocompleteRenderer)(instance, TD, row, col, prop, value, cellProperties);
+            if (cellProperties.readOnly) {
+                Handsontable.renderers.TextRenderer(instance, TD, row, col, prop, value, cellProperties);
+            }
+            else {
+                Handsontable.renderers.AutocompleteRenderer(instance, TD, row, col, prop, value, cellProperties);
+            }
         };
         var labelsComparer = function (sortOrder) {
             // return the numeric comparer if there are no labels
@@ -1501,7 +1501,10 @@ angular.module('tn', [])
             settings.observeChanges = false;
             settings.observeDOMVisibility = false;
             settings.columnSorting = true;
+            settings.autoColumnSize = false;
+            settings.autoRowSize = false;
             settings.manualColumnResize = true;
+            settings.manualRowResize = true;
             settings.viewportColumnRenderingOffset = 2;
             settings.viewportRowRenderingOffset = 10;
 
