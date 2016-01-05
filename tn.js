@@ -1359,6 +1359,32 @@ angular.module('tn', [])
                 };
             }
         })();
+        var fastDateRenderer = function (instance, TD, row, col, prop, value, cellProperties) {
+            if (value === null) {
+                value = '';
+            }
+            else if (value instanceof Date) {
+                // format the date to string
+                var day = value.getDate();
+                var month = value.getMonth() + 1;
+                var year = value.getFullYear();
+                value = '';
+                if (day < 10) {
+                    value += '0';
+                }
+                value += day + '.';
+                if (month < 10) {
+                    value += '0';
+                }
+                value += month + '.' + year;
+            }
+            if (cellProperties.readOnly) {
+                Handsontable.renderers.TextRenderer(instance, TD, row, col, prop, value, cellProperties);
+            }
+            else {
+                Handsontable.renderers.AutocompleteRenderer(instance, TD, row, col, prop, value, cellProperties);
+            }
+        };
 
         // label column type methods
         var labelsRenderer = function (instance, TD, row, col, prop, value, cellProperties) {
@@ -1559,6 +1585,18 @@ angular.module('tn', [])
                                     column.type = 'date';
                                     column.dateFormat = 'DD.MM.YYYY';
                                     column.dateFactory = Date.create;
+                                    column.renderer = fastDateRenderer;
+                                    column.datePickerConfig = {
+                                        firstDay: 1,
+                                        showWeekNumber: true,
+                                        i18n: {
+                                            previousMonth: 'Vorheriger Monat',
+                                            nextMonth: 'Nächster Monat',
+                                            months: ['Jänner', 'Feber', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'],
+                                            weekdays: ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'],
+                                            weekdaysShort: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
+                                        }
+                                    };
                                     break;
                                 case 'decimal':
                                     column.type = 'numeric';
