@@ -1472,7 +1472,9 @@ angular.module('tn', [])
             sortOptions.sort(function (a, b) { return -compareString(a[1], b[1]); });
 
             // clear all previous options
-            angular.element(this.select).empty();
+            while (this.select.firstChild) {
+                this.select.removeChild(this.select.firstChild);
+            }
 
             // add the null option together with all the other options
             sortOptions.push(['', '']);
@@ -1505,7 +1507,7 @@ angular.module('tn', [])
         };
         var render = function () {
             queuedRender = false;
-            if (instance) {
+            if (instance && parentElement.offsetParent) {
                 instance.render();
             }
         };
@@ -1962,6 +1964,7 @@ angular.module('tn', [])
     var hot = null;
 
     // helper functions
+    var lastOrdinaryColumn = 2;
     var getDateFromWeekDay = function (weekDay) {
         return Date.create(ctr.monday.getTime() + (((weekDay + 6) % 7) * (24 * 60 * 60 * 1000)));
     };
@@ -2148,9 +2151,10 @@ angular.module('tn', [])
         switch (col) {
             case 0: return 'Einrichtung';
             case 1: return 'Teilnehmer';
+            case 2: return 'Kontrolliert bis';
             default:
                 // return either the holiday name or the formatted day string
-                var weekDay = (col - 1) % 7;
+                var weekDay = (col - lastOrdinaryColumn) % 7;
                 if (weekDay in holidays) {
                     return holidays[weekDay].Name;
                 }
@@ -2183,7 +2187,7 @@ angular.module('tn', [])
                 var propMatch = change[1].match(/^\$Anwesenheit\.([0-6])$/);
                 if (propMatch) {
                     var weekDay = Number(propMatch[1]);
-                    if (!instance.getCellMeta(change[0], 2 + ((weekDay + 6) % 7)).readOnly) {
+                    if (!instance.getCellMeta(change[0], lastOrdinaryColumn + 1 + ((weekDay + 6) % 7)).readOnly) {
                         // make sure the format is value
                         var valueMatch = change[3].match(/^<span class="bitmask-([01])([01])([01])( missing)?">(\d\d):(\d\d)<\/span>/);
                         if (valueMatch && Number(valueMatch[5]) < 24 && Number(valueMatch[6]) < 60) {
@@ -2199,18 +2203,18 @@ angular.module('tn', [])
     };
     var hotMouseDown = function (event, coords, TD) {
         // check the cell
-        if (coords.row < 0 || coords.col < 2 || this.getCellMeta(coords.row, coords.col).readOnly) {
+        if (coords.row < 0 || coords.col <= lastOrdinaryColumn || !event.target || event.target.tagName != 'SPAN' || this.getCellMeta(coords.row, coords.col).readOnly) {
             return;
         }
 
         // get the common variable and calculate the position
         var zeitspanneId = this.getSourceDataAtRow(coords.row).$id;
-        var weekDay = (coords.col - 1) % 7;
+        var weekDay = (coords.col - lastOrdinaryColumn) % 7;
         var pos = event.clientX;
         for (var parent = TD; parent; parent = parent.offsetParent) {
             pos -= parent.offsetLeft;
         }
-        if (pos < 4 || pos >= (angular.element(TD).find('span')[0].offsetWidth + 4)) {
+        if (pos < 4 || pos >= (event.target.offsetWidth + 4)) {
             return;
         }
 
@@ -2271,7 +2275,8 @@ angular.module('tn', [])
         // create the two main columns and add the day columns
         var columns = [
             { data: 'Einrichtung', readOnly: true },
-            { data: 'Teilnehmer', readOnly: true }
+            { data: 'Teilnehmer', readOnly: true },
+            { data: 'Überprüft' }
         ];
         for (var i = 1; i <= 7; i++) {
             columns.push({
@@ -2285,9 +2290,9 @@ angular.module('tn', [])
         return columns;
     })();
     var hotCells = function (row, col) {
-        if (col > 1) {
+        if (col > lastOrdinaryColumn) {
             // mark days outside the Zeitspanne as readonly
-            var weekDay = (col - 1) % 7;
+            var weekDay = (col - lastOrdinaryColumn) % 7;
             var date = getDateFromWeekDay(weekDay).getTime();
             var sourceRow = this.instance.getSourceDataAtRow(row);
             this.readOnly = !sourceRow || date < sourceRow.Eintritt.getTime() || sourceRow.Austritt && date > sourceRow.Austritt.getTime();
@@ -2297,10 +2302,10 @@ angular.module('tn', [])
             if (weekDay in holidays) {
                 this.className += ' holiday';
             }
-            else if (col === 7) {
+            else if (col === lastOrdinaryColumn + 6) {
                 this.className += ' saturday';
             }
-            else if (col === 8) {
+            else if (col === lastOrdinaryColumn + 7) {
                 this.className += ' sunday';
             }
         }
