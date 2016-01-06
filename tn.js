@@ -298,122 +298,120 @@ angular.module('tn', [])
             delete command.error;
             command.lastExecuteTime = new Date();
             $http(config).then(
-	            function (response) {
-	                // ensure not cancelled
-	                if (cancelled) {
-	                    return;
-	                }
+                function (response) {
+                    // ensure not cancelled
+                    if (cancelled) {
+                        return;
+                    }
 
-	                // check if the response include records
-	                var data = response.data;
-	                if (data == void 0) {
-	                    throw new InvalidDataException('Keine SQL-Daten empfangen.');
-	                }
-	                if (data.constructor === Array) {
-	                    // make sure the recordsets are valid
-	                    for (var i = data.length - 1; i >= 0; i--) {
-	                        var recordset = data[i];
-	                        if (recordset == void 0 || recordset.constructor !== Object) {
-	                            throw new InvalidDataException('Recorset #' + (i + 1) + ' ist ungültig.');
-	                        }
-	                        var recordsAffected = recordset.RecordsAffected;
-	                        if (recordsAffected == void 0 || recordsAffected.constructor !== Number) {
-	                            throw new InvalidDataException('Zeilenanzahl von Recorset #' + (i + 1) + ' ist ungültig.');
-	                        }
-	                        var records = recordset.Records;
-	                        if (records == void 0 || records.constructor !== Array) {
-	                            throw new InvalidDataException('Zeilen des Recorsets #' + (i + 1) + ' sind ungültig.');
-	                        }
-	                        var dateFields = recordset.DateFields;
-	                        if (dateFields == void 0 || dateFields.constructor !== Array) {
-	                            throw new InvalidDataException('Datumsfelder des Recorsets #' + (i + 1) + ' sind ungültig.');
-	                        }
+                    // check if the response include records
+                    var data = response.data;
+                    if (data == void 0) {
+                        throw new InvalidDataException('Keine SQL-Daten empfangen.');
+                    }
+                    if (data.constructor === Array) {
+                        // make sure the recordsets are valid
+                        for (var i = data.length - 1; i >= 0; i--) {
+                            var recordset = data[i];
+                            if (recordset == void 0 || recordset.constructor !== Object) {
+                                throw new InvalidDataException('Recorset #' + (i + 1) + ' ist ungültig.');
+                            }
+                            var recordsAffected = recordset.RecordsAffected;
+                            if (recordsAffected == void 0 || recordsAffected.constructor !== Number) {
+                                throw new InvalidDataException('Zeilenanzahl von Recorset #' + (i + 1) + ' ist ungültig.');
+                            }
+                            var records = recordset.Records;
+                            if (records == void 0 || records.constructor !== Array) {
+                                throw new InvalidDataException('Zeilen des Recorsets #' + (i + 1) + ' sind ungültig.');
+                            }
+                            var dateFields = recordset.DateFields;
+                            if (dateFields == void 0 || dateFields.constructor !== Array) {
+                                throw new InvalidDataException('Datumsfelder des Recorsets #' + (i + 1) + ' sind ungültig.');
+                            }
 
-	                        // ensure the rows are objects and convert dates
-	                        for (var j = records.length - 1; j >= 0; j--) {
-	                            var record = records[j];
-	                            if (record == void 0 || record.constructor !== Object) {
-	                                throw new InvalidDataException('Zeile ' + (j + 1) + ' des Recorsets #' + (i + 1) + ' ist ungültig.');
-	                            }
-	                            var dateMatch;
-	                            for (var k = dateFields.length - 1; k >= 0; k--) {
-	                                var dateName = dateFields[k];
-	                                var value = record[dateName];
-	                                if (value !== null) {
-	                                    if (value == void 0 || value.constructor !== String || !(dateMatch = value.match(/^(\d\d\d\d)-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)\.(\d\d\d)Z$/))) {
-	                                        throw new InvalidDataException('Datum "' + dateName + '" in Zeile ' + (j + 1) + ' des Recorsets #' + (i + 1) + ' ist ungültig.');
-	                                    }
-	                                    record[dateName] = Date.create(Number(dateMatch[1]), Number(dateMatch[2]) - 1, Number(dateMatch[3]), Number(dateMatch[4]), Number(dateMatch[5]), Number(dateMatch[6]), Number(dateMatch[7]));
-	                                }
-	                            }
-	                        }
-	                    }
+                            // ensure the rows are objects and convert dates
+                            for (var j = records.length - 1; j >= 0; j--) {
+                                var record = records[j];
+                                if (record == void 0 || record.constructor !== Object) {
+                                    throw new InvalidDataException('Zeile ' + (j + 1) + ' des Recorsets #' + (i + 1) + ' ist ungültig.');
+                                }
+                                var dateMatch;
+                                for (var k = dateFields.length - 1; k >= 0; k--) {
+                                    var dateName = dateFields[k];
+                                    var value = record[dateName];
+                                    if (value !== null) {
+                                        if (value == void 0 || value.constructor !== String || !(dateMatch = value.match(/^(\d\d\d\d)-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)\.(\d\d\d)Z$/))) {
+                                            throw new InvalidDataException('Datum "' + dateName + '" in Zeile ' + (j + 1) + ' des Recorsets #' + (i + 1) + ' ist ungültig.');
+                                        }
+                                        record[dateName] = Date.create(Number(dateMatch[1]), Number(dateMatch[2]) - 1, Number(dateMatch[3]), Number(dateMatch[4]), Number(dateMatch[5]), Number(dateMatch[6]), Number(dateMatch[7]));
+                                    }
+                                }
+                            }
+                        }
 
-	                    // ensure a single record set if requested
-	                    if (singleSet) {
-	                        if (data.length !== 1) {
-	                            throw new InvalidDataException('Keine oder mehrere Recordsets wurden zurückgegeben.');
-	                        }
-	                        data = data[0];
-	                    }
+                        // ensure a single record set if requested
+                        if (singleSet) {
+                            if (data.length !== 1) {
+                                throw new InvalidDataException('Keine oder mehrere Recordsets wurden zurückgegeben.');
+                            }
+                            data = data[0];
+                        }
 
-	                    // parse the data and resolve the promise
-	                    data = parser(data);
-	                    command.state = SqlState.Completed;
-	                    deferred.resolve(data);
-	                }
+                        // parse the data and resolve the promise
+                        data = parser(data);
+                        command.state = SqlState.Completed;
+                        deferred.resolve(data);
+                    }
 
-	                // check if the response is an error
-	                else if (data.constructor === Object) {
-	                    // ensure a complete error object
-	                    var commandNumber = data.CommandNumber;
-	                    if (commandNumber == void 0 || commandNumber.constructor !== Number) {
-	                        throw new InvalidDataException('Der Befehlsindex im Fehlerobjekt ist ungültig.');
-	                    }
-	                    var message = data.Message;
-	                    if (message == void 0 || message.constructor !== String) {
-	                        throw new InvalidDataException('Die Fehlermeldung im Fehlerobjekt ist ungültig.');
-	                    }
+                    // check if the response is an error
+                    else if (data.constructor === Object) {
+                        // ensure a complete error object
+                        var commandNumber = data.CommandNumber;
+                        if (commandNumber == void 0 || commandNumber.constructor !== Number) {
+                            throw new InvalidDataException('Der Befehlsindex im Fehlerobjekt ist ungültig.');
+                        }
+                        var message = data.Message;
+                        if (message == void 0 || message.constructor !== String) {
+                            throw new InvalidDataException('Die Fehlermeldung im Fehlerobjekt ist ungültig.');
+                        }
 
-	                    // check if this is a managed error
-	                    var errorMatch = message.match(/^(.*?)\s\[TN\](?:\[(.+?)\](?:\[(.+?)\])?)?/);
-	                    command.error = errorMatch ?
-                            ('Ungültige Daten: ' + errorMatch[1]) :
-                            ('Datenbankfehler: ' + message);
-	                    if (!errorMatch || !allowError) {
-	                        command.state = SqlState.HasError;
-	                        return;
-	                    }
+                        // check if this is a managed error
+                        var errorMatch = message.match(/^(.*?)\s\[TN\](?:\[(.+?)\](?:\[(.+?)\])?)?/);
+                        command.error = errorMatch ? ('Ungültige Daten: ' + errorMatch[1]) : ('Datenbankfehler: ' + message);
+                        if (!errorMatch || !allowError) {
+                            command.state = SqlState.HasError;
+                            return;
+                        }
 
-	                    // replace the data with a proper error object
-	                    data = {
-	                        statement: commandNumber,
-	                        message: errorMatch[1],
-	                        table: errorMatch[2],
-	                        column: errorMatch[3]
-	                    };
+                        // replace the data with a proper error object
+                        data = {
+                            statement: commandNumber,
+                            message: errorMatch[1],
+                            table: errorMatch[2],
+                            column: errorMatch[3]
+                        };
 
-	                    // reject the promise
-	                    command.state = SqlState.Failed;
-	                    deferred.reject(data);
-	                }
+                        // reject the promise
+                        command.state = SqlState.Failed;
+                        deferred.reject(data);
+                    }
 
-	                // otherwise throw an error
-	                else {
-	                    throw new InvalidDataException('Server sendete ungültige Daten.');
-	                }
-	            },
-	            function (response) {
-	                // ensure not cancelled
-	                if (cancelled) {
-	                    return;
-	                }
+                    // otherwise throw an error
+                    else {
+                        throw new InvalidDataException('Server sendete ungültige Daten.');
+                    }
+                },
+                function (response) {
+                    // ensure not cancelled
+                    if (cancelled) {
+                        return;
+                    }
 
-	                // set the state and error
-	                command.state = SqlState.HasError;
-	                command.error = 'Übertragungsfehler: ' + response.statusText;
-	            }
-	        );
+                    // set the state and error
+                    command.state = SqlState.HasError;
+                    command.error = 'Übertragungsfehler: ' + response.statusText;
+                }
+            );
         };
 
         // push the command object
@@ -611,12 +609,12 @@ angular.module('tn', [])
                 // requery
                 query();
             },
-			function (response) {
-			    // there is a network error, try again soon
-			    notification.error = response.statusText || 'Zeitüberschreitung';
-			    $timeout(query, 10000);
-			}
-		);
+            function (response) {
+                // there is a network error, try again soon
+                notification.error = response.statusText || 'Zeitüberschreitung';
+                $timeout(query, 10000);
+            }
+        );
     };
 
     // initialize and return the notification function object
@@ -2211,16 +2209,12 @@ angular.module('tn', [])
             for (var i = changes.length - 1; i >= 0; i--) {
                 var change = changes[i];
 
-                // ensure the value is string
-                if (change[3] == void 0 || change[3].constructor !== String) {
-                    continue;
-                }
-
-                // make sure the weekday is editable
+                // check if a weekday was edited
                 var propMatch = change[1].match(/^\$Anwesenheit\.([0-6])$/);
                 if (propMatch) {
+                    // ensure the value is string and make sure the weekday is editable
                     var weekDay = Number(propMatch[1]);
-                    if (!instance.getCellMeta(change[0], lastOrdinaryColumn + 1 + ((weekDay + 6) % 7)).readOnly) {
+                    if (change[3] != void 0 && change[3].constructor === String && instance.getCellMeta(change[0], lastOrdinaryColumn + 1 + ((weekDay + 6) % 7)).readOnly) {
                         // make sure the format is value
                         var valueMatch = change[3].match(/^<span class="bitmask-([01])([01])([01])( missing)?">(\d\d):(\d\d)<\/span>/);
                         if (valueMatch && Number(valueMatch[5]) < 24 && Number(valueMatch[6]) < 60) {
@@ -2228,6 +2222,22 @@ angular.module('tn', [])
                             var zeitspanneId = instance.getSourceDataAtRow(change[0]).$id;
                             changeAnwesenheit(zeitspanneId, weekDay, createSetter(Number(valueMatch[1]) === 1, Number(valueMatch[2]) === 1, Number(valueMatch[3]) === 1, Date.create(1900, 0, 1, Number(valueMatch[5]), Number(valueMatch[6]))));
                         }
+                    }
+                }
+                else if (change[1] === 'Überprüft') {
+                    // ensure the value is null or a date
+                    if (change[3] == void 0 || change[3].constructor === Date) {
+                        var row = instance.getSourceDataAtRow(change[0]);
+                        if (row.$action) {
+                            UIkit.modal.alert('Die Zeile wird bereits geändert.');
+                            continue;
+                        }
+                        row['Überprüft'] = change[3];
+                        zeitspanne.saveRow(row).then(null, function (error) {
+                            row['Überprüft'] = row.$orig['Überprüft'];
+                            zeitspanne.saveRow(row);
+                            UIkit.modal.alert(error);
+                        });
                     }
                 }
             }
@@ -2484,8 +2494,8 @@ angular.module('tn', [])
         // determine what action should be taken
         var table = dataSet.getTable(tableName);
         switch (event.target.className) {
-            // create and select the row
             case 'uk-icon-plus':
+                // create and select the row
                 var row = table.newRow();
                 for (var i = this.countRows() - 1; i >= 0; i--) {
                     if (row === this.getSourceDataAtRow(i)) {
@@ -2505,13 +2515,13 @@ angular.module('tn', [])
                 hot.invalidate();
                 break;
 
-            // delete the row
             case 'uk-icon-trash':
                 // check if we can get the id
                 var id = Number(event.target.getAttribute('data-row'));
                 if (id) {
                     var row = table.getRowById(id);
                     $scope.$apply(function () {
+                        // delete the row
                         table.deleteRow(row).then(null, function (error) {
                             hot.invalidate();
                             UIkit.modal.alert(error);
