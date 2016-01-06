@@ -47,6 +47,10 @@
 {
     clear: left;
 }
+.handsontable i.uk-icon-plus
+{
+    cursor: pointer;
+}
 .handsontable i.uk-icon-trash
 {
     cursor: pointer;

@@ -2461,8 +2461,8 @@ angular.module('tn', [])
             for (var id in rows) {
                 table.saveRow(rows[id]).then(null, hot.invalidate);
             }
-            hot.invalidate();
         });
+        hot.invalidate();
     };
     var beforeChange = function (changes, source) {
         // only allow changes by editors
@@ -2476,29 +2476,58 @@ angular.module('tn', [])
         }
     };
     var onClick = function (event) {
-        // check if the trash icon was clicked
-        if (!event.target || event.target.tagName !== 'I' || event.target.className !== 'uk-icon-trash') {
+        // check if an icon was clicked
+        if (!event.target || event.target.tagName !== 'I') {
             return;
         }
 
-        // check if we can get the id
-        var id = Number(event.target.getAttribute('data-row'));
-        if (!id) {
-            return;
-        }
-
-        // get the table and delete the row
+        // determine what action should be taken
         var table = dataSet.getTable(tableName);
-        var row = table.getRowById(id);
-        $scope.$apply(function () {
-            table.deleteRow(row).then(null, function (error) {
+        switch (event.target.className) {
+            // create and select the row
+            case 'uk-icon-plus':
+                var row = table.newRow();
+                for (var i = this.countRows() - 1; i >= 0; i--) {
+                    if (row === this.getSourceDataAtRow(i)) {
+                        this.selectCell(i, 0, i, this.countCols() - 1);
+                        // we have to do this twice
+                        this.render();
+                        this.view.scrollViewport({ row: i, col: 0 });
+                        this.render();
+                        this.view.scrollViewport({ row: i, col: 0 });
+                        break;
+                    }
+                }
+                // try to insert the row and invalidate the view
+                $scope.$apply(function () {
+                    table.saveRow(row).then(null, hot.invalidate);
+                });
                 hot.invalidate();
-                UIkit.modal.alert(error);
-            });
-            hot.invalidate();
-        });
+                break;
+
+            // delete the row
+            case 'uk-icon-trash':
+                // check if we can get the id
+                var id = Number(event.target.getAttribute('data-row'));
+                if (id) {
+                    var row = table.getRowById(id);
+                    $scope.$apply(function () {
+                        table.deleteRow(row).then(null, function (error) {
+                            hot.invalidate();
+                            UIkit.modal.alert(error);
+                        });
+                    });
+                    hot.invalidate();
+                }
+                break;
+        }
     };
     var rowHeaders = function (index) {
+        // return the corner object
+        if (index < 0) {
+            return dataSet.permissions[tableName].allowNew ? '<i title="Neue Zeile einfügen" data-uk-tooltip="data-uk-tooltip" class="uk-icon-plus"></i>' : '&nbsp;';
+        }
+
         // get the row
         var result = '';
         var row = this.getSourceDataAtRow(index);
