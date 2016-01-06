@@ -2461,8 +2461,8 @@ angular.module('tn', [])
             for (var id in rows) {
                 table.saveRow(rows[id]).then(null, hot.invalidate);
             }
+            hot.invalidate();
         });
-        hot.invalidate();
     };
     var beforeChange = function (changes, source) {
         // only allow changes by editors
@@ -2475,6 +2475,29 @@ angular.module('tn', [])
             TD.innerHTML += dataSet.errorIcon(sqlRow.$error.message);
         }
     };
+    var onClick = function (event) {
+        // check if the trash icon was clicked
+        if (!event.target || event.target.tagName !== 'I' || event.target.className !== 'uk-icon-trash') {
+            return;
+        }
+
+        // check if we can get the id
+        var id = Number(event.target.getAttribute('data-row'));
+        if (!id) {
+            return;
+        }
+
+        // get the table and delete the row
+        var table = dataSet.getTable(tableName);
+        var row = table.getRowById(id);
+        $scope.$apply(function () {
+            table.deleteRow(row).then(null, function (error) {
+                hot.invalidate();
+                UIkit.modal.alert(error);
+            });
+            hot.invalidate();
+        });
+    };
     var rowHeaders = function (index) {
         // get the row
         var result = '';
@@ -2482,7 +2505,7 @@ angular.module('tn', [])
 
         // add the delete icon if allowed
         if (tableName in dataSet.permissions && dataSet.permissions[tableName].allowDelete) {
-            result += '<i title="Zeile löschen" data-uk-tooltip="data-uk-tooltip" class="uk-icon-trash"></i>';
+            result += '<i title="Zeile löschen" data-uk-tooltip="data-uk-tooltip" data-row="' + row.$id + '" class="uk-icon-trash"></i>';
         }
 
         // reflect the state of the row with an icon
@@ -2528,6 +2551,7 @@ angular.module('tn', [])
                     afterRenderer: afterRenderer,
                     rowHeaders: rowHeaders
                 });
+                hot.on('click', onClick);
             }
             else {
                 hot.invalidate();
