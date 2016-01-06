@@ -16,25 +16,18 @@
 
 USE [Teilnehmer_innen]
 GO
-/****** Objekt:  User [Training]    Skriptdatum: 12/31/2015 14:13:50 ******/
 CREATE USER [Training] FOR LOGIN [AUFBAUWERK\000120]
 GO
-/****** Objekt:  User [Sekretariat]    Skriptdatum: 12/31/2015 14:13:51 ******/
 CREATE USER [Sekretariat] FOR LOGIN [AUFBAUWERK\000910]
 GO
-/****** Objekt:  User [Rechnungswesen]    Skriptdatum: 12/31/2015 14:13:51 ******/
 CREATE USER [Rechnungswesen] FOR LOGIN [AUFBAUWERK\000920]
 GO
-/****** Objekt:  User [Leitung]    Skriptdatum: 12/31/2015 14:13:51 ******/
 CREATE USER [Leitung] FOR LOGIN [AUFBAUWERK\000999]
 GO
-/****** Objekt:  User [Integrationsassistenz]    Skriptdatum: 12/31/2015 14:13:51 ******/
 CREATE USER [Integrationsassistenz] FOR LOGIN [AUFBAUWERK\000110]
 GO
-/****** Objekt:  User [app]    Skriptdatum: 12/31/2015 14:13:51 ******/
 CREATE USER [app] FOR LOGIN [AUFBAUWERK\ERP$] WITH DEFAULT_SCHEMA=[dbo]
 GO
-/****** Objekt:  Table [dbo].[Einrichtung]    Skriptdatum: 12/31/2015 14:13:54 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -62,7 +55,10 @@ CREATE NONCLUSTERED INDEX [IX_Einrichtung_Name] ON [dbo].[Einrichtung]
 	[Name] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[IstTelefonnummer]    Skriptdatum: 12/31/2015 14:14:08 ******/
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'150' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Einrichtung', @level2type=N'COLUMN',@level2name=N'Name'
+GO
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'200' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Einrichtung', @level2type=N'COLUMN',@level2name=N'Standortnummer'
+GO
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -85,7 +81,6 @@ BEGIN
 	END
 END
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Schätzung]    Skriptdatum: 12/31/2015 14:14:08 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -105,7 +100,6 @@ CREATE FUNCTION [dbo].[Schätzung](@Jahr int, @Monat int) RETURNS TABLE AS RETUR
 		B.Einrichtung, B.Leistungsart, A.Kostensatz
 )
 GO
-/****** Objekt:  StoredProcedure [dbo].[BerichteFehler]    Skriptdatum: 12/31/2015 14:14:02 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -126,7 +120,6 @@ BEGIN
 	RAISERROR(@MESSAGE,@SEVERITY,@STATE)
 END
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[ErstelleFehler]    Skriptdatum: 12/31/2015 14:14:02 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -140,7 +133,6 @@ BEGIN
 	END
 END
 GO
-/****** Objekt:  Table [dbo].[Feiertag]    Skriptdatum: 12/31/2015 14:13:54 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -161,7 +153,8 @@ CREATE NONCLUSTERED INDEX [IX_Feiertag_Datum] ON [dbo].[Feiertag]
 	[Datum] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  Table [dbo].[Einheit]    Skriptdatum: 12/31/2015 14:13:53 ******/
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'150' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Feiertag', @level2type=N'COLUMN',@level2name=N'Name'
+GO
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -188,7 +181,6 @@ CREATE NONCLUSTERED INDEX [IX_Einheit_Bezeichnung_ID] ON [dbo].[Einheit]
 	[ID] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[IstKlientennummer]    Skriptdatum: 12/31/2015 14:14:08 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -202,7 +194,6 @@ BEGIN
 	END
 END
 GO
-/****** Objekt:  Table [dbo].[Rechnung]    Skriptdatum: 12/31/2015 14:13:57 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -219,7 +210,6 @@ CREATE TABLE [dbo].[Rechnung](
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[IstMehrzeiler]    Skriptdatum: 12/31/2015 14:14:08 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -246,7 +236,6 @@ BEGIN
 	END
 END
 GO
-/****** Objekt:  Table [dbo].[Kostensatz]    Skriptdatum: 12/31/2015 14:13:55 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -273,7 +262,6 @@ CREATE NONCLUSTERED INDEX [IX_Kostensatz_Bezeichnung_ID] ON [dbo].[Kostensatz]
 	[ID] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  Table [dbo].[Praktikum_Kategorie]    Skriptdatum: 12/31/2015 14:13:57 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -293,7 +281,8 @@ CREATE NONCLUSTERED INDEX [IX_Praktikum_Kategorie_Bezeichnung] ON [dbo].[Praktik
 	[Bezeichnung] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Time]    Skriptdatum: 12/31/2015 14:14:08 ******/
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'400' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Praktikum_Kategorie', @level2type=N'COLUMN',@level2name=N'Bezeichnung'
+GO
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -303,7 +292,6 @@ BEGIN
 	RETURN DATEADD(day,-DATEDIFF(day,0,@dt),@dt)
 END
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[YearDiff]    Skriptdatum: 12/31/2015 14:14:08 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -339,7 +327,6 @@ BEGIN
 	RETURN @Diff
 END
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[PlatzhalterProJahr]    Skriptdatum: 12/31/2015 14:14:08 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -384,7 +371,6 @@ BEGIN
 	)
 END
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[IstKürzel]    Skriptdatum: 12/31/2015 14:14:08 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -398,7 +384,6 @@ BEGIN
 	END
 END
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[IstEinzeiler]    Skriptdatum: 12/31/2015 14:14:07 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -418,7 +403,6 @@ BEGIN
 	END
 END
 GO
-/****** Objekt:  Table [dbo].[Standort_Bereich]    Skriptdatum: 12/31/2015 14:13:58 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -448,7 +432,8 @@ CREATE NONCLUSTERED INDEX [IX_Standort_Bereich_Code] ON [dbo].[Standort_Bereich]
 	[Code] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[IstGeschäftszahl]    Skriptdatum: 12/31/2015 14:14:08 ******/
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'400' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Standort_Bereich', @level2type=N'COLUMN',@level2name=N'Bezeichnung'
+GO
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -494,7 +479,6 @@ BEGIN
 	END
 END
 GO
-/****** Objekt:  Table [dbo].[Bescheid_Typ]    Skriptdatum: 12/31/2015 14:13:53 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -517,7 +501,10 @@ CREATE NONCLUSTERED INDEX [IX_Bescheid_Typ_Bezeichnung_ID] ON [dbo].[Bescheid_Ty
 	[ID] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  Table [dbo].[Zeitspanne_Austrittsgrund]    Skriptdatum: 12/31/2015 14:14:01 ******/
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'150' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Bescheid_Typ', @level2type=N'COLUMN',@level2name=N'Bezeichnung'
+GO
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'400' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Bescheid_Typ', @level2type=N'COLUMN',@level2name=N'Anschrift'
+GO
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -537,7 +524,8 @@ CREATE NONCLUSTERED INDEX [IX_Zeitspanne_Austrittsgrund_Bezeichnung] ON [dbo].[Z
 	[Bezeichnung] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  Table [dbo].[Fehler]    Skriptdatum: 12/31/2015 14:13:54 ******/
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'400' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Zeitspanne_Austrittsgrund', @level2type=N'COLUMN',@level2name=N'Bezeichnung'
+GO
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -551,7 +539,6 @@ CREATE TABLE [dbo].[Fehler](
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Objekt:  Table [dbo].[Version]    Skriptdatum: 12/31/2015 14:13:59 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -583,7 +570,6 @@ CREATE PRIMARY XML INDEX [XML_IX_Version] ON [dbo].[Version]
 	[Zeile]
 )WITH (PAD_INDEX  = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON)
 GO
-/****** Objekt:  Table [dbo].[Teilnehmer]    Skriptdatum: 12/31/2015 14:13:59 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -617,7 +603,12 @@ CREATE NONCLUSTERED INDEX [IX_Teilnehmer_Vorname_Nachname_Geburtstag] ON [dbo].[
 	[Geburtstag] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[IstEmail]    Skriptdatum: 12/31/2015 14:14:07 ******/
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'150' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Teilnehmer', @level2type=N'COLUMN',@level2name=N'Vorname'
+GO
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'150' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Teilnehmer', @level2type=N'COLUMN',@level2name=N'Nachname'
+GO
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'150' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Teilnehmer', @level2type=N'COLUMN',@level2name=N'Klientennummer'
+GO
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -643,7 +634,6 @@ BEGIN
 	END
 END
 GO
-/****** Objekt:  Table [dbo].[Bescheid]    Skriptdatum: 12/31/2015 14:13:53 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -685,7 +675,18 @@ CREATE NONCLUSTERED INDEX [IX_Bescheid_Teilnehmer] ON [dbo].[Bescheid]
 	[Teilnehmer] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  Table [dbo].[Planung]    Skriptdatum: 12/31/2015 14:13:56 ******/
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'170' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Bescheid', @level2type=N'COLUMN',@level2name=N'Geschäftszahl'
+GO
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'150' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Bescheid', @level2type=N'COLUMN',@level2name=N'Einrichtung'
+GO
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'250' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Bescheid', @level2type=N'COLUMN',@level2name=N'Teilnehmer'
+GO
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'330' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Bescheid', @level2type=N'COLUMN',@level2name=N'Leistungsart'
+GO
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'150' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Bescheid', @level2type=N'COLUMN',@level2name=N'Ausstellungsdatum'
+GO
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'150' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Bescheid', @level2type=N'COLUMN',@level2name=N'Typ'
+GO
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -712,7 +713,10 @@ CREATE NONCLUSTERED INDEX [IX_Planung_Einrichtung_Leistungsart_Jahr_Monat] ON [d
 	[Monat] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  Table [dbo].[Praktikum]    Skriptdatum: 12/31/2015 14:13:57 ******/
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'150' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Planung', @level2type=N'COLUMN',@level2name=N'Einrichtung'
+GO
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'350' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Planung', @level2type=N'COLUMN',@level2name=N'Leistungsart'
+GO
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -740,7 +744,6 @@ CREATE NONCLUSTERED INDEX [IX_Praktikum_Teilnehmer_Von_Bis] ON [dbo].[Praktikum]
 	[Bis] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  Table [dbo].[Zeitspanne]    Skriptdatum: 12/31/2015 14:14:00 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -776,7 +779,14 @@ CREATE NONCLUSTERED INDEX [IX_Zeitspanne_Einrichtung_Teilnehmer_Eintritt_Austrit
 	[Austritt] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  Table [dbo].[Leistungsart]    Skriptdatum: 12/31/2015 14:13:55 ******/
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'150' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Zeitspanne', @level2type=N'COLUMN',@level2name=N'Einrichtung'
+GO
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'250' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Zeitspanne', @level2type=N'COLUMN',@level2name=N'Teilnehmer'
+GO
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'220' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Zeitspanne', @level2type=N'COLUMN',@level2name=N'Austrittsgrund'
+GO
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'330' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Zeitspanne', @level2type=N'COLUMN',@level2name=N'Austrittsnotiz'
+GO
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -804,7 +814,6 @@ CREATE NONCLUSTERED INDEX [IX_Leistungsart_Bezeichnung_ID] ON [dbo].[Leistungsar
 	[ID] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  Table [dbo].[Anwesenheit]    Skriptdatum: 12/31/2015 14:13:52 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -838,7 +847,6 @@ CREATE NONCLUSTERED INDEX [IX_Anwesenheit_Zeitspanne_Datum] ON [dbo].[Anwesenhei
 	[Datum] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  Table [dbo].[Abrechnung]    Skriptdatum: 12/31/2015 14:13:51 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -869,7 +877,6 @@ CREATE NONCLUSTERED INDEX [IX_Abrechnung_Rechnung] ON [dbo].[Abrechnung]
 	[Rechnung] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  Table [dbo].[Standort]    Skriptdatum: 12/31/2015 14:13:58 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -893,7 +900,6 @@ CREATE TABLE [dbo].[Standort](
 GO
 SET ANSI_PADDING OFF
 GO
-/****** Objekt:  Table [dbo].[Verrechnungssatz]    Skriptdatum: 12/31/2015 14:13:59 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -919,7 +925,6 @@ CREATE NONCLUSTERED INDEX [IX_Verrechnungssatz_Leistungsart_Kostensatz_Jahr_ID] 
 	[ID] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
-/****** Objekt:  StoredProcedure [dbo].[ErstelleAbrechnung]    Skriptdatum: 12/31/2015 14:14:02 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1039,7 +1044,6 @@ BEGIN
 	CLOSE Typen
 END
 GO
-/****** Objekt:  View [dbo].[Tagsatzplanung]    Skriptdatum: 12/31/2015 14:14:02 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1081,7 +1085,6 @@ FROM
 	dbo.Abrechnung AS A ON A.Bescheid = B.ID AND YEAR(A.Datum) <= P.Jahr AND MONTH(A.Datum) = P.Monat
 GROUP BY P.Jahr, P.Monat, P.Einrichtung, E.Name, P.Leistungsart, L.Bezeichnung
 GO
-/****** Objekt:  View [dbo].[Druckform]    Skriptdatum: 12/31/2015 14:14:02 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1126,7 +1129,6 @@ GROUP BY
 	K.Kürzel,
 	A.Preis
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Standort]    Skriptdatum: 12/31/2015 14:14:06 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1154,7 +1156,6 @@ UNION
 	WHERE dbo.IstEmail(Email) = 0
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Anwesenheit]    Skriptdatum: 12/31/2015 14:14:04 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1183,7 +1184,6 @@ UNION
 		)
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Feiertag]    Skriptdatum: 12/31/2015 14:14:05 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1209,7 +1209,6 @@ UNION
 		)
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Zeitspanne]    Skriptdatum: 12/31/2015 14:14:07 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1261,7 +1260,6 @@ UNION
 		)
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Einrichtung]    Skriptdatum: 12/31/2015 14:14:05 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1283,7 +1281,6 @@ UNION
 		)
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Verrechnungssatz_Platzhalter]    Skriptdatum: 12/31/2015 14:14:04 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1304,7 +1301,6 @@ CREATE FUNCTION [dbo].[Fehler__Verrechnungssatz_Platzhalter]() RETURNS TABLE AS 
 		L.Platzhalter = 0
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Kostensatz]    Skriptdatum: 12/31/2015 14:14:05 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1330,7 +1326,6 @@ UNION
 		)
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Rechnung]    Skriptdatum: 12/31/2015 14:14:06 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1350,7 +1345,6 @@ UNION
 	WHERE dbo.IstMehrzeiler(Kommentar) = 0
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Leistungsart]    Skriptdatum: 12/31/2015 14:14:06 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1380,7 +1374,6 @@ UNION
 		)
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Planung]    Skriptdatum: 12/31/2015 14:14:06 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1411,7 +1404,6 @@ UNION
 		)
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Praktikum]    Skriptdatum: 12/31/2015 14:14:06 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1431,7 +1423,6 @@ UNION
 	WHERE Von > Bis
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Teilnehmer]    Skriptdatum: 12/31/2015 14:14:07 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1479,7 +1470,6 @@ UNION
 		)
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Standort_Bereich]    Skriptdatum: 12/31/2015 14:14:07 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1515,7 +1505,6 @@ UNION
 		)
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Anwesenheit_Zeitspanne]    Skriptdatum: 12/31/2015 14:14:03 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1533,7 +1522,6 @@ CREATE FUNCTION [dbo].[Fehler__Anwesenheit_Zeitspanne]() RETURNS TABLE AS RETURN
 		A.Datum < Z.Eintritt OR (Z.Austritt IS NOT NULL AND A.Datum > Z.Austritt)
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Zeitspanne_Austrittsgrund]    Skriptdatum: 12/31/2015 14:14:07 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1555,7 +1543,6 @@ UNION
 		)
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Abrechnung_Bescheid]    Skriptdatum: 12/31/2015 14:14:03 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1573,7 +1560,6 @@ CREATE FUNCTION [dbo].[Fehler__Abrechnung_Bescheid]() RETURNS TABLE AS RETURN
 		NOT (A.Datum BETWEEN B.Beginn AND B.Ende)
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Abrechnung]    Skriptdatum: 12/31/2015 14:14:04 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1602,7 +1588,6 @@ UNION
 		)
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Bescheid]    Skriptdatum: 12/31/2015 14:14:05 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1658,7 +1643,6 @@ UNION
 		)
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Bescheid_Maximum]    Skriptdatum: 12/31/2015 14:14:04 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1677,7 +1661,6 @@ CREATE FUNCTION [dbo].[Fehler__Bescheid_Maximum]() RETURNS TABLE AS RETURN
 	HAVING SUM(A.Menge) > B.Maximum
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Abrechnung_Einheit]    Skriptdatum: 12/31/2015 14:14:03 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1700,7 +1683,6 @@ CREATE FUNCTION [dbo].[Fehler__Abrechnung_Einheit]() RETURNS TABLE AS RETURN
 		E.Diskret = 1
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Abrechnung_Platzhalter]    Skriptdatum: 12/31/2015 14:14:03 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1725,7 +1707,6 @@ CREATE FUNCTION [dbo].[Fehler__Abrechnung_Platzhalter]() RETURNS TABLE AS RETURN
 		(dbo.YearDiff(B.Beginn,B.Ende) = dbo.YearDiff(B.Beginn,A.Datum) AND COUNT(*) > ROUND(L.Platzhalter*(DATEDIFF(month,DATEADD(year,dbo.YearDiff(B.Beginn,B.Ende),B.Beginn),B.Ende) + (CASE WHEN DATEPART(day,B.Ende) >= DATEPART(day,B.Beginn) THEN 1 ELSE 0 END))/12.0,0))
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler__Bescheid_Typ]    Skriptdatum: 12/31/2015 14:14:04 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1744,7 +1725,6 @@ CREATE FUNCTION [dbo].[Fehler__Bescheid_Typ]() RETURNS TABLE AS RETURN
 		B.Maximum IS NOT NULL AND T.Abrechnung = 0
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Bescheid_Typ]    Skriptdatum: 12/31/2015 14:14:05 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1770,7 +1750,6 @@ UNION
 		)
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Einheit]    Skriptdatum: 12/31/2015 14:14:05 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1796,7 +1775,6 @@ UNION
 		)
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Verrechnungssatz]    Skriptdatum: 12/31/2015 14:14:07 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1823,7 +1801,6 @@ UNION
 
 )
 GO
-/****** Objekt:  UserDefinedFunction [dbo].[Fehler_Praktikum_Kategorie]    Skriptdatum: 12/31/2015 14:14:06 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1845,7 +1822,6 @@ UNION
 		)
 )
 GO
-/****** Objekt:  StoredProcedure [dbo].[WerfeFehler]    Skriptdatum: 12/31/2015 14:14:02 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1896,7 +1872,6 @@ BEGIN
 		RAISERROR(@Meldung, 16, 1)
 END
 GO
-/****** Objekt:  Trigger [TesteAnwesenheit]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1983,7 +1958,6 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  StoredProcedure [dbo].[TesteAlles]    Skriptdatum: 12/31/2015 14:14:02 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2053,7 +2027,6 @@ BEGIN
 	EXEC dbo.WerfeFehler @Fehler
 END
 GO
-/****** Objekt:  Trigger [TesteZeitspanneAustrittsgrund]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2101,7 +2074,6 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TestePlanung]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2181,7 +2153,6 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TestePraktikum]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2246,7 +2217,6 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteEinrichtung]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2294,7 +2264,6 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteZeitspanne]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2377,7 +2346,6 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteFeiertag]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2425,7 +2393,6 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TestePraktikumKategorie]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2473,7 +2440,6 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteStandort]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2521,7 +2487,6 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteBescheid]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2589,7 +2554,6 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteTeilnehmer]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2637,7 +2601,6 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteStandortBereich]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2685,7 +2648,6 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteLeistungsart]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2745,7 +2707,6 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteAbrechnung]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2809,7 +2770,6 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteRechnung]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2857,7 +2817,6 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteVerrechnungssatz]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2909,7 +2868,6 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteEinheit]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2961,7 +2919,6 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteKostensatz]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -3017,7 +2974,6 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Trigger [TesteBescheidTyp]    Skriptdatum: 12/31/2015 14:14:09 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -3030,7 +2986,7 @@ BEGIN
 		DECLARE @Fehler AS bigint
 
 		-- stimmt der Wert einer Spalte nicht?
-		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Bescheid__Typ() AS F JOIN inserted AS I ON F.ID = I.ID
+		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Bescheid_Typ() AS F JOIN inserted AS I ON F.ID = I.ID
 		EXEC dbo.WerfeFehler @Fehler
 
 		-- ist der Bescheid mit dem Typ inkompatibel?
@@ -3069,26 +3025,22 @@ BEGIN
 	END CATCH
 END
 GO
-/****** Objekt:  Check [CK_Fehler]    Skriptdatum: 12/31/2015 14:13:54 ******/
 ALTER TABLE [dbo].[Fehler]  WITH CHECK ADD  CONSTRAINT [CK_Fehler] CHECK  ((len(ltrim(rtrim([Meldung])))>(0)))
 GO
 ALTER TABLE [dbo].[Fehler] CHECK CONSTRAINT [CK_Fehler]
 GO
-/****** Objekt:  ForeignKey [FK_Abrechnung_Bescheid]    Skriptdatum: 12/31/2015 14:13:51 ******/
 ALTER TABLE [dbo].[Abrechnung]  WITH CHECK ADD  CONSTRAINT [FK_Abrechnung_Bescheid] FOREIGN KEY([Bescheid])
 REFERENCES [dbo].[Bescheid] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Abrechnung] CHECK CONSTRAINT [FK_Abrechnung_Bescheid]
 GO
-/****** Objekt:  ForeignKey [FK_Abrechnung_Kostensatz]    Skriptdatum: 12/31/2015 14:13:51 ******/
 ALTER TABLE [dbo].[Abrechnung]  WITH CHECK ADD  CONSTRAINT [FK_Abrechnung_Kostensatz] FOREIGN KEY([Kostensatz])
 REFERENCES [dbo].[Kostensatz] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Abrechnung] CHECK CONSTRAINT [FK_Abrechnung_Kostensatz]
 GO
-/****** Objekt:  ForeignKey [FK_Abrechnung_Rechnung]    Skriptdatum: 12/31/2015 14:13:51 ******/
 ALTER TABLE [dbo].[Abrechnung]  WITH CHECK ADD  CONSTRAINT [FK_Abrechnung_Rechnung] FOREIGN KEY([Rechnung])
 REFERENCES [dbo].[Rechnung] ([ID])
 ON UPDATE CASCADE
@@ -3096,126 +3048,108 @@ ON DELETE CASCADE
 GO
 ALTER TABLE [dbo].[Abrechnung] CHECK CONSTRAINT [FK_Abrechnung_Rechnung]
 GO
-/****** Objekt:  ForeignKey [FK_Anwesenheit_Zeitspanne]    Skriptdatum: 12/31/2015 14:13:52 ******/
 ALTER TABLE [dbo].[Anwesenheit]  WITH CHECK ADD  CONSTRAINT [FK_Anwesenheit_Zeitspanne] FOREIGN KEY([Zeitspanne])
 REFERENCES [dbo].[Zeitspanne] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Anwesenheit] CHECK CONSTRAINT [FK_Anwesenheit_Zeitspanne]
 GO
-/****** Objekt:  ForeignKey [FK_Bescheid_Bescheid_Typ]    Skriptdatum: 12/31/2015 14:13:53 ******/
 ALTER TABLE [dbo].[Bescheid]  WITH CHECK ADD  CONSTRAINT [FK_Bescheid_Bescheid_Typ] FOREIGN KEY([Typ])
 REFERENCES [dbo].[Bescheid_Typ] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Bescheid] CHECK CONSTRAINT [FK_Bescheid_Bescheid_Typ]
 GO
-/****** Objekt:  ForeignKey [FK_Bescheid_Einrichtung]    Skriptdatum: 12/31/2015 14:13:53 ******/
 ALTER TABLE [dbo].[Bescheid]  WITH CHECK ADD  CONSTRAINT [FK_Bescheid_Einrichtung] FOREIGN KEY([Einrichtung])
 REFERENCES [dbo].[Einrichtung] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Bescheid] CHECK CONSTRAINT [FK_Bescheid_Einrichtung]
 GO
-/****** Objekt:  ForeignKey [FK_Bescheid_Leistungsart]    Skriptdatum: 12/31/2015 14:13:53 ******/
 ALTER TABLE [dbo].[Bescheid]  WITH CHECK ADD  CONSTRAINT [FK_Bescheid_Leistungsart] FOREIGN KEY([Leistungsart])
 REFERENCES [dbo].[Leistungsart] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Bescheid] CHECK CONSTRAINT [FK_Bescheid_Leistungsart]
 GO
-/****** Objekt:  ForeignKey [FK_Bescheid_Teilnehmer]    Skriptdatum: 12/31/2015 14:13:53 ******/
 ALTER TABLE [dbo].[Bescheid]  WITH CHECK ADD  CONSTRAINT [FK_Bescheid_Teilnehmer] FOREIGN KEY([Teilnehmer])
 REFERENCES [dbo].[Teilnehmer] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Bescheid] CHECK CONSTRAINT [FK_Bescheid_Teilnehmer]
 GO
-/****** Objekt:  ForeignKey [FK_Leistungsart_Einheit]    Skriptdatum: 12/31/2015 14:13:55 ******/
 ALTER TABLE [dbo].[Leistungsart]  WITH CHECK ADD  CONSTRAINT [FK_Leistungsart_Einheit] FOREIGN KEY([Einheit])
 REFERENCES [dbo].[Einheit] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Leistungsart] CHECK CONSTRAINT [FK_Leistungsart_Einheit]
 GO
-/****** Objekt:  ForeignKey [FK_Planung_Einrichtung]    Skriptdatum: 12/31/2015 14:13:56 ******/
 ALTER TABLE [dbo].[Planung]  WITH CHECK ADD  CONSTRAINT [FK_Planung_Einrichtung] FOREIGN KEY([Einrichtung])
 REFERENCES [dbo].[Einrichtung] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Planung] CHECK CONSTRAINT [FK_Planung_Einrichtung]
 GO
-/****** Objekt:  ForeignKey [FK_Planung_Leistungsart]    Skriptdatum: 12/31/2015 14:13:56 ******/
 ALTER TABLE [dbo].[Planung]  WITH CHECK ADD  CONSTRAINT [FK_Planung_Leistungsart] FOREIGN KEY([Leistungsart])
 REFERENCES [dbo].[Leistungsart] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Planung] CHECK CONSTRAINT [FK_Planung_Leistungsart]
 GO
-/****** Objekt:  ForeignKey [FK_Praktikum_Einrichtung]    Skriptdatum: 12/31/2015 14:13:57 ******/
 ALTER TABLE [dbo].[Praktikum]  WITH CHECK ADD  CONSTRAINT [FK_Praktikum_Einrichtung] FOREIGN KEY([Einrichtung])
 REFERENCES [dbo].[Einrichtung] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Praktikum] CHECK CONSTRAINT [FK_Praktikum_Einrichtung]
 GO
-/****** Objekt:  ForeignKey [FK_Praktikum_Praktikum_Kategorie]    Skriptdatum: 12/31/2015 14:13:57 ******/
 ALTER TABLE [dbo].[Praktikum]  WITH CHECK ADD  CONSTRAINT [FK_Praktikum_Praktikum_Kategorie] FOREIGN KEY([Kategorie])
 REFERENCES [dbo].[Praktikum_Kategorie] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Praktikum] CHECK CONSTRAINT [FK_Praktikum_Praktikum_Kategorie]
 GO
-/****** Objekt:  ForeignKey [FK_Praktikum_Standort]    Skriptdatum: 12/31/2015 14:13:57 ******/
 ALTER TABLE [dbo].[Praktikum]  WITH CHECK ADD  CONSTRAINT [FK_Praktikum_Standort] FOREIGN KEY([Standort])
 REFERENCES [dbo].[Standort] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Praktikum] CHECK CONSTRAINT [FK_Praktikum_Standort]
 GO
-/****** Objekt:  ForeignKey [FK_Praktikum_Teilnehmer]    Skriptdatum: 12/31/2015 14:13:57 ******/
 ALTER TABLE [dbo].[Praktikum]  WITH CHECK ADD  CONSTRAINT [FK_Praktikum_Teilnehmer] FOREIGN KEY([Teilnehmer])
 REFERENCES [dbo].[Teilnehmer] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Praktikum] CHECK CONSTRAINT [FK_Praktikum_Teilnehmer]
 GO
-/****** Objekt:  ForeignKey [FK_Standort_Standort_Bereich]    Skriptdatum: 12/31/2015 14:13:58 ******/
 ALTER TABLE [dbo].[Standort]  WITH CHECK ADD  CONSTRAINT [FK_Standort_Standort_Bereich] FOREIGN KEY([Bereich])
 REFERENCES [dbo].[Standort_Bereich] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Standort] CHECK CONSTRAINT [FK_Standort_Standort_Bereich]
 GO
-/****** Objekt:  ForeignKey [FK_Verrechnungssatz_Kostensatz]    Skriptdatum: 12/31/2015 14:13:59 ******/
 ALTER TABLE [dbo].[Verrechnungssatz]  WITH CHECK ADD  CONSTRAINT [FK_Verrechnungssatz_Kostensatz] FOREIGN KEY([Kostensatz])
 REFERENCES [dbo].[Kostensatz] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Verrechnungssatz] CHECK CONSTRAINT [FK_Verrechnungssatz_Kostensatz]
 GO
-/****** Objekt:  ForeignKey [FK_Verrechnungssatz_Leistungsart]    Skriptdatum: 12/31/2015 14:13:59 ******/
 ALTER TABLE [dbo].[Verrechnungssatz]  WITH CHECK ADD  CONSTRAINT [FK_Verrechnungssatz_Leistungsart] FOREIGN KEY([Leistungsart])
 REFERENCES [dbo].[Leistungsart] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Verrechnungssatz] CHECK CONSTRAINT [FK_Verrechnungssatz_Leistungsart]
 GO
-/****** Objekt:  ForeignKey [FK_Zeitspanne_Einrichtung]    Skriptdatum: 12/31/2015 14:14:00 ******/
 ALTER TABLE [dbo].[Zeitspanne]  WITH CHECK ADD  CONSTRAINT [FK_Zeitspanne_Einrichtung] FOREIGN KEY([Einrichtung])
 REFERENCES [dbo].[Einrichtung] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Zeitspanne] CHECK CONSTRAINT [FK_Zeitspanne_Einrichtung]
 GO
-/****** Objekt:  ForeignKey [FK_Zeitspanne_Teilnehmer]    Skriptdatum: 12/31/2015 14:14:00 ******/
 ALTER TABLE [dbo].[Zeitspanne]  WITH CHECK ADD  CONSTRAINT [FK_Zeitspanne_Teilnehmer] FOREIGN KEY([Teilnehmer])
 REFERENCES [dbo].[Teilnehmer] ([ID])
 ON UPDATE CASCADE
 GO
 ALTER TABLE [dbo].[Zeitspanne] CHECK CONSTRAINT [FK_Zeitspanne_Teilnehmer]
 GO
-/****** Objekt:  ForeignKey [FK_Zeitspanne_Zeitspanne_Austrittsgrund]    Skriptdatum: 12/31/2015 14:14:00 ******/
 ALTER TABLE [dbo].[Zeitspanne]  WITH CHECK ADD  CONSTRAINT [FK_Zeitspanne_Zeitspanne_Austrittsgrund] FOREIGN KEY([Austrittsgrund])
 REFERENCES [dbo].[Zeitspanne_Austrittsgrund] ([ID])
 ON UPDATE CASCADE
