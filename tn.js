@@ -241,6 +241,9 @@ angular.module('tn', [])
                 var value = args.parameters[name];
                 switch (typeof value) {
                     case 'number':
+                        if (isNaN(value)) {
+                            throw new ArgumentException('Ungültiger numerischer Wert.', 'args.parameters.' + name);
+                        }
                         value = value.toString();
                         break;
                     case 'boolean':
@@ -250,6 +253,9 @@ angular.module('tn', [])
                         break;
                     case 'object':
                         if (value instanceof Date) {
+                            if (isNaN(value.valueOf())) {
+                                throw new ArgumentException('Ungültiges Datum.', 'args.parameters.' + name);
+                            }
                             value = (new Date(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate(), value.getHours(), value.getMinutes(), value.getSeconds(), value.getMilliseconds()))).toISOString();
                             break;
                         }
@@ -290,7 +296,7 @@ angular.module('tn', [])
             // set the state and reset the error
             command.state = SqlState.Execute;
             delete command.error;
-            command.lastExecuteTime = Object.freeze(new Date());
+            command.lastExecuteTime = new Date();
             $http(config).then(
 	            function (response) {
 	                // ensure not cancelled
@@ -587,14 +593,14 @@ angular.module('tn', [])
                 var first = lastEventId === -1;
                 delete notification.error;
                 lastEventId = newLastEventId;
-                notification.lastSyncTime = Object.freeze(new Date());
+                notification.lastSyncTime = new Date();
 
                 // notify any readiness listeners and update the event time
                 if (first) {
                     readyEvent.resolve();
                 }
                 if (hasEvents) {
-                    notification.lastEventTime = Object.freeze(new Date());
+                    notification.lastEventTime = new Date();
                 }
 
                 // notify the listeners
@@ -865,11 +871,13 @@ angular.module('tn', [])
 
             // get the required type and range
             var type = null;
+            var checkNaN = false;
             var range = null;
             var maxLength = null;
             switch (column.type) {
                 case 'int':
                     type = Number;
+                    checkNaN = true;
                     range = [-2147483648, 2147483647];
                     break;
                 case 'char':
@@ -884,19 +892,23 @@ angular.module('tn', [])
                     break;
                 case 'datetime':
                     type = Date;
+                    checkNaN = true;
                     range = [new Date(1753, 0, 1, 0, 0, 0, 0), new Date(9999, 11, 31, 23, 59, 59, 997)];
                     break;
                 case 'smalldatetime':
                     type = Date;
+                    checkNaN = true;
                     range = [new Date(1900, 0, 1, 0, 0, 0, 0), new Date(2079, 5, 6, 23, 59, 59, 0)];
                     break;
                 case 'decimal':
                     type = Number;
+                    checkNaN = true;
                     var pow = Math.pow(10, (column.precision - column.scale));
                     range = [Math.min(-1, -pow + 1), Math.max(1, pow - 1)];
                     break;
                 case 'money':
                     type = Number;
+                    checkNaN = true;
                     range = [-922337203685477.5808, 922337203685477.5807];
                     break;
                 case 'bit':
@@ -910,6 +922,12 @@ angular.module('tn', [])
             // check the type
             if (value.constructor !== type) {
                 failWithMessage('Der Javascript-Typ der Spalte "' + column.name + '" ist nicht geeignet für den SQL-Typ.');
+                return false;
+            }
+
+            // check NaN
+            if (checkNaN && isNaN(value.valueOf())) {
+                failWithMessage('Der Wert in Spalte "' + column.name + '" ist ungültig.');
                 return false;
             }
 
@@ -1630,11 +1648,24 @@ angular.module('tn', [])
             return new Handsontable(parentElement, settings);
         };
 
+        // event listener
+        view.on = throwIfDisposed(function (type, listener) {
+            ArgumentException.check(type, 'type', String);
+            ArgumentException.check(listener, 'listener', Function);
+
+            // wrap the listener to be called with instance as this
+            parentElement.addEventListener(type, function (event) {
+                listener.call(instance, event);
+            });
+        });
+
         // methods for hooking and unhooking
         view.isTableName = throwIfDisposed(function (name) {
             return name === tableName;
         });
         view.hook = throwIfDisposed(function (table) {
+            ArgumentException.check(table, 'table', Table);
+
             if (hookedTable) {
                 throw new InvalidOperationException('Die Ansicht für Tabelle "' + tableName + '" ist bereits gebunden.');
             }
@@ -1647,6 +1678,8 @@ angular.module('tn', [])
             }
         });
         view.unhook = throwIfDisposed(function (table) {
+            ArgumentException.check(table, 'table', Table);
+
             if (hookedTable !== table) {
                 throw new InvalidOperationException('Die Ansicht für Tabelle "' + tableName + '" ist an eine andere Tabelleninstanz gebunden.');
             }
@@ -2201,9 +2234,13 @@ angular.module('tn', [])
         });
         return false;
     };
-    var hotMouseDown = function (event, coords, TD) {
+    var hotClick = function (event) {
         // check the cell
-        if (coords.row < 0 || coords.col <= lastOrdinaryColumn || !event.target || event.target.tagName != 'SPAN' || this.getCellMeta(coords.row, coords.col).readOnly) {
+        if (!event.target || event.target.tagName !== 'SPAN' || !event.target.parentNode || event.target.parentNode.tagName !== 'TD') {
+            return;
+        }
+        var coords = this.getCoords(event.target.parentNode);
+        if (coords.row < 0 || coords.col <= lastOrdinaryColumn || this.getCellMeta(coords.row, coords.col).readOnly) {
             return;
         }
 
@@ -2211,15 +2248,12 @@ angular.module('tn', [])
         var zeitspanneId = this.getSourceDataAtRow(coords.row).$id;
         var weekDay = (coords.col - lastOrdinaryColumn) % 7;
         var pos = event.clientX;
-        for (var parent = TD; parent; parent = parent.offsetParent) {
+        for (var parent = event.target; parent; parent = parent.offsetParent) {
             pos -= parent.offsetLeft;
-        }
-        if (pos < 4 || pos >= (event.target.offsetWidth + 4)) {
-            return;
         }
 
         // change the Anwesenheit depending on the click position
-        if (pos > 37) {
+        if (pos > 33) {
             // set the new time
             var oldTime = zeitspanneId in attendance && weekDay in attendance[zeitspanneId] ?
                 formatTime(attendance[zeitspanneId][weekDay].Zusatz) :
@@ -2242,7 +2276,7 @@ angular.module('tn', [])
             // toggle the states
             $scope.$apply(function () {
                 changeAnwesenheit(zeitspanneId, weekDay, function (row) {
-                    if (pos < 22) {
+                    if (pos < 19) {
                         if (row.Vormittags && row.Nachmittags) {
                             row.Vormittags = false;
                         }
@@ -2393,9 +2427,9 @@ angular.module('tn', [])
         rowHeaders: false,
         columns: hotColumns,
         cells: hotCells,
-        beforeChange: hotBeforeChange,
-        afterOnCellMouseDown: hotMouseDown
+        beforeChange: hotBeforeChange
     });
+    hot.on('click', hotClick);
 
     // show the current month
     ctr.updateWeek(0);
