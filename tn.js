@@ -2219,16 +2219,17 @@ angular.module('tn', [])
                 var change = changes[i];
 
                 // check if a weekday was edited
+                var index = instance.runHooks('modifyRow', change[0]);
                 var propMatch = change[1].match(/^\$Anwesenheit\.([0-6])$/);
                 if (propMatch) {
                     // ensure the value is string and make sure the weekday is editable
                     var weekDay = Number(propMatch[1]);
-                    if (change[3] != void 0 && change[3].constructor === String && instance.getCellMeta(change[0], lastOrdinaryColumn + 1 + ((weekDay + 6) % 7)).readOnly) {
+                    if (change[3] != void 0 && change[3].constructor === String) {
                         // make sure the format is value
                         var valueMatch = change[3].match(/^<span class="bitmask-([01])([01])([01])( missing)?">(\d\d):(\d\d)<\/span>/);
                         if (valueMatch && Number(valueMatch[5]) < 24 && Number(valueMatch[6]) < 60) {
                             // change the attributes
-                            var zeitspanneId = instance.getSourceDataAtRow(change[0]).$id;
+                            var zeitspanneId = instance.getSourceDataAtRow(index).$id;
                             changeAnwesenheit(zeitspanneId, weekDay, createSetter(Number(valueMatch[1]) === 1, Number(valueMatch[2]) === 1, Number(valueMatch[3]) === 1, Date.create(1900, 0, 1, Number(valueMatch[5]), Number(valueMatch[6]))));
                         }
                     }
@@ -2236,7 +2237,7 @@ angular.module('tn', [])
                 else if (change[1] === checkedDateProp) {
                     // ensure the value is null or a date
                     if (change[3] == void 0 || change[3].constructor === Date) {
-                        var row = instance.getSourceDataAtRow(change[0]);
+                        var row = instance.getSourceDataAtRow(index);
                         row[checkedDateProp] = change[3];
                         zeitspanne.saveRow(row).then(null, revertCheckedDateWithError(row));
                         hot.invalidate();
@@ -2257,7 +2258,8 @@ angular.module('tn', [])
         }
 
         // get the common variable and calculate the position
-        var zeitspanneId = this.getSourceDataAtRow(coords.row).$id;
+        var index = this.runHooks('modifyRow', coords.row);
+        var zeitspanneId = this.getSourceDataAtRow(index).$id;
         var weekDay = (coords.col - lastOrdinaryColumn) % 7;
         var pos = event.clientX;
         for (var parent = event.target; parent; parent = parent.offsetParent) {
@@ -2486,7 +2488,8 @@ angular.module('tn', [])
         // get all changed rows
         var rows = {};
         for (var i = changes.length - 1; i >= 0; i--) {
-            var row = this.getSourceDataAtRow(changes[i][0]);
+            var index = this.runHooks('modifyRow', changes[i][0]);
+            var row = this.getSourceDataAtRow(index);
             rows[row.$id] = row;
         }
 
@@ -2573,6 +2576,7 @@ angular.module('tn', [])
 
         // get the row
         var result = '';
+        index = this.runHooks('modifyRow', index);
         var row = this.getSourceDataAtRow(index);
 
         // reflect the state of the row with an icon
