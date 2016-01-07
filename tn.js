@@ -1996,6 +1996,7 @@ angular.module('tn', [])
 
     // helper functions
     var lastOrdinaryColumn = 2;
+    var checkedDateProp = 'Überprüft';
     var getDateFromWeekDay = function (weekDay) {
         return Date.create(ctr.monday.getTime() + (((weekDay + 6) % 7) * (24 * 60 * 60 * 1000)));
     };
@@ -2023,6 +2024,7 @@ angular.module('tn', [])
     };
 
     // attendance variables and functions
+    var canCheckCache = null;
     var attendance = {};
     var zeitspanne = null;
     var anwesenheit = null;
@@ -2224,20 +2226,17 @@ angular.module('tn', [])
                         }
                     }
                 }
-                else if (change[1] === 'Überprüft') {
+                else if (change[1] === checkedDateProp) {
                     // ensure the value is null or a date
                     if (change[3] == void 0 || change[3].constructor === Date) {
                         var row = instance.getSourceDataAtRow(change[0]);
-                        if (row.$action) {
-                            UIkit.modal.alert('Die Zeile wird bereits geändert.');
-                            continue;
-                        }
-                        row['Überprüft'] = change[3];
+                        row[checkedDateProp] = change[3];
                         zeitspanne.saveRow(row).then(null, function (error) {
-                            row['Überprüft'] = row.$orig['Überprüft'];
+                            row[checkedDateProp] = row.$orig[checkedDateProp];
                             zeitspanne.saveRow(row);
                             UIkit.modal.alert(error);
                         });
+                        hot.invalidate();
                     }
                 }
             }
@@ -2320,7 +2319,7 @@ angular.module('tn', [])
         var columns = [
             { data: 'Einrichtung', readOnly: true },
             { data: 'Teilnehmer', readOnly: true },
-            { data: 'Überprüft' }
+            { data: checkedDateProp }
         ];
         for (var i = 1; i <= 7; i++) {
             columns.push({
@@ -2333,7 +2332,7 @@ angular.module('tn', [])
         }
         return columns;
     })();
-    var hotCells = function (row, col) {
+    var hotCells = function (row, col, prop) {
         if (col > lastOrdinaryColumn) {
             // mark days outside the Zeitspanne as readonly
             var weekDay = (col - lastOrdinaryColumn) % 7;
@@ -2353,11 +2352,33 @@ angular.module('tn', [])
                 this.className += ' sunday';
             }
         }
+        else if (prop === checkedDateProp) {
+            // update the cache if necessary
+            if (canCheckCache === null) {
+                for (var i = zeitspanne.columns.length - 1; i >= 0; i--) {
+                    var column = zeitspanne.columns[i];
+                    if (column.name === prop) {
+                        canCheckCache = !column.readOnly;
+                        break;
+                    }
+                }
+            }
+
+            // set the readOnly flag
+            if (canCheckCache === false) {
+                this.readOnly = true;
+            }
+            else {
+                var sourceRow = this.instance.getSourceDataAtRow(row);
+                this.readOnly = !sourceRow || sourceRow.$action;
+            }
+        }
     };
 
     // cleanup helper function
     var cleanup = function () {
         ctr.weeks = [];
+        canCheckCache = null;
         attendance = {};
         holidays = {};
         if (zeitspanne) {
@@ -2476,13 +2497,20 @@ angular.module('tn', [])
     };
     var beforeChange = function (changes, source) {
         // only allow changes by editors
-        return source === 'edit' || source === 'undo';
+        if (source !== 'edit' && source !== 'undo') {
+            return false;
+        }
+    };
+    var cells = function (row, col) {
+        // mark the cell as readonly if an action is pending or the column is readonly
+        var sourceRow = this.instance.getSourceDataAtRow(row);
+        this.readOnly = !sourceRow || sourceRow.$action || this.instance.getSettings().columns[col].readOnly;
     };
     var afterRenderer = function (TD, row, col, prop) {
         // add the error icon if there is one
-        var sqlRow = this.getSourceDataAtRow(row);
-        if (sqlRow.$error && !sqlRow.$action && sqlRow.$error.column === prop && sqlRow.$error.table === tableName) {
-            TD.innerHTML += dataSet.errorIcon(sqlRow.$error.message);
+        var sourceRow = this.getSourceDataAtRow(row);
+        if (sourceRow.$error && !sourceRow.$action && sourceRow.$error.column === prop && sourceRow.$error.table === tableName) {
+            TD.innerHTML += dataSet.errorIcon(sourceRow.$error.message);
         }
     };
     var onClick = function (event) {
@@ -2542,29 +2570,31 @@ angular.module('tn', [])
         var result = '';
         var row = this.getSourceDataAtRow(index);
 
-        // add the delete icon if allowed
-        if (tableName in dataSet.permissions && dataSet.permissions[tableName].allowDelete) {
-            result += '<i title="Zeile löschen" data-uk-tooltip="data-uk-tooltip" data-row="' + row.$id + '" class="uk-icon-trash"></i>';
-        }
-
         // reflect the state of the row with an icon
         if (row.$action) {
             result += dataSet.actionIcon;
         }
-        else if (row.$error) {
+        else {
+            // add the delete icon if allowed
+            if (tableName in dataSet.permissions && dataSet.permissions[tableName].allowDelete) {
+                result += '<i title="Zeile löschen" data-uk-tooltip="data-uk-tooltip" data-row="' + row.$id + '" class="uk-icon-trash"></i>';
+            }
+
             // only show the error if it cannot be shown in a column
-            var showError = true;
-            if (row.$error.table === tableName && row.$error.column) {
-                var columns = this.getSettings().columns;
-                for (var i = columns.length - 1; i >= 0; i--) {
-                    if (columns[i].data === row.$error.column) {
-                        showError = false;
-                        break;
+            if (row.$error) {
+                var showError = true;
+                if (row.$error.table === tableName && row.$error.column) {
+                    var columns = this.getSettings().columns;
+                    for (var i = columns.length - 1; i >= 0; i--) {
+                        if (columns[i].data === row.$error.column) {
+                            showError = false;
+                            break;
+                        }
                     }
                 }
-            }
-            if (showError) {
-                result += dataSet.errorIcon(row.$error.message);
+                if (showError) {
+                    result += dataSet.errorIcon(row.$error.message);
+                }
             }
         }
 
@@ -2587,6 +2617,7 @@ angular.module('tn', [])
                 hot = dataSet.createView(tableName, children[children.length - 1], {
                     afterChange: afterChange,
                     beforeChange: beforeChange,
+                    cells: cells,
                     afterRenderer: afterRenderer,
                     rowHeaders: rowHeaders
                 });
