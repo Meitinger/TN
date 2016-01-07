@@ -2515,6 +2515,7 @@ angular.module('tn', [])
     };
     var afterRenderer = function (TD, row, col, prop) {
         // add the error icon if there is one
+        row = this.runHooks('modifyRow', row);
         var sourceRow = this.getSourceDataAtRow(row);
         if (sourceRow.$error && !sourceRow.$action && sourceRow.$error.column === prop && sourceRow.$error.table === tableName) {
             TD.innerHTML += dataSet.errorIcon(sourceRow.$error.message);
@@ -2533,11 +2534,12 @@ angular.module('tn', [])
             case 'uk-icon-plus':
                 // create and select the row
                 row = table.newRow();
+                this.render();
                 for (var i = this.countRows() - 1; i >= 0; i--) {
-                    if (row === this.getSourceDataAtRow(i)) {
+                    var index = this.runHooks('modifyRow', i);
+                    if (row === this.getSourceDataAtRow(index)) {
                         this.selectCell(i, 0, i, this.countCols() - 1);
                         // we have to do this twice
-                        this.render();
                         this.view.scrollViewport({ row: i, col: 0 });
                         this.render();
                         this.view.scrollViewport({ row: i, col: 0 });
