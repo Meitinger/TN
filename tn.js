@@ -2207,6 +2207,13 @@ angular.module('tn', [])
 
         // go over all changes
         var instance = this;
+        var revertCheckedDateWithError = function (row) {
+            return function (error) {
+                row[checkedDateProp] = row.$orig[checkedDateProp];
+                zeitspanne.saveRow(row);
+                UIkit.modal.alert(error);
+            };
+        };
         $scope.$apply(function () {
             for (var i = changes.length - 1; i >= 0; i--) {
                 var change = changes[i];
@@ -2231,11 +2238,7 @@ angular.module('tn', [])
                     if (change[3] == void 0 || change[3].constructor === Date) {
                         var row = instance.getSourceDataAtRow(change[0]);
                         row[checkedDateProp] = change[3];
-                        zeitspanne.saveRow(row).then(null, function (error) {
-                            row[checkedDateProp] = row.$orig[checkedDateProp];
-                            zeitspanne.saveRow(row);
-                            UIkit.modal.alert(error);
-                        });
+                        zeitspanne.saveRow(row).then(null, revertCheckedDateWithError(row));
                         hot.invalidate();
                     }
                 }
@@ -2333,11 +2336,12 @@ angular.module('tn', [])
         return columns;
     })();
     var hotCells = function (row, col, prop) {
+        var sourceRow;
         if (col > lastOrdinaryColumn) {
             // mark days outside the Zeitspanne as readonly
             var weekDay = (col - lastOrdinaryColumn) % 7;
             var date = getDateFromWeekDay(weekDay).getTime();
-            var sourceRow = this.instance.getSourceDataAtRow(row);
+            sourceRow = this.instance.getSourceDataAtRow(row);
             this.readOnly = !sourceRow || date < sourceRow.Eintritt.getTime() || sourceRow.Austritt && date > sourceRow.Austritt.getTime();
 
             // set the class name depending on the day
@@ -2369,7 +2373,7 @@ angular.module('tn', [])
                 this.readOnly = true;
             }
             else {
-                var sourceRow = this.instance.getSourceDataAtRow(row);
+                sourceRow = this.instance.getSourceDataAtRow(row);
                 this.readOnly = !sourceRow || sourceRow.$action;
             }
         }
@@ -2497,7 +2501,7 @@ angular.module('tn', [])
     };
     var beforeChange = function (changes, source) {
         // only allow changes by editors
-        if (source !== 'edit' && source !== 'undo') {
+        if (source !== 'edit' && source !== 'undo' && source !== 'redo') {
             return false;
         }
     };
@@ -2521,10 +2525,11 @@ angular.module('tn', [])
 
         // determine what action should be taken
         var table = dataSet.getTable(tableName);
+        var row;
         switch (event.target.className) {
             case 'uk-icon-plus':
                 // create and select the row
-                var row = table.newRow();
+                row = table.newRow();
                 for (var i = this.countRows() - 1; i >= 0; i--) {
                     if (row === this.getSourceDataAtRow(i)) {
                         this.selectCell(i, 0, i, this.countCols() - 1);
@@ -2547,7 +2552,7 @@ angular.module('tn', [])
                 // check if we can get the id
                 var id = Number(event.target.getAttribute('data-row'));
                 if (id) {
-                    var row = table.getRowById(id);
+                    row = table.getRowById(id);
                     $scope.$apply(function () {
                         // delete the row
                         table.deleteRow(row).then(null, function (error) {
