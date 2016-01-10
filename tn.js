@@ -199,10 +199,12 @@ angular.module('tn', [])
     'Teilnehmer': function (row) { return row.Nachname + ', ' + row.Vorname; },
     'Zeitspanne_Austrittsgrund': function (row) { return row.Bezeichnung; },
     'Bescheid_Typ': function (row) { return row.Bezeichnung; },
+    'Standort': function (row) { return row.Name + '\n' + row.Adresse; },
     'Standort_Bereich': function (row) { return row.Code + ' - ' + row.Bezeichnung; },
     'Praktikum_Kategorie': function (row) { return row.Bezeichnung; },
     'Einrichtung': function (row) { return row.Name; },
     'Leistungsart': function (row) { return row.Bezeichnung; },
+    'Kostensatz': function (row) { return row.Bezeichnung; },
     'Einheit': function (row) { return row.Bezeichnung; },
     'Rechnung': function (row) { return row.$id + ' ' + row.Bezeichnung; }
 })
@@ -1510,7 +1512,9 @@ angular.module('tn', [])
         var instance = null;
         var disposed = false;
         var hookedTable = null;
+        var dataChanged = false;
         var queuedRender = false;
+        var selection = null;
 
         // helpers
         var throwIfDisposed = function (fn) {
@@ -1521,9 +1525,69 @@ angular.module('tn', [])
                 return fn.apply(this, arguments);
             };
         };
+        var onSelect = function (startRow, startCol, endRow, endCol) {
+            // update the current selection using source rows
+            startRow = instance.runHooks('modifyRow', startRow);
+            startRow = instance.getSourceDataAtRow(startRow);
+            endRow = instance.runHooks('modifyRow', endRow);
+            endRow = instance.getSourceDataAtRow(endRow);
+            selection = [startRow, startCol, endRow, endCol];
+        };
+        var onDeselect = function () {
+            // clear the selection
+            selection = null;
+        };
+        var reselect = function () {
+            // find the old selected rows
+            var startRowId = selection[0] ? selection[0].$id : null;
+            var startRowIndex = null;
+            var endRowId = selection[2] ? selection[2].$id : null;
+            var endRowIndex = null;
+            for (var visibleIndex = instance.countRows() - 1; visibleIndex >= 0; visibleIndex--) {
+                // store there visible indices
+                var sourceIndex = instance.runHooks('modifyRow', visibleIndex);
+                var rowId = instance.getSourceDataAtRow(sourceIndex).$id;
+                if (rowId === startRowId) {
+                    startRowIndex = visibleIndex;
+                }
+                if (rowId === endRowId) {
+                    endRowIndex = visibleIndex;
+                }
+            }
+
+            // update the selection
+            if (startRowIndex === null && endRowIndex === null) {
+                instance.deselectCell();
+            }
+            else {
+                if (startRowIndex === null) {
+                    startRowIndex = endRowIndex;
+                }
+                if (endRowIndex === null) {
+                    endRowIndex = startRowIndex;
+                }
+                instance.selectCell(startRowIndex, selection[1], endRowIndex, selection[3], true, false);
+            }
+        };
         var render = function () {
+            // ensure we are not disposed
+            if (disposed) {
+                return;
+            }
+
+            // clear the render flag and check if the instance still exists and is visible
             queuedRender = false;
             if (instance && parentElement.offsetParent) {
+                // resort and reselect if necessary
+                if (dataChanged) {
+                    dataChanged = false;
+                    instance.getPlugin('columnSorting').sort();
+                    if (selection !== null) {
+                        reselect();
+                    }
+                }
+
+                // render the data
                 instance.render();
             }
         };
@@ -1664,16 +1728,36 @@ angular.module('tn', [])
         view.hook = throwIfDisposed(function (table) {
             ArgumentException.check(table, 'table', Table);
 
+            // make sure the view is unhooked
             if (hookedTable) {
                 throw new InvalidOperationException('Die Ansicht für Tabelle "' + tableName + '" ist bereits gebunden.');
             }
+
+            // set the table and do the rest asynchronously
             hookedTable = table;
-            if (instance) {
-                instance.loadData(table.rows);
-            }
-            else {
-                instance = createInstance(table);
-            }
+            setTimeout(function () {
+                // make sure we are not disposed and the table is still hooked
+                if (disposed || hookedTable !== table) {
+                    return;
+                }
+
+                // either load the date or create the instance
+                if (instance) {
+                    instance.loadData(table.rows);
+                }
+                else {
+                    instance = createInstance(table);
+                    instance.addHook('afterSelectionEnd', onSelect);
+                    instance.addHook('afterDeselect', onDeselect);
+                    var currentSelection = instance.getSelected();
+                    if (currentSelection === void 0) {
+                        onDeselect();
+                    }
+                    else {
+                        onSelect(currentSelection[0], currentSelection[1], currentSelection[2], currentSelection[3]);
+                    }
+                }
+            }, 0);
         });
         view.unhook = throwIfDisposed(function (table) {
             ArgumentException.check(table, 'table', Table);
@@ -1692,6 +1776,8 @@ angular.module('tn', [])
             // unhook and destroy the instance
             hookedTable = null;
             if (instance) {
+                instance.removeHook('afterDeselect', onDeselect);
+                instance.removeHook('afterSelectionEnd', onSelect);
                 instance.destroy();
                 instance = null;
             }
@@ -1708,11 +1794,15 @@ angular.module('tn', [])
         });
 
         // method that schedules a render for later
-
-        view.invalidate = function () {
-            if (instance && !queuedRender) {
-                queuedRender = true;
-                setTimeout(render, 0);
+        view.invalidate = function (all) {
+            if (instance) {
+                if (all) {
+                    dataChanged = true;
+                }
+                if (!queuedRender) {
+                    queuedRender = true;
+                    setTimeout(render, 0);
+                }
             }
         };
 
@@ -1741,7 +1831,8 @@ angular.module('tn', [])
         // render all referencing hot tables
         var views = references[table.name];
         for (var i = views.length - 1; i >= 0; i--) {
-            views[i].invalidate();
+            var view = views[i];
+            view.invalidate(view.isTableName(table.name));
         }
     };
     var internalCreateTable = function (name, filter) {
@@ -2473,7 +2564,7 @@ angular.module('tn', [])
 })
 
 // controller for an ordinary table view
-.controller('TableController', function ($scope, $element, $timeout, dataSet) {
+.controller('TableController', function ($scope, $element, dataSet) {
     var cleanup = false;
     var hot = null;
     var tableName = null;
@@ -2532,21 +2623,15 @@ angular.module('tn', [])
         var row;
         switch (event.target.className) {
             case 'uk-icon-plus':
-                // create and select the row
+                // create the row and invalidate the view
                 row = table.newRow();
-                this.render();
                 for (var i = this.countRows() - 1; i >= 0; i--) {
                     var index = this.runHooks('modifyRow', i);
                     if (row === this.getSourceDataAtRow(index)) {
                         this.selectCell(i, 0, i, this.countCols() - 1);
-                        // we have to do this twice
-                        this.view.scrollViewport({ row: i, col: 0 });
-                        this.render();
-                        this.view.scrollViewport({ row: i, col: 0 });
                         break;
                     }
                 }
-                // try to insert the row and invalidate the view
                 $scope.$apply(function () {
                     table.saveRow(row).then(null, hot.invalidate);
                 });
@@ -2615,29 +2700,27 @@ angular.module('tn', [])
 
     // create the view with a delay to ensure the DOM elements are *really* visible
     var createIfCurrentTab = function () {
-        $timeout(function () {
-            // do nothing if the user switched the menu or the tab
-            if (cleanup || $scope.$index !== $scope.main.currentTab) {
-                return;
-            }
+        // do nothing if the user switched the menu or the tab
+        if (cleanup || $scope.$index !== $scope.main.currentTab) {
+            return;
+        }
 
-            // either create or rerender the view
-            if (!hot) {
-                tableName = $scope.tab.name;
-                var children = $element.children();
-                hot = dataSet.createView(tableName, children[children.length - 1], {
-                    afterChange: afterChange,
-                    beforeChange: beforeChange,
-                    cells: cells,
-                    afterRenderer: afterRenderer,
-                    rowHeaders: rowHeaders
-                });
-                hot.on('click', onClick);
-            }
-            else {
-                hot.invalidate();
-            }
-        });
+        // either create or rerender the view
+        if (!hot) {
+            tableName = $scope.tab.name;
+            var children = $element.children();
+            hot = dataSet.createView(tableName, children[children.length - 1], {
+                afterChange: afterChange,
+                beforeChange: beforeChange,
+                cells: cells,
+                afterRenderer: afterRenderer,
+                rowHeaders: rowHeaders
+            });
+            hot.on('click', onClick);
+        }
+        else {
+            hot.invalidate();
+        }
     };
     createIfCurrentTab();
 
