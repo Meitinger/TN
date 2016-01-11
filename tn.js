@@ -1366,7 +1366,7 @@ angular.module('tn', [])
         // fast and umlaut-aware string comparer (if possible)
         var compareString = (function () {
             if (window.Intl && window.Intl.Collator) {
-                var collator = new Intl.Collator('de');
+                var collator = new Intl.Collator('de', { numeric: true });
                 return collator.compare;
             }
             else {
@@ -1578,17 +1578,28 @@ angular.module('tn', [])
             // clear the render flag and check if the instance still exists and is visible
             queuedRender = false;
             if (instance && parentElement.offsetParent) {
-                // resort and reselect if necessary
+                // determine what is necessary
                 if (dataChanged) {
+                    // resort, reselect and render the data
                     dataChanged = false;
                     instance.getPlugin('columnSorting').sort();
                     if (selection !== null) {
                         reselect();
                     }
-                }
+                    instance.render();
 
-                // render the data
-                instance.render();
+                    // make sure the selection is visible
+                    var currentSelection = instance.getSelected();
+                    if (currentSelection !== void 0) {
+                        instance.view.scrollViewport({ row: currentSelection[0], col: currentSelection[1] });
+                        instance.render();
+                        instance.view.scrollViewport({ row: currentSelection[0], col: currentSelection[1] });
+                    }
+                }
+                else {
+                    // only redraw the instance
+                    instance.render();
+                }
             }
         };
         var createInstance = function (table) {
@@ -1824,7 +1835,11 @@ angular.module('tn', [])
                 delete label[oldRow.$id];
             }
             if (newRow) {
-                label[newRow.$id] = ReferenceLabels[table.name](newRow);
+                var value = ReferenceLabels[table.name](newRow);
+                if (value == void 0 || value.constructor !== String) {
+                    value = '';
+                }
+                label[newRow.$id] = value;
             }
         }
 
