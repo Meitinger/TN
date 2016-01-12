@@ -1617,7 +1617,9 @@ angular.module('tn', [])
                     if (editor) {
                         var row = getRowById(sourceRow.$id);
                         if (row === null) {
-                            editor.cancelChanges();
+                            if (editor.state === Handsontable.EditorState.EDITING) {
+                                editor.cancelChanges();
+                            }
                         }
                         else {
                             editor.row = row;
