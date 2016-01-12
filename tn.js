@@ -1525,48 +1525,73 @@ angular.module('tn', [])
                 return fn.apply(this, arguments);
             };
         };
+        var isVisible = function (startRow, startCol, endRow, endCol) {
+            // check whether the selection is (almost) in the viewport
+            var viewport = instance.view.wt.getViewport();
+            return startRow <= viewport[2] && startCol <= viewport[3] && endRow >= viewport[0] && endCol >= viewport[1];
+        };
+        var onScroll = function () {
+            // update whether the selection is visisble
+            if (selection) {
+                selection.visible = isVisible(selection.startRow, selection.startCol, selection.endRow, selection.endCol);
+            }
+        };
         var onSelect = function (startRow, startCol, endRow, endCol) {
-            // update the current selection using source rows
+            // set the selection and its source rows
+            selection = {
+                startRow: startRow,
+                startCol: startCol,
+                endRow: endRow,
+                endCol: endCol,
+                visible: isVisible(startRow, startCol, endRow, endCol)
+            };
             startRow = instance.runHooks('modifyRow', startRow);
-            startRow = instance.getSourceDataAtRow(startRow);
+            selection.startSourceRow = instance.getSourceDataAtRow(startRow);
             endRow = instance.runHooks('modifyRow', endRow);
-            endRow = instance.getSourceDataAtRow(endRow);
-            selection = [startRow, startCol, endRow, endCol];
+            selection.endSourceRow = instance.getSourceDataAtRow(endRow);
         };
         var onDeselect = function () {
             // clear the selection
             selection = null;
         };
-        var reselect = function () {
-            // find the old selected rows
-            var startRowId = selection[0] ? selection[0].$id : null;
-            var startRowIndex = null;
-            var endRowId = selection[2] ? selection[2].$id : null;
-            var endRowIndex = null;
+        var getRowById = function (rowId) {
+            // return the visible index of the row with the given id or null
             for (var visibleIndex = instance.countRows() - 1; visibleIndex >= 0; visibleIndex--) {
-                // store there visible indices
                 var sourceIndex = instance.runHooks('modifyRow', visibleIndex);
-                var rowId = instance.getSourceDataAtRow(sourceIndex).$id;
-                if (rowId === startRowId) {
-                    startRowIndex = visibleIndex;
+                if (rowId === instance.getSourceDataAtRow(sourceIndex).$id) {
+                    return visibleIndex;
                 }
-                if (rowId === endRowId) {
-                    endRowIndex = visibleIndex;
-                }
+            }
+            return null;
+        };
+        var reselect = function () {
+            // simply deselect if there is no selection
+            if (!selection) {
+                instance.selection.deselect();
+                return;
             }
 
+            // find the old selected rows
+            var newStartRow = getRowById(selection.startSourceRow.$id);
+            var newEndRow = getRowById(selection.endSourceRow.$id);
+
             // update the selection
-            if (startRowIndex === null && endRowIndex === null) {
-                instance.deselectCell();
+            if (newStartRow === null && newEndRow === null) {
+                instance.selection.deselect();
             }
             else {
-                if (startRowIndex === null) {
-                    startRowIndex = endRowIndex;
+                // make sure both indices are set and determine if we should scroll to the cell
+                if (newStartRow === null) {
+                    newStartRow = newEndRow;
                 }
-                if (endRowIndex === null) {
-                    endRowIndex = startRowIndex;
+                if (newEndRow === null) {
+                    newEndRow = newStartRow;
                 }
-                instance.selectCell(startRowIndex, selection[1], endRowIndex, selection[3], true, false);
+                var scrollToCell = selection.visible && !isVisible(newStartRow, selection.startCol, newEndRow, selection.endCol);
+
+                // update the selection while keeping the editor open
+                instance.selection.setRangeStart({ row: newStartRow, col: selection.startCol }, true);
+                instance.selection.setRangeEnd({ row: newEndRow, col: selection.endCol }, scrollToCell, true);
             }
         };
         var render = function () {
@@ -1580,29 +1605,43 @@ angular.module('tn', [])
             if (instance && parentElement.offsetParent) {
                 // determine what is necessary
                 if (dataChanged) {
-                    // resort, reselect and render the data
+                    // clear the flag and get the current editor settings
                     dataChanged = false;
-                    instance.getPlugin('columnSorting').sort();
-                    if (selection !== null) {
-                        reselect();
-                    }
-                    instance.render();
+                    var editor = instance.getActiveEditor();
+                    var sourceRow = editor ? editor.cellProperties.sourceRow : null;
 
-                    // make sure the selection is visible
-                    var currentSelection = instance.getSelected();
-                    if (currentSelection !== void 0) {
-                        instance.view.scrollViewport({ row: currentSelection[0], col: currentSelection[1] });
-                        instance.render();
-                        instance.view.scrollViewport({ row: currentSelection[0], col: currentSelection[1] });
+                    // resort (this alters the editor's cell properties)
+                    instance.getPlugin('columnSorting').sort();
+
+                    // discard or move the editor
+                    if (editor) {
+                        var row = getRowById(sourceRow.$id);
+                        if (row === null) {
+                            editor.cancelChanges();
+                        }
+                        else {
+                            editor.row = row;
+                            editor.cellProperties = instance.getCellMeta(editor.row, editor.col);
+                            if (editor.refreshDimensions) {
+                                editor.refreshDimensions();
+                            }
+                        }
                     }
+                    reselect();
                 }
-                else {
-                    // only redraw the instance
-                    instance.render();
-                }
+
+                // redraw the instance
+                instance.render();
             }
         };
         var createInstance = function (table) {
+            // generate a column index
+            var columnIndex = {};
+            for (var i = table.columns.length - 1; i >= 0; i--) {
+                var indexedColumn = table.columns[i];
+                columnIndex[indexedColumn.name] = indexedColumn;
+            }
+
             // create the columns array if necessary
             if (settings.columns === void 0) {
                 settings.columns = [];
@@ -1615,6 +1654,27 @@ angular.module('tn', [])
                     }
                 }
             }
+
+
+            // create the cells function
+            var actualCells = settings.cells;
+            settings.cells = function (row, col, prop) {
+                // get and store the source row
+                var instance = this.instance;
+                var sourceRow = instance.getSourceDataAtRow(row);
+                this.sourceRow = sourceRow;
+                if (sourceRow) {
+                    // set the read only state and call the actual cells function
+                    this.readOnly = sourceRow.$action || prop in columnIndex && columnIndex[prop].readOnly;
+                    if (actualCells !== void 0) {
+                        actualCells(instance, sourceRow, row, col, prop, this);
+                    }
+                }
+                else {
+                    // this can happen if there are no rows
+                    this.readOnly = true;
+                }
+            };
 
             // disable observing changes, enable sorting, resizing and limit row rendering
             settings.observeChanges = false;
@@ -1635,82 +1695,80 @@ angular.module('tn', [])
                 column.sortIndicator = true;
 
                 // check if the hot column matches a table column
-                if (typeof column.data === 'string') {
-                    for (var l = table.columns.length - 1; l >= 0; l--) {
-                        var tableColumn = table.columns[l];
-                        if (tableColumn.name === column.data) {
-                            // set the common attributes
-                            if (tableColumn.readOnly) {
-                                column.readOnly = true;
-                            }
-                            var width = Number(tableColumn.width);
-                            column.width = isNaN(width) || width <= 0 ? 100 : width;
-                            column.language = 'de';
+                if (column.data in columnIndex) {
+                    var tableColumn = columnIndex[column.data];
+                    if (tableColumn.name === column.data) {
+                        // set the common attributes
+                        if (tableColumn.readOnly) {
+                            column.readOnly = true;
+                        }
+                        var width = Number(tableColumn.width);
+                        column.width = isNaN(width) || width <= 0 ? 100 : width;
+                        column.language = 'de';
 
-                            // set the type specific attributes
-                            switch (tableColumn.type) {
-                                case 'int':
-                                    column.type = 'numeric';
-                                    column.format = '0';
-                                    if (tableColumn.referencedTable) {
-                                        column.editor = LabelsEditor;
-                                        column.renderer = labelsRenderer;
-                                        column.comparer = labelsComparer;
-                                        column.className = void 0;
-                                        column.referencedTable = tableColumn.referencedTable;
-                                        column.formatCopyable = labelsFormatCopyable;
-                                        if (tableColumn.referencedTable in references) {
-                                            references[tableColumn.referencedTable].push(view);
-                                        }
-                                        else {
-                                            references[tableColumn.referencedTable] = [view];
-                                        }
+                        // set the type specific attributes
+                        switch (tableColumn.type) {
+                            case 'int':
+                                column.type = 'numeric';
+                                column.format = '0';
+                                if (tableColumn.referencedTable) {
+                                    column.editor = LabelsEditor;
+                                    column.renderer = labelsRenderer;
+                                    column.comparer = labelsComparer;
+                                    column.className = void 0;
+                                    column.referencedTable = tableColumn.referencedTable;
+                                    column.formatCopyable = labelsFormatCopyable;
+                                    if (tableColumn.referencedTable in references) {
+                                        references[tableColumn.referencedTable].push(view);
                                     }
-                                    break;
-                                case 'char':
-                                case 'varchar':
-                                case 'nchar':
-                                case 'nvarchar':
-                                    column.type = 'text';
-                                    column.trimWhitespace = true;
-                                    break;
-                                case 'datetime':
-                                    column.type = 'date';
-                                    column.dateFormat = 'DD.MM.YYYY';
-                                    column.dateFactory = Date.create;
-                                    column.renderer = fastDateRenderer;
-                                    column.datePickerConfig = {
-                                        firstDay: 1,
-                                        showWeekNumber: true,
-                                        i18n: {
-                                            previousMonth: 'Vorheriger Monat',
-                                            nextMonth: 'Nächster Monat',
-                                            months: ['Jänner', 'Feber', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'],
-                                            weekdays: ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'],
-                                            weekdaysShort: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
-                                        }
-                                    };
-                                    break;
-                                case 'decimal':
-                                    column.type = 'numeric';
-                                    column.format = '0';
-                                    if (tableColumn.scale > 0) {
-                                        column.format += '.';
-                                        for (var n = tableColumn.scale; n > 0; n--) {
-                                            column.format += '0';
-                                        }
+                                    else {
+                                        references[tableColumn.referencedTable] = [view];
                                     }
-                                    break;
-                                case 'money':
-                                    column.type = 'numeric';
-                                    column.format = '$ 0,0.00';
-                                    break;
-                                case 'bit':
-                                    column.type = 'checkbox';
-                                    break;
-                                default:
-                                    throw new InvalidOperationException('Der Typ "' + tableColumn.type + '" von Spalte "' + tableColumn.name + '" in Tabelle "' + table.name + '" wird nicht unterstützt.');
-                            }
+                                }
+                                break;
+                            case 'char':
+                            case 'varchar':
+                            case 'nchar':
+                            case 'nvarchar':
+                                column.type = 'text';
+                                column.trimWhitespace = true;
+                                break;
+                            case 'datetime':
+                                column.type = 'date';
+                                column.dateFormat = 'DD.MM.YYYY';
+                                column.dateFactory = Date.create;
+                                column.renderer = fastDateRenderer;
+                                column.datePickerConfig = {
+                                    firstDay: 1,
+                                    showWeekNumber: true,
+                                    i18n: {
+                                        previousMonth: 'Vorheriger Monat',
+                                        nextMonth: 'Nächster Monat',
+                                        months: ['Jänner', 'Feber', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'],
+                                        weekdays: ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'],
+                                        weekdaysShort: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
+                                    }
+                                };
+                                break;
+                            case 'decimal':
+                                column.type = 'numeric';
+                                column.format = '0';
+                                if (tableColumn.scale > 0) {
+                                    column.format += '.';
+                                    for (var n = tableColumn.scale; n > 0; n--) {
+                                        column.format += '0';
+                                    }
+                                }
+                                break;
+                            case 'money':
+                                column.type = 'numeric';
+                                column.format = '$ 0,0.00';
+                                break;
+                            case 'bit':
+                                column.type = 'checkbox';
+                                break;
+                            default:
+                                throw new InvalidOperationException('Der Typ "' + tableColumn.type + '" von Spalte "' + tableColumn.name + '" in Tabelle "' + table.name + '" wird nicht unterstützt.');
                         }
                     }
                 }
@@ -1760,6 +1818,8 @@ angular.module('tn', [])
                     instance = createInstance(table);
                     instance.addHook('afterSelectionEnd', onSelect);
                     instance.addHook('afterDeselect', onDeselect);
+                    instance.addHook('afterScrollHorizontally', onScroll);
+                    instance.addHook('afterScrollVertically', onScroll);
                     var currentSelection = instance.getSelected();
                     if (currentSelection === void 0) {
                         onDeselect();
@@ -1787,6 +1847,8 @@ angular.module('tn', [])
             // unhook and destroy the instance
             hookedTable = null;
             if (instance) {
+                instance.removeHook('afterScrollVertically', onScroll);
+                instance.removeHook('afterScrollHorizontally', onScroll);
                 instance.removeHook('afterDeselect', onDeselect);
                 instance.removeHook('afterSelectionEnd', onSelect);
                 instance.destroy();
@@ -2130,7 +2192,6 @@ angular.module('tn', [])
     };
 
     // attendance variables and functions
-    var canCheckCache = null;
     var attendance = {};
     var zeitspanne = null;
     var anwesenheit = null;
@@ -2443,46 +2504,23 @@ angular.module('tn', [])
         }
         return columns;
     })();
-    var hotCells = function (row, col, prop) {
-        var sourceRow;
+    var hotCells = function (instance, sourceRow, row, col, prop, cellProperties) {
         if (col > lastOrdinaryColumn) {
             // mark days outside the Zeitspanne as readonly
             var weekDay = (col - lastOrdinaryColumn) % 7;
             var date = getDateFromWeekDay(weekDay).getTime();
-            sourceRow = this.instance.getSourceDataAtRow(row);
-            this.readOnly = !sourceRow || date < sourceRow.Eintritt.getTime() || sourceRow.Austritt && date > sourceRow.Austritt.getTime();
+            cellProperties.readOnly = date < sourceRow.Eintritt.getTime() || sourceRow.Austritt && date > sourceRow.Austritt.getTime();
 
             // set the class name depending on the day
-            this.className = 'attendance';
+            cellProperties.className = 'attendance';
             if (weekDay in holidays) {
-                this.className += ' holiday';
+                cellProperties.className += ' holiday';
             }
             else if (col === lastOrdinaryColumn + 6) {
-                this.className += ' saturday';
+                cellProperties.className += ' saturday';
             }
             else if (col === lastOrdinaryColumn + 7) {
-                this.className += ' sunday';
-            }
-        }
-        else if (prop === checkedDateProp) {
-            // update the cache if necessary
-            if (canCheckCache === null) {
-                for (var i = zeitspanne.columns.length - 1; i >= 0; i--) {
-                    var column = zeitspanne.columns[i];
-                    if (column.name === prop) {
-                        canCheckCache = !column.readOnly;
-                        break;
-                    }
-                }
-            }
-
-            // set the readOnly flag
-            if (canCheckCache === false) {
-                this.readOnly = true;
-            }
-            else {
-                sourceRow = this.instance.getSourceDataAtRow(row);
-                this.readOnly = !sourceRow || sourceRow.$action;
+                cellProperties.className += ' sunday';
             }
         }
     };
@@ -2490,7 +2528,6 @@ angular.module('tn', [])
     // cleanup helper function
     var cleanup = function () {
         ctr.weeks = [];
-        canCheckCache = null;
         attendance = {};
         holidays = {};
         if (zeitspanne) {
@@ -2614,11 +2651,6 @@ angular.module('tn', [])
             return false;
         }
     };
-    var cells = function (row, col) {
-        // mark the cell as readonly if an action is pending or the column is readonly
-        var sourceRow = this.instance.getSourceDataAtRow(row);
-        this.readOnly = !sourceRow || sourceRow.$action || this.instance.getSettings().columns[col].readOnly;
-    };
     var afterRenderer = function (TD, row, col, prop) {
         // add the error icon if there is one
         row = this.runHooks('modifyRow', row);
@@ -2640,10 +2672,14 @@ angular.module('tn', [])
             case 'uk-icon-plus':
                 // create the row and invalidate the view
                 row = table.newRow();
+                this.getPlugin('columnSorting').sort();
                 for (var i = this.countRows() - 1; i >= 0; i--) {
                     var index = this.runHooks('modifyRow', i);
                     if (row === this.getSourceDataAtRow(index)) {
                         this.selectCell(i, 0, i, this.countCols() - 1);
+                        this.view.wt.scrollViewport({ row: i, col: 0 });
+                        this.render();
+                        this.view.wt.scrollViewport({ row: i, col: 0 });
                         break;
                     }
                 }
@@ -2727,7 +2763,6 @@ angular.module('tn', [])
             hot = dataSet.createView(tableName, children[children.length - 1], {
                 afterChange: afterChange,
                 beforeChange: beforeChange,
-                cells: cells,
                 afterRenderer: afterRenderer,
                 rowHeaders: rowHeaders
             });
