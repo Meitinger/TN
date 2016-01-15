@@ -2674,13 +2674,10 @@ angular.module('tn', [])
             case 'uk-icon-plus':
                 // create the row and invalidate the view
                 row = table.newRow();
-                this.getPlugin('columnSorting').sort();
                 for (var i = this.countRows() - 1; i >= 0; i--) {
                     var index = this.runHooks('modifyRow', i);
                     if (row === this.getSourceDataAtRow(index)) {
                         this.selectCell(i, 0, i, this.countCols() - 1);
-                        this.view.wt.scrollViewport({ row: i, col: 0 });
-                        this.render();
                         this.view.wt.scrollViewport({ row: i, col: 0 });
                         break;
                     }
