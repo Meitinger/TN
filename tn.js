@@ -1543,7 +1543,7 @@ angular.module('tn', [])
                 startCol: startCol,
                 endRow: endRow,
                 endCol: endCol,
-                visible: isVisible(startRow, startCol, endRow, endCol)
+                visible: true
             };
             startRow = instance.runHooks('modifyRow', startRow);
             selection.startSourceRow = instance.getSourceDataAtRow(startRow);
@@ -1572,26 +1572,32 @@ angular.module('tn', [])
             }
 
             // find the old selected rows
-            var newStartRow = getRowById(selection.startSourceRow.$id);
-            var newEndRow = getRowById(selection.endSourceRow.$id);
+            selection.startRow = getRowById(selection.startSourceRow.$id);
+            selection.endRow = getRowById(selection.endSourceRow.$id);
 
             // update the selection
-            if (newStartRow === null && newEndRow === null) {
+            if (selection.startRow === null && selection.endRow === null) {
+                selection = null;
                 instance.selection.deselect();
             }
             else {
                 // make sure both indices are set and determine if we should scroll to the cell
-                if (newStartRow === null) {
-                    newStartRow = newEndRow;
+                if (selection.startRow === null) {
+                    selection.startRow = selection.endRow;
+                    selection.startSourceRow = selection.endSourceRow;
                 }
-                if (newEndRow === null) {
-                    newEndRow = newStartRow;
+                if (selection.endRow === null) {
+                    selection.endRow = selection.startRow;
+                    selection.endSourceRow = selection.startSourceRow;
                 }
-                var scrollToCell = selection.visible && !isVisible(newStartRow, selection.startCol, newEndRow, selection.endCol);
+                var scrollToCell = selection.visible && !isVisible(selection.startRow, selection.startCol, selection.endRow, selection.endCol);
 
                 // update the selection while keeping the editor open
-                instance.selection.setRangeStart({ row: newStartRow, col: selection.startCol }, true);
-                instance.selection.setRangeEnd({ row: newEndRow, col: selection.endCol }, scrollToCell, true);
+                instance.selection.setRangeStart({ row: selection.startRow, col: selection.startCol }, true, scrollToCell);
+                instance.selection.setRangeEnd({ row: selection.endRow, col: selection.endCol }, false, true);
+                if (scrollToCell) {
+                    instance.view.wt.scrollViewport({ row: selection.startRow, col: selection.startCol });
+                }
             }
         };
         var render = function () {
@@ -2678,7 +2684,6 @@ angular.module('tn', [])
                     var index = this.runHooks('modifyRow', i);
                     if (row === this.getSourceDataAtRow(index)) {
                         this.selectCell(i, 0, i, this.countCols() - 1);
-                        this.view.wt.scrollViewport({ row: i, col: 0 });
                         break;
                     }
                 }
