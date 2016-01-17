@@ -961,7 +961,7 @@ angular.module('tn', [])
                 var columnName = column.name;
                 var value = row[columnName];
                 if (value === void 0) {
-                    if (column.defaultValue === null) {
+                    if (!column.hasDefault) {
                         // don't allow missing columns without default values
                         fail({
                             statement: 0,
@@ -1224,7 +1224,7 @@ angular.module('tn', [])
             for (var i = table.columns.length - 1; i >= 0; i--) {
                 var column = table.columns[i];
                 var columnName = column.name;
-                if (row[columnName] === void 0 && column.defaultValue === null && !column.required) {
+                if (row[columnName] === void 0 && !column.hasDefault && !column.required) {
                     row[columnName] = null;
                 }
             }
@@ -1265,7 +1265,7 @@ angular.module('tn', [])
                          '  c.precision,\n' +
                          '  c.scale,\n' +
                          '  CASE WHEN c.is_nullable = 1 THEN 0 ELSE 1 END AS required,\n' +
-                         '  d.definition AS defaultValue,\n' +
+                         '  CASE WHEN d.type = \'D\' THEN 1 ELSE 0 END AS hasDefault,\n' +
                          '  (SELECT value FROM fn_listextendedproperty(\'width\', \'schema\', @Schema, \'table\', @Table, \'column\', c.name)) AS width,\n' +
                          '  CASE WHEN HAS_PERMS_BY_NAME(@Schema + N\'.\' + @Table,\'OBJECT\',\'UPDATE\',c.name,\'COLUMN\') = 1 THEN 0 ELSE 1 END AS readOnly,\n' +
                          '  OBJECT_NAME(f.referenced_object_id) AS referencedTable\n' +
