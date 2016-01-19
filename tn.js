@@ -1784,7 +1784,11 @@ angular.module('tn', [])
 
             // finalize the settings and create the instance
             settings.data = table.rows;
-            return new Handsontable(parentElement, settings);
+            var hot = new Handsontable(parentElement, settings);
+
+            // remove the ability to alter rows or columns
+            hot.alter = function () { };
+            return hot;
         };
 
         // event listener
@@ -2918,8 +2922,8 @@ angular.module('tn', [])
             name: 'Arbeitserprobungen',
             roles: [Roles.JobCoaching],
             tables: [
-                { name: 'Praktikum' },
                 { name: 'Standort' },
+                { name: 'Praktikum' },
                 { name: 'Teilnehmer', hidden: true },
                 { name: 'Standort_Bereich', hidden: true },
                 { name: 'Praktikum_Kategorie', hidden: true },
