@@ -63,7 +63,7 @@
             </form>
         </div>
     </div>
-    <div style="height:36px;">
+    <div class="uk-overflow-container" style="height:37px;">
         <ul class="uk-tab uk-tab-bottom" data-uk-tab="" data-ng-if="main.currentNav &gt; -1">
             <li data-ng-class="main.currentTab == $index ? 'uk-active' : ''" data-ng-repeat="tab in main.tabs"><a data-ng-click="main.gotoTab($index)">{{tab.name}}</a></li>
         </ul>
