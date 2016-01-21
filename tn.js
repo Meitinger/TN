@@ -1593,8 +1593,10 @@ angular.module('tn', [])
                 var scrollToCell = selection.visible && !isVisible(selection.startRow, selection.startCol, selection.endRow, selection.endCol);
 
                 // update the selection while keeping the editor open
-                instance.selection.setRangeStart({ row: selection.startRow, col: selection.startCol }, true, scrollToCell);
+                instance.removeHook('afterSelection', onSelect);
+                instance.selection.setRangeStart({ row: selection.startRow, col: selection.startCol }, scrollToCell, true);
                 instance.selection.setRangeEnd({ row: selection.endRow, col: selection.endCol }, false, true);
+                instance.addHook('afterSelection', onSelect);
                 if (scrollToCell) {
                     instance.view.wt.scrollViewport({ row: selection.startRow, col: selection.startCol });
                 }
@@ -1616,8 +1618,9 @@ angular.module('tn', [])
                     var editor = instance.getActiveEditor();
                     var sourceRow = editor ? editor.cellProperties.sourceRow : null;
 
-                    // resort (this alters the editor's cell properties)
+                    // resort and render (this alters the editor's cell properties)
                     instance.getPlugin('columnSorting').sort();
+                    instance.render();
 
                     // discard or move the editor
                     if (editor) {
@@ -1635,11 +1638,14 @@ angular.module('tn', [])
                             }
                         }
                     }
+
+                    // select the old selection
                     reselect();
                 }
-
-                // redraw the instance
-                instance.render();
+                else {
+                    // redraw the instance
+                    instance.render();
+                }
             }
         };
         var createInstance = function (table) {
@@ -1828,7 +1834,7 @@ angular.module('tn', [])
                 }
                 else {
                     instance = createInstance(table);
-                    instance.addHook('afterSelectionEnd', onSelect);
+                    instance.addHook('afterSelection', onSelect);
                     instance.addHook('afterDeselect', onDeselect);
                     instance.addHook('afterScrollHorizontally', onScroll);
                     instance.addHook('afterScrollVertically', onScroll);
@@ -1862,7 +1868,7 @@ angular.module('tn', [])
                 instance.removeHook('afterScrollVertically', onScroll);
                 instance.removeHook('afterScrollHorizontally', onScroll);
                 instance.removeHook('afterDeselect', onDeselect);
-                instance.removeHook('afterSelectionEnd', onSelect);
+                instance.removeHook('afterSelection', onSelect);
                 instance.destroy();
                 instance = null;
             }
