@@ -1593,10 +1593,7 @@ angular.module('tn', [])
                 var scrollToCell = selection.visible && !isVisible(selection.startRow, selection.startCol, selection.endRow, selection.endCol);
 
                 // update the selection while keeping the editor open
-                instance.removeHook('afterSelection', onSelect);
-                instance.selection.setRangeStart({ row: selection.startRow, col: selection.startCol }, scrollToCell, true);
-                instance.selection.setRangeEnd({ row: selection.endRow, col: selection.endCol }, false, true);
-                instance.addHook('afterSelection', onSelect);
+                instance.selectCell(selection.startRow, selection.startCol, selection.endRow, selection.endCol, scrollToCell, false, true);
                 if (scrollToCell) {
                     instance.view.wt.scrollViewport({ row: selection.startRow, col: selection.startCol });
                 }
