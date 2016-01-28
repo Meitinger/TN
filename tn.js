@@ -1231,7 +1231,7 @@ angular.module('tn', [])
             row.$id = nextNewRowId--;
             row.$version = '0x0000000000000000';
             row.$orig = {};
-            table.rows.push(row);
+            table.rows.unshift(row);
             rowIndex[row.$id] = row;
             notifyAsync(null, row);
             return row;
@@ -2704,15 +2704,19 @@ angular.module('tn', [])
                 // check if we can get the id
                 var id = Number(event.target.getAttribute('data-row'));
                 if (id) {
-                    row = table.getRowById(id);
-                    $scope.$apply(function () {
-                        // delete the row
-                        table.deleteRow(row).then(null, function (error) {
+                    UIkit.modal.confirm('Möchten Sie den Eintrag wirklich unwiderruflich löschen?', function () {
+                        row = table.getRowById(id);
+                        if (row) {
+                            $scope.$apply(function () {
+                                // delete the row
+                                table.deleteRow(row).then(null, function (error) {
+                                    hot.invalidate();
+                                    UIkit.modal.alert(error);
+                                });
+                            });
                             hot.invalidate();
-                            UIkit.modal.alert(error);
-                        });
+                        }
                     });
-                    hot.invalidate();
                 }
                 break;
         }
