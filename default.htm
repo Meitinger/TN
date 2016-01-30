@@ -21,13 +21,15 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Trainee</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.23.0/css/uikit.min.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.23.0/css/components/tooltip.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.24.3/css/uikit.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.24.3/css/components/form-select.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.24.3/css/components/tooltip.min.css" />
     <link rel="stylesheet" href="handsontable/dist/handsontable.full.css" />
     <link rel="stylesheet" href="tn.css" />
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.23.0/js/uikit.min.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.23.0/js/components/tooltip.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.24.3/js/uikit.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.24.3/js/components/form-select.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.24.3/js/components/tooltip.min.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.8/angular.min.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular-i18n/1.4.8/angular-locale_de.min.js"></script>
     <script type="text/javascript" src="handsontable/dist/handsontable.full.js"></script>
@@ -42,24 +44,37 @@
         <a class="uk-navbar-toggle uk-visible-small" href="#nav-offcanvas" data-uk-offcanvas=""></a>
     </nav>
     <div style="height:calc(70vh - 77px);">
-        <div data-ng-repeat="tab in main.tabs" data-ng-switch="tab.type">
-            <div data-ng-switch-when="table" data-ng-show="main.currentTab == $index" data-ng-controller="TableController as tbl">
+        <div data-ng-repeat="tab in main.tabs" data-ng-show="main.currentTab == $index" data-ng-switch="tab.type">
+            <form class="uk-form" data-ng-switch-when="existingBills" data-ng-controller="ExistingBillsController as bill">
+                <div class="uk-button-group" style="width:100%; white-space:nowrap;">
+                    <div style="width:calc(100% - 25px);" class="uk-button uk-button-small uk-form-select">
+                        <span>{{bill.current ? (bill.current.Bezeichnung + ' (erstellt am ' + (bill.current.Datum | date: 'shortDate') + ')') : '(Rechnung auswählen)'}}</span>
+                        <i class="uk-icon-caret-down"></i>
+                        <select data-ng-model="bill.current" data-ng-change="bill.change()" data-ng-options="({$id: row.$id, Bezeichnung: row.Bezeichnung, Datum: row.Datum}) as row.Bezeichnung for row in bill.all | orderBy: 'Datum':true track by row.$id"></select>
+                    </div>
+                    <button style="width:25px;" class="uk-button uk-button-small uk-button-danger" type="button" data-ng-click="bill.remove()" data-uk-tooltip="data-uk-tooltip" title="Rechnung löschen" data-ng-disabled="!bill.current || bill.current.$action"><i class="uk-icon-remove"></i></button>
+                </div>
+                <div data-ng-controller="TableController as tbl">
+                    <div style="width:100%; height:calc(70vh - 102px); overflow:hidden;"></div>
+                </div>
+            </form>
+            <div data-ng-switch-when="table" data-ng-controller="TableController as tbl">
                 <div style="width:100%; height:calc(70vh - 77px); overflow:hidden;"></div>
             </div>
-            <form class="uk-form" data-ng-switch-when="attendance" data-ng-if="main.currentTab == $index" data-ng-controller="AttendanceController as atn">
-                <div style="width:100%; white-space:nowrap;">
-                    <button class="uk-button" data-ng-click="atn.updateWeek(-1)" style="width:30%;"><i class="uk-icon-angle-double-left"></i> Vorige Woche</button>
-                    <div class="uk-button-dropdown" style="width:calc(40% - 8px);" data-uk-dropdown>
-                        <button class="uk-button" style="width:100%;">KW <span>{{atn.monday | date: 'w'}}</span>: <span>{{atn.monday | date: 'shortDate'}}</span> - <span>{{atn.sunday | date: 'shortDate'}}</span></button>
+            <form class="uk-form" data-ng-switch-when="attendance" data-ng-controller="AttendanceController as atn">
+                <div class="uk-button-group" style="width:100%; white-space:nowrap;">
+                    <button class="uk-button uk-button-small" data-ng-click="atn.updateWeek(-1)" style="width:30%;"><i class="uk-icon-angle-double-left"></i> Vorige Woche</button>
+                    <div class="uk-button-dropdown" style="width:40%;" data-uk-dropdown>
+                        <button class="uk-button uk-button-small" style="width:100%;">KW <span>{{atn.monday | date: 'w'}}</span>: <span>{{atn.monday | date: 'shortDate'}}</span> - <span>{{atn.sunday | date: 'shortDate'}}</span></button>
                         <div class="uk-dropdown uk-dropdown-small">
                             <ul class="uk-nav uk-nav-dropdown">
                                 <li><a data-ng-repeat="week in atn.weeks" data-ng-click="atn.updateWeek(week.offset)">KW <span>{{week.monday | date: 'w'}}</span>: <span>{{week.monday | date: 'shortDate'}}</span> - <span>{{week.sunday | date: 'shortDate'}}</span></a></li>
                             </ul>
                         </div>
                     </div>
-                    <button class="uk-button" data-ng-disabled="atn.monday &gt;= atn.maxMonday" data-ng-click="atn.updateWeek(1)" style="width:30%;">Nächste Woche <i class="uk-icon-angle-double-right"></i></button>
+                    <button class="uk-button uk-button-small" data-ng-disabled="atn.monday &gt;= atn.maxMonday" data-ng-click="atn.updateWeek(1)" style="width:30%;">Nächste Woche <i class="uk-icon-angle-double-right"></i></button>
                 </div>
-                <div style="width:100%; height:calc(70vh - 107px); overflow:hidden;"></div>
+                <div style="width:100%; height:calc(70vh - 102px); overflow:hidden;"></div>
             </form>
         </div>
     </div>

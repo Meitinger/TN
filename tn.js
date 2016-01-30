@@ -206,7 +206,8 @@ angular.module('tn', [])
     'Leistungsart': function (row) { return row.Bezeichnung; },
     'Kostensatz': function (row) { return row.Bezeichnung; },
     'Einheit': function (row) { return row.Bezeichnung; },
-    'Rechnung': function (row) { return row.$id + ' ' + row.Bezeichnung; }
+    'Rechnung': function (row) { return row.Bezeichnung; },
+    'Bescheid': function (row) { return row.Geschäftszahl; }
 })
 
 // SQL service
@@ -2172,6 +2173,46 @@ angular.module('tn', [])
     return dataSet;
 })
 
+// define the controller that handles existing bills
+.controller('ExistingBillsController', function ($scope, $filter, dataSet) {
+    var ctr = this;
+    var rechnung = dataSet.getTable('Rechnung');
+    var abrechnung = null;
+
+    // define the controller variables
+    ctr.current = null;
+    ctr.all = rechnung.rows;
+
+    // load the proper Abrechnung rows
+    ctr.change = function () {
+        if (abrechnung) {
+            dataSet.removeTable(abrechnung);
+            abrechnung = null;
+        }
+        if (ctr.current) {
+            abrechnung = dataSet.addTable('Abrechnung', 'Rechnung = ' + ctr.current.$id);
+        }
+    };
+
+    // delete the currently selected row
+    ctr.remove = function () {
+        var row = ctr.current;
+        UIkit.modal.confirm('Möchten Sie die Rechnung "' + row.Bezeichnung + '" vom ' + $filter('date')(row.Datum, 'shortDate') + ' wirklich unwiderruflich löschen?', function () {
+            $scope.$apply(function () {
+                rechnung.deleteRow(rechnung.getRowById(row.$id)).then(
+                    function () {
+                        ctr.current = null;
+                        ctr.change();
+                    },
+                    function (error) {
+                        UIkit.modal.alert(error);
+                    }
+                );
+            });
+        });
+    };
+})
+
 // define the trainee attendance controller
 .controller('AttendanceController', function ($scope, $element, $filter, Roles, dataSet) {
     var ctr = this;
@@ -2764,7 +2805,7 @@ angular.module('tn', [])
         return result;
     };
 
-    // create the view with a delay to ensure the DOM elements are *really* visible
+    // create the view
     var createIfCurrentTab = function () {
         // do nothing if the user switched the menu or the tab
         if (cleanup || $scope.$index !== $scope.main.currentTab) {
@@ -2951,13 +2992,13 @@ angular.module('tn', [])
             roles: [Roles.Accounting],
             tables: [
                 { name: 'Rechnung', hidden: true },
-                { name: 'Teilnehmer', hidden: true },
+                { name: 'Bescheid', hidden: true },
                 { name: 'Einheit' },
                 { name: 'Leistungsart' },
                 { name: 'Kostensatz' },
                 { name: 'Verrechnungssatz' }
             ],
-            tabs: []
+            tabs: [{ name: 'Abrechnung', type: 'existingBills'}]
         }, {
             name: 'Systemtabellen',
             roles: [Roles.Administration],
