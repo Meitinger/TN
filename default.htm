@@ -23,11 +23,13 @@
     <title>Trainee</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.24.3/css/uikit.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.24.3/css/components/form-select.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.24.3/css/components/datepicker.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.24.3/css/components/tooltip.min.css" />
     <link rel="stylesheet" href="handsontable/dist/handsontable.full.css" />
     <link rel="stylesheet" href="tn.css" />
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.24.3/js/uikit.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.24.3/js/components/datepicker.min.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.24.3/js/components/form-select.min.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/uikit/2.24.3/js/components/tooltip.min.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.8/angular.min.js"></script>
@@ -43,15 +45,40 @@
         </ul>
         <a class="uk-navbar-toggle uk-visible-small" href="#nav-offcanvas" data-uk-offcanvas=""></a>
     </nav>
-    <div style="height:calc(70vh - 77px);">
+    <div class="uk-overflow-container" style="height:calc(70vh - 77px);">
         <div data-ng-repeat="tab in main.tabs" data-ng-show="main.currentTab == $index" data-ng-switch="tab.type">
+            <form name="form" class="uk-form uk-form-stacked" data-ng-switch-when="newBills" data-ng-controller="NewBillsController as bill">
+                <div class="uk-panel uk-panel-box uk-panel-box-primary">
+                    <div class="uk-flex uk-flex-bottom">
+                        <div style="margin-right:4px;">
+                            <label class="uk-form-label" for="from">Von:</label>
+                            <input id="from" name="from" type="date" required="" data-ng-model="bill.from" data-ng-class="form.from.$pristine ? '' : form.from.$valid ? 'uk-form-success' : 'uk-form-danger'" data-uk-datepicker="{{bill.datepicker}}" />
+                        </div>
+                        <div style="margin-right:4px;">
+                            <label class="uk-form-label" for="to">Bis:</label>
+                            <input id="to" name="to" type="date" required="" data-ng-model="bill.to" data-ng-class="form.to.$pristine ? '' : form.to.$valid ? 'uk-form-success' : 'uk-form-danger'" data-uk-datepicker="{{bill.datepicker}}" />
+                        </div>
+                        <div style="margin-right:16px;">
+                            <button class="uk-button uk-button-primary" type="button" data-ng-click="bill.check()" data-ng-disabled="!form.from.$valid || !form.to.$valid">Überprüfen</button>
+                        </div>
+                        <div style="margin-right:4px;">
+                            <label class="uk-form-label" for="description">Beschreibung:</label>
+                            <input id="description" name="description" type="text" required="" data-ng-model="bill.description" data-ng-class="form.description.$pristine ? '' : form.description.$valid ? 'uk-form-success' : 'uk-form-danger'" />
+                        </div>
+                        <div>
+                            <button class="uk-button uk-button-success" type="button" data-ng-click="bill.create()" data-ng-disabled="!form.$valid">Erstellen</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
             <form class="uk-form" data-ng-switch-when="existingBills" data-ng-controller="ExistingBillsController as bill">
                 <div class="uk-button-group" style="width:100%; white-space:nowrap;">
-                    <div style="width:calc(100% - 25px);" class="uk-button uk-button-small uk-form-select">
+                    <div style="width:calc(100% - 50px);" class="uk-button uk-button-small uk-form-select">
                         <span>{{bill.current ? (bill.current.Bezeichnung + ' (erstellt am ' + (bill.current.Datum | date: 'shortDate') + ')') : '(Rechnung auswählen)'}}</span>
                         <i class="uk-icon-caret-down"></i>
                         <select data-ng-model="bill.current" data-ng-change="bill.change()" data-ng-options="({$id: row.$id, Bezeichnung: row.Bezeichnung, Datum: row.Datum}) as row.Bezeichnung for row in bill.all | orderBy: 'Datum':true track by row.$id"></select>
                     </div>
+                    <button style="width:25px;" class="uk-button uk-button-small uk-button-primary" type="button" data-ng-click="bill.download()" data-uk-tooltip="data-uk-tooltip" title="Rechnung downloaden" data-ng-disabled="!bill.current"><i class="uk-icon-download"></i></button>
                     <button style="width:25px;" class="uk-button uk-button-small uk-button-danger" type="button" data-ng-click="bill.remove()" data-uk-tooltip="data-uk-tooltip" title="Rechnung löschen" data-ng-disabled="!bill.current || bill.current.$action"><i class="uk-icon-remove"></i></button>
                 </div>
                 <div data-ng-controller="TableController as tbl">

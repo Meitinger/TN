@@ -17,7 +17,7 @@
 */
 
 /* jshint curly: true, forin: false, freeze: true, latedef: nofunc, undef: true, unused: true */
-/* globals angular: false, Handsontable: false, UIkit: false */
+/* globals angular: false, jQuery: false, Handsontable: false, UIkit: false */
 
 // define errors
 function ArgumentException(message, paramName) {
@@ -155,6 +155,13 @@ Date.create = (function () {
         return date;
     };
 })();
+
+// update the modal when an UIkit datepicker closes
+jQuery(document).ready(function () {
+    jQuery('body').on('hide.uk.datepicker', function (event) {
+        angular.element(event.target).triggerHandler('change');
+    });
+});
 
 // function that reports an error
 UIkit.modal.error = function (src, msg, trace) {
@@ -2175,6 +2182,14 @@ angular.module('tn', [])
     return dataSet;
 })
 
+// define the controller that creates new bills
+.controller('NewBillsController', function ($scope) {
+    var ctr = this;
+
+    ctr.datepicker = '{i18n:{months:["Jänner","Feber","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"],weekdays:["So","Mo","Di","Mi","Do","Fr","Sa"]}}';
+
+})
+
 // define the controller that handles existing bills
 .controller('ExistingBillsController', function ($scope, $filter, dataSet) {
     var ctr = this;
@@ -2194,6 +2209,11 @@ angular.module('tn', [])
         if (ctr.current) {
             abrechnung = dataSet.addTable('Abrechnung', 'Rechnung = ' + ctr.current.$id);
         }
+    };
+
+    // download the currently selected bill
+    ctr.download = function () {
+        window.location.href = 'download.ashx?@=Rechnung&Rechnung=' + ctr.current.$id;
     };
 
     // delete the currently selected row
@@ -3000,7 +3020,10 @@ angular.module('tn', [])
                 { name: 'Kostensatz' },
                 { name: 'Verrechnungssatz' }
             ],
-            tabs: [{ name: 'Abrechnung', type: 'existingBills'}]
+            tabs: [
+                { name: 'Abrechnung', type: 'existingBills' },
+                { name: 'Erstellen', type: 'newBills' }
+            ]
         }, {
             name: 'Systemtabellen',
             roles: [Roles.Administration],
