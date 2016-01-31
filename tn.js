@@ -123,7 +123,7 @@ Date.create = (function () {
             return dates[value];
         }
 
-        // lock and freeze the object
+        // lock the object
         date.setDate = setReplacement;
         date.setFullYear = setReplacement;
         date.setHours = setReplacement;
@@ -140,6 +140,14 @@ Date.create = (function () {
         date.setUTCMonth = setReplacement;
         date.setUTCSeconds = setReplacement;
         date.setYear = setReplacement;
+
+        // add the localized date string
+        var day = date.getDate();
+        var month = date.getMonth() + 1;
+        var year = date.getFullYear();
+        date.localeDateString = (day < 10 ? '0' + day : day) + '.' + (month < 10 ? '0' + month : month) + '.' + year;
+
+        // lock the object
         date = Object.freeze(date);
 
         // add the date to the cache and return it
@@ -1383,19 +1391,7 @@ angular.module('tn', [])
                 value = '';
             }
             else if (value instanceof Date) {
-                // format the date to string
-                var day = value.getDate();
-                var month = value.getMonth() + 1;
-                var year = value.getFullYear();
-                value = '';
-                if (day < 10) {
-                    value += '0';
-                }
-                value += day + '.';
-                if (month < 10) {
-                    value += '0';
-                }
-                value += month + '.' + year;
+                value = value.localeDateString;
             }
             if (cellProperties.readOnly) {
                 Handsontable.renderers.TextRenderer(instance, TD, row, col, prop, value, cellProperties);
