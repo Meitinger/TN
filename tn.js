@@ -1654,6 +1654,11 @@ angular.module('tn', [])
                 columnIndex[indexedColumn.name] = indexedColumn;
             }
 
+            // ensure the parent element has an id
+            if (!parentElement.id) {
+                parentElement.id = tableName;
+            }
+
             // create the columns array if necessary
             if (settings.columns === void 0) {
                 settings.columns = [];
@@ -1692,6 +1697,7 @@ angular.module('tn', [])
             settings.observeChanges = false;
             settings.observeDOMVisibility = false;
             settings.columnSorting = true;
+            settings.persistentState = true;
             settings.autoColumnSize = false;
             settings.autoRowSize = false;
             settings.manualColumnResize = true;
