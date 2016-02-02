@@ -342,6 +342,19 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
+CREATE FUNCTION [dbo].[IstKürzel](@Kürzel varchar(5)) RETURNS bit AS
+BEGIN
+	RETURN CASE
+		WHEN @Kürzel IS NULL THEN NULL
+		WHEN LEN(@Kürzel) = 0 OR @Kürzel LIKE '%[^A-Z0-9]%' COLLATE Latin1_General_BIN THEN 0
+		ELSE 1
+	END
+END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE FUNCTION [dbo].[Time](@dt datetime) RETURNS datetime AS
 BEGIN
 	RETURN DATEADD(day,-DATEDIFF(day,0,@dt),@dt)
@@ -390,44 +403,6 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE FUNCTION [dbo].[IstKürzel](@Kürzel varchar(5)) RETURNS bit AS
-BEGIN
-	RETURN CASE
-		WHEN @Kürzel IS NULL THEN NULL
-		WHEN LEN(@Kürzel) = 0 OR @Kürzel LIKE '%[^A-Z0-9]%' COLLATE Latin1_General_BIN THEN 0
-		ELSE 1
-	END
-END
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[Bescheid_Typ](
-	[ID] [int] IDENTITY(1,1) NOT NULL,
-	[Bezeichnung] [nvarchar](50) NOT NULL,
-	[Abrechnung] [bit] NOT NULL,
-	[Anschrift] [nvarchar](200) NULL,
-	[Version] [timestamp] NOT NULL,
- CONSTRAINT [PK_Bescheid_Typ] PRIMARY KEY CLUSTERED 
-(
-	[ID] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-) ON [PRIMARY]
-GO
-CREATE NONCLUSTERED INDEX [IX_Bescheid_Typ_Bezeichnung] ON [dbo].[Bescheid_Typ] 
-(
-	[Bezeichnung] ASC
-)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
-GO
-EXEC sys.sp_addextendedproperty @name=N'width', @value=N'150' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Bescheid_Typ', @level2type=N'COLUMN',@level2name=N'Bezeichnung'
-GO
-EXEC sys.sp_addextendedproperty @name=N'width', @value=N'400' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Bescheid_Typ', @level2type=N'COLUMN',@level2name=N'Anschrift'
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
 CREATE FUNCTION [dbo].[IstGeschäftszahl](@Geschäftszahl varchar(50)) RETURNS bit AS
 BEGIN
 	RETURN CASE
@@ -468,6 +443,31 @@ BEGIN
 		ELSE 1
 	END
 END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Bescheid_Typ](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[Bezeichnung] [nvarchar](50) NOT NULL,
+	[Abrechnung] [bit] NOT NULL,
+	[Anschrift] [nvarchar](200) NULL,
+	[Version] [timestamp] NOT NULL,
+ CONSTRAINT [PK_Bescheid_Typ] PRIMARY KEY CLUSTERED 
+(
+	[ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_Bescheid_Typ_Bezeichnung] ON [dbo].[Bescheid_Typ] 
+(
+	[Bezeichnung] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+GO
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'150' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Bescheid_Typ', @level2type=N'COLUMN',@level2name=N'Bezeichnung'
+GO
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'400' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Bescheid_Typ', @level2type=N'COLUMN',@level2name=N'Anschrift'
 GO
 SET ANSI_NULLS ON
 GO
@@ -960,182 +960,6 @@ GO
 EXEC sys.sp_addextendedproperty @name=N'width', @value=N'400' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Verrechnungssatz', @level2type=N'COLUMN',@level2name=N'Leistungsart'
 GO
 EXEC sys.sp_addextendedproperty @name=N'width', @value=N'300' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Verrechnungssatz', @level2type=N'COLUMN',@level2name=N'Kostensatz'
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE PROCEDURE [dbo].[ÜberprüfeRechnung] @Von datetime, @Bis datetime AS
-BEGIN
-	SET NOCOUNT ON;
-
-	WITH AktiveZeitspannen AS
-	(
-		SELECT *
-		FROM dbo.Zeitspanne
-		WHERE
-			Eintritt <= @Bis AND
-			(Austritt IS NULL OR Austritt >= @Von)
-	)
-	SELECT
-		W.Warnung,
-		E.Name AS Einrichtung,
-		T.Nachname + N', ' + Vorname AS Teilnehmer,
-		W.Datum
-	FROM
-		(
-			SELECT
-				'Nicht überprüfte Zeitspanne' AS Warnung,
-				Einrichtung,
-				Teilnehmer,
-				CASE WHEN Überprüft >= @Von THEN DATEADD(dd, 1, Überprüft) ELSE CASE WHEN @Von < Eintritt THEN Eintritt ELSE @Von END END AS Datum
-			FROM
-				AktiveZeitspannen
-			WHERE
-				(Überprüft IS NULL OR Überprüft < CASE WHEN Austritt < @Bis THEN Austritt ELSE @Bis END)
-		UNION
-			SELECT
-				'Ganztags ohne Bescheid/Satz' AS Warnung,
-				Z.Einrichtung,
-				Z.Teilnehmer,
-				A.Datum
-			FROM
-				AktiveZeitspannen AS Z JOIN
-				dbo.Anwesenheit AS A ON A.Zeitspanne = Z.ID AND A.Datum BETWEEN @Von AND @Bis AND A.Datum <= Z.Überprüft
-			WHERE
-				A.Vormittags = 1 AND
-				A.Nachmittags = 1 AND
-				NOT EXISTS
-				(
-					SELECT *
-					FROM
-						dbo.Bescheid AS B,
-						dbo.Verrechnungssatz AS V
-					WHERE
-						B.Einrichtung = Z.Einrichtung AND
-						B.Teilnehmer = Z.Teilnehmer AND
-						A.Datum BETWEEN B.Beginn AND B.Ende AND
-						V.Leistungsart = B.Leistungsart AND
-						V.Jahr = CASE WHEN MONTH(A.Datum) = 1 THEN YEAR(A.Datum) - 1 ELSE YEAR(A.Datum) END AND
-						V.Vormittags = 1 AND
-						V.Nachmittags = 1
-				)
-		UNION
-			SELECT
-				'Halbtags ohne Bescheid/Satz' AS Warnung,
-				Z.Einrichtung,
-				Z.Teilnehmer,
-				A.Datum
-			FROM
-				AktiveZeitspannen AS Z JOIN
-				dbo.Anwesenheit AS A ON A.Zeitspanne = Z.ID AND A.Datum BETWEEN @Von AND @Bis AND A.Datum <= Z.Überprüft
-			WHERE
-				A.Vormittags ^ A.Nachmittags = 1 AND
-				NOT EXISTS
-				(
-					SELECT *
-					FROM
-						dbo.Bescheid AS B,
-						dbo.Verrechnungssatz AS V
-					WHERE
-						B.Einrichtung = Z.Einrichtung AND
-						B.Teilnehmer = Z.Teilnehmer AND
-						A.Datum BETWEEN B.Beginn AND B.Ende AND
-						V.Leistungsart = B.Leistungsart AND
-						V.Jahr = CASE WHEN MONTH(A.Datum) = 1 THEN YEAR(A.Datum) - 1 ELSE YEAR(A.Datum) END AND
-						V.Vormittags = A.Vormittags AND
-						V.Nachmittags = A.Nachmittags
-				)
-		UNION
-			SELECT
-				'Nachts ohne Bescheid/Satz' AS Warnung,
-				Z.Einrichtung,
-				Z.Teilnehmer,
-				A.Datum
-			FROM
-				AktiveZeitspannen AS Z JOIN
-				dbo.Anwesenheit AS A ON A.Zeitspanne = Z.ID AND A.Datum BETWEEN @Von AND @Bis AND A.Datum <= Z.Überprüft
-			WHERE
-				A.Nachts = 1 AND
-				NOT EXISTS
-				(
-					SELECT *
-					FROM
-						dbo.Bescheid AS B,
-						dbo.Verrechnungssatz AS V
-					WHERE
-						B.Einrichtung = Z.Einrichtung AND
-						B.Teilnehmer = Z.Teilnehmer AND
-						A.Datum BETWEEN B.Beginn AND B.Ende AND
-						V.Leistungsart = B.Leistungsart AND
-						V.Jahr = CASE WHEN MONTH(A.Datum) = 1 THEN YEAR(A.Datum) - 1 ELSE YEAR(A.Datum) END AND
-						V.Nachts = 1
-				)
-		UNION
-			SELECT
-				'Zusatzstunden ohne Bescheid/Satz' AS Warnung,
-				Z.Einrichtung,
-				Z.Teilnehmer,
-				A.Datum
-			FROM
-				AktiveZeitspannen AS Z JOIN
-				dbo.Anwesenheit AS A ON A.Zeitspanne = Z.ID AND A.Datum BETWEEN @Von AND @Bis AND A.Datum <= Z.Überprüft
-			WHERE
-				A.Zusatz <> 0 AND
-				NOT EXISTS
-				(
-					SELECT *
-					FROM
-						dbo.Bescheid AS B,
-						dbo.Verrechnungssatz AS V
-					WHERE
-						B.Einrichtung = Z.Einrichtung AND
-						B.Teilnehmer = Z.Teilnehmer AND
-						A.Datum BETWEEN B.Beginn AND B.Ende AND
-						V.Leistungsart = B.Leistungsart AND
-						V.Jahr = CASE WHEN MONTH(A.Datum) = 1 THEN YEAR(A.Datum) - 1 ELSE YEAR(A.Datum) END AND
-						V.Zusatz = 1
-				)
-		UNION
-			SELECT
-				'Begleitetes Praktikum ohne Bescheid/Satz' AS Warnung,
-				Z.Einrichtung AS Einrichtung,
-				Z.Teilnehmer AS Teilnehmer,
-				CASE WHEN @Von < P.Von THEN P.Von ELSE @Von END AS Datum
-			FROM
-				AktiveZeitspannen AS Z JOIN
-				dbo.Praktikum AS P ON P.Einrichtung = Z.Einrichtung AND P.Teilnehmer = Z.Teilnehmer AND P.Bis >= Z.Eintritt AND (Z.Austritt IS NULL OR P.Von <= Z.Austritt)
-			WHERE
-				P.Von <= @Bis AND
-				P.Bis >= @Von AND
-				NOT EXISTS
-				(
-					SELECT *
-					FROM
-						dbo.Verrechnungssatz AS V JOIN
-						(
-							SELECT
-								B.Leistungsart,
-								CASE WHEN B.Beginn < @Von THEN @Von ELSE B.Beginn END AS Beginn,
-								CASE WHEN B.Ende > @Bis THEN @Bis ELSE B.Ende END AS Ende
-							FROM
-								(
-									SELECT
-										B.Leistungsart,
-										CASE WHEN B.Beginn < P.Von THEN P.Von ELSE B.Beginn END AS Beginn,
-										CASE WHEN B.Ende > P.Bis THEN P.Bis ELSE B.Ende END AS Ende
-									FROM dbo.Bescheid AS B
-									WHERE B.Einrichtung = Z.Einrichtung AND B.Teilnehmer = Z.Teilnehmer AND B.Ende >= P.Von AND B.Beginn <= P.Bis
-								) AS B
-						) AS B ON V.Leistungsart = B.Leistungsart AND V.Jahr BETWEEN CASE WHEN MONTH(B.Beginn) = 1 THEN YEAR(B.Beginn) - 1 ELSE YEAR(B.Beginn) END AND CASE WHEN MONTH(B.Ende) = 1 THEN YEAR(B.Ende) - 1 ELSE YEAR(B.Ende) END
-					WHERE
-						V.Praktikum = 1
-				)
-		) AS W JOIN
-		dbo.Einrichtung AS E ON E.ID = W.Einrichtung JOIN
-		dbo.Teilnehmer AS T ON T.ID = W.Teilnehmer
-	ORDER BY W.Warnung, E.Name, T.Nachname, T.Vorname, W.Datum
-END
 GO
 SET ANSI_NULLS ON
 GO
@@ -2001,6 +1825,23 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
+CREATE FUNCTION [dbo].[Fehler__Anwesenheit_Zeitspanne]() RETURNS TABLE AS RETURN
+(
+	SELECT
+		A.ID AS Anwesenheit,
+		Z.ID AS Zeitspanne,
+		dbo.ErstelleFehler(58,DEFAULT,DEFAULT) AS Fehler
+	FROM
+		dbo.Anwesenheit AS A JOIN
+		dbo.Zeitspanne AS Z ON A.Zeitspanne = Z.ID
+	WHERE
+		A.Datum < Z.Eintritt OR (Z.Austritt IS NOT NULL AND A.Datum > Z.Austritt)
+)
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE FUNCTION [dbo].[Fehler_Praktikum_Kategorie]() RETURNS TABLE AS RETURN
 (
 	SELECT ID, dbo.ErstelleFehler(36,'Praktikum_Kategorie','Bezeichnung') AS Fehler
@@ -2016,23 +1857,6 @@ UNION
 			FROM dbo.Praktikum_Kategorie AS K2
 			WHERE K1.ID <> K2.ID AND K1.Bezeichnung = K2.Bezeichnung
 		)
-)
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [dbo].[Fehler__Anwesenheit_Zeitspanne]() RETURNS TABLE AS RETURN
-(
-	SELECT
-		A.ID AS Anwesenheit,
-		Z.ID AS Zeitspanne,
-		dbo.ErstelleFehler(58,DEFAULT,DEFAULT) AS Fehler
-	FROM
-		dbo.Anwesenheit AS A JOIN
-		dbo.Zeitspanne AS Z ON A.Zeitspanne = Z.ID
-	WHERE
-		A.Datum < Z.Eintritt OR (Z.Austritt IS NOT NULL AND A.Datum > Z.Austritt)
 )
 GO
 SET ANSI_NULLS ON
@@ -2388,6 +2212,185 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
+CREATE PROCEDURE [dbo].[ÜberprüfeRechnung] @Von datetime, @Bis datetime AS
+BEGIN
+	SET NOCOUNT ON
+
+	IF dbo.Time(@Von) <> 0 OR dbo.Time(@Bis) <> 0 EXEC dbo.WerfeFehler 67
+	IF @Bis < @Von EXEC dbo.WerfeFehler 29
+
+	;WITH AktiveZeitspannen AS
+	(
+		SELECT *
+		FROM dbo.Zeitspanne
+		WHERE
+			Eintritt <= @Bis AND
+			(Austritt IS NULL OR Austritt >= @Von)
+	)
+	SELECT
+		W.Warnung,
+		E.Name AS Einrichtung,
+		T.Nachname + N', ' + Vorname AS Teilnehmer,
+		W.Datum
+	FROM
+		(
+			SELECT
+				'Nicht überprüfte Zeitspanne' AS Warnung,
+				Einrichtung,
+				Teilnehmer,
+				CASE WHEN Überprüft >= @Von THEN DATEADD(dd, 1, Überprüft) ELSE CASE WHEN @Von < Eintritt THEN Eintritt ELSE @Von END END AS Datum
+			FROM
+				AktiveZeitspannen
+			WHERE
+				(Überprüft IS NULL OR Überprüft < CASE WHEN Austritt < @Bis THEN Austritt ELSE @Bis END)
+		UNION
+			SELECT
+				'Ganztags ohne Bescheid/Satz' AS Warnung,
+				Z.Einrichtung,
+				Z.Teilnehmer,
+				A.Datum
+			FROM
+				AktiveZeitspannen AS Z JOIN
+				dbo.Anwesenheit AS A ON A.Zeitspanne = Z.ID AND A.Datum BETWEEN @Von AND @Bis AND A.Datum <= Z.Überprüft
+			WHERE
+				A.Vormittags = 1 AND
+				A.Nachmittags = 1 AND
+				NOT EXISTS
+				(
+					SELECT *
+					FROM
+						dbo.Bescheid AS B,
+						dbo.Verrechnungssatz AS V
+					WHERE
+						B.Einrichtung = Z.Einrichtung AND
+						B.Teilnehmer = Z.Teilnehmer AND
+						A.Datum BETWEEN B.Beginn AND B.Ende AND
+						V.Leistungsart = B.Leistungsart AND
+						V.Jahr = CASE WHEN MONTH(A.Datum) = 1 THEN YEAR(A.Datum) - 1 ELSE YEAR(A.Datum) END AND
+						V.Vormittags = 1 AND
+						V.Nachmittags = 1
+				)
+		UNION
+			SELECT
+				'Halbtags ohne Bescheid/Satz' AS Warnung,
+				Z.Einrichtung,
+				Z.Teilnehmer,
+				A.Datum
+			FROM
+				AktiveZeitspannen AS Z JOIN
+				dbo.Anwesenheit AS A ON A.Zeitspanne = Z.ID AND A.Datum BETWEEN @Von AND @Bis AND A.Datum <= Z.Überprüft
+			WHERE
+				A.Vormittags ^ A.Nachmittags = 1 AND
+				NOT EXISTS
+				(
+					SELECT *
+					FROM
+						dbo.Bescheid AS B,
+						dbo.Verrechnungssatz AS V
+					WHERE
+						B.Einrichtung = Z.Einrichtung AND
+						B.Teilnehmer = Z.Teilnehmer AND
+						A.Datum BETWEEN B.Beginn AND B.Ende AND
+						V.Leistungsart = B.Leistungsart AND
+						V.Jahr = CASE WHEN MONTH(A.Datum) = 1 THEN YEAR(A.Datum) - 1 ELSE YEAR(A.Datum) END AND
+						V.Vormittags = A.Vormittags AND
+						V.Nachmittags = A.Nachmittags
+				)
+		UNION
+			SELECT
+				'Nachts ohne Bescheid/Satz' AS Warnung,
+				Z.Einrichtung,
+				Z.Teilnehmer,
+				A.Datum
+			FROM
+				AktiveZeitspannen AS Z JOIN
+				dbo.Anwesenheit AS A ON A.Zeitspanne = Z.ID AND A.Datum BETWEEN @Von AND @Bis AND A.Datum <= Z.Überprüft
+			WHERE
+				A.Nachts = 1 AND
+				NOT EXISTS
+				(
+					SELECT *
+					FROM
+						dbo.Bescheid AS B,
+						dbo.Verrechnungssatz AS V
+					WHERE
+						B.Einrichtung = Z.Einrichtung AND
+						B.Teilnehmer = Z.Teilnehmer AND
+						A.Datum BETWEEN B.Beginn AND B.Ende AND
+						V.Leistungsart = B.Leistungsart AND
+						V.Jahr = CASE WHEN MONTH(A.Datum) = 1 THEN YEAR(A.Datum) - 1 ELSE YEAR(A.Datum) END AND
+						V.Nachts = 1
+				)
+		UNION
+			SELECT
+				'Zusatzstunden ohne Bescheid/Satz' AS Warnung,
+				Z.Einrichtung,
+				Z.Teilnehmer,
+				A.Datum
+			FROM
+				AktiveZeitspannen AS Z JOIN
+				dbo.Anwesenheit AS A ON A.Zeitspanne = Z.ID AND A.Datum BETWEEN @Von AND @Bis AND A.Datum <= Z.Überprüft
+			WHERE
+				A.Zusatz <> 0 AND
+				NOT EXISTS
+				(
+					SELECT *
+					FROM
+						dbo.Bescheid AS B,
+						dbo.Verrechnungssatz AS V
+					WHERE
+						B.Einrichtung = Z.Einrichtung AND
+						B.Teilnehmer = Z.Teilnehmer AND
+						A.Datum BETWEEN B.Beginn AND B.Ende AND
+						V.Leistungsart = B.Leistungsart AND
+						V.Jahr = CASE WHEN MONTH(A.Datum) = 1 THEN YEAR(A.Datum) - 1 ELSE YEAR(A.Datum) END AND
+						V.Zusatz = 1
+				)
+		UNION
+			SELECT
+				'Begleitetes Praktikum ohne Bescheid/Satz' AS Warnung,
+				Z.Einrichtung AS Einrichtung,
+				Z.Teilnehmer AS Teilnehmer,
+				CASE WHEN @Von < P.Von THEN P.Von ELSE @Von END AS Datum
+			FROM
+				AktiveZeitspannen AS Z JOIN
+				dbo.Praktikum AS P ON P.Einrichtung = Z.Einrichtung AND P.Teilnehmer = Z.Teilnehmer AND P.Bis >= Z.Eintritt AND (Z.Austritt IS NULL OR P.Von <= Z.Austritt)
+			WHERE
+				P.Von <= @Bis AND
+				P.Bis >= @Von AND
+				NOT EXISTS
+				(
+					SELECT *
+					FROM
+						dbo.Verrechnungssatz AS V JOIN
+						(
+							SELECT
+								B.Leistungsart,
+								CASE WHEN B.Beginn < @Von THEN @Von ELSE B.Beginn END AS Beginn,
+								CASE WHEN B.Ende > @Bis THEN @Bis ELSE B.Ende END AS Ende
+							FROM
+								(
+									SELECT
+										B.Leistungsart,
+										CASE WHEN B.Beginn < P.Von THEN P.Von ELSE B.Beginn END AS Beginn,
+										CASE WHEN B.Ende > P.Bis THEN P.Bis ELSE B.Ende END AS Ende
+									FROM dbo.Bescheid AS B
+									WHERE B.Einrichtung = Z.Einrichtung AND B.Teilnehmer = Z.Teilnehmer AND B.Ende >= P.Von AND B.Beginn <= P.Bis
+								) AS B
+						) AS B ON V.Leistungsart = B.Leistungsart AND V.Jahr BETWEEN CASE WHEN MONTH(B.Beginn) = 1 THEN YEAR(B.Beginn) - 1 ELSE YEAR(B.Beginn) END AND CASE WHEN MONTH(B.Ende) = 1 THEN YEAR(B.Ende) - 1 ELSE YEAR(B.Ende) END
+					WHERE
+						V.Praktikum = 1
+				)
+		) AS W JOIN
+		dbo.Einrichtung AS E ON E.ID = W.Einrichtung JOIN
+		dbo.Teilnehmer AS T ON T.ID = W.Teilnehmer
+	ORDER BY W.Warnung, E.Name, T.Nachname, T.Vorname, W.Datum
+END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE TRIGGER [dbo].[TesteEinrichtung] ON [dbo].[Einrichtung] AFTER INSERT, UPDATE, DELETE AS
 BEGIN
 	SET NOCOUNT ON
@@ -2585,7 +2588,6 @@ CREATE PROCEDURE [dbo].[ErstelleRechnung]
 	@Bezeichnung nvarchar(50),
 	@Von datetime,
 	@Bis datetime,
-	@Strikt bit,
 	@Rechnung int OUTPUT
 AS
 BEGIN
@@ -2761,7 +2763,7 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE TRIGGER [dbo].[TesteVerrechnungssatz] ON [dbo].[Verrechnungssatz] AFTER INSERT, UPDATE, DELETE AS
+CREATE TRIGGER [dbo].[TestePraktikumKategorie] ON [dbo].[Praktikum_Kategorie] AFTER INSERT, UPDATE, DELETE AS
 BEGIN
 	SET NOCOUNT ON
 
@@ -2769,11 +2771,7 @@ BEGIN
 		DECLARE @Fehler bigint
 
 		-- stimmt der Wert einer Spalte nicht?
-		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Verrechnungssatz() AS F JOIN inserted AS I ON F.ID = I.ID
-		EXEC dbo.WerfeFehler @Fehler
-
-		-- stimmt die Platzhalteangabe des Kostensatzes nicht mit der Leistungsart zusammen?
-		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler__Verrechnungssatz_Platzhalter() AS F JOIN inserted AS I ON F.Verrechnungssatz = I.ID
+		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Praktikum_Kategorie() AS F JOIN inserted AS I ON F.ID = I.ID
 		EXEC dbo.WerfeFehler @Fehler
 
 		-- archiviere die Änderung
@@ -2785,7 +2783,7 @@ BEGIN
 				*
 			FROM inserted AS I2
 			WHERE I1.ID = I2.ID
-			FOR XML PATH('Verrechnungssatz')
+			FOR XML PATH('Praktikum_Kategorie')
 		)
 		FROM inserted AS I1
 		INSERT INTO dbo.Version(Zeile)
@@ -2796,7 +2794,7 @@ BEGIN
 				ID
 			FROM deleted AS D2
 			WHERE D1.ID = D2.ID
-			FOR XML PATH('Verrechnungssatz')
+			FOR XML PATH('Praktikum_Kategorie')
 		)
 		FROM deleted AS D1
 		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
@@ -2875,7 +2873,7 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE TRIGGER [dbo].[TestePraktikumKategorie] ON [dbo].[Praktikum_Kategorie] AFTER INSERT, UPDATE, DELETE AS
+CREATE TRIGGER [dbo].[TesteVerrechnungssatz] ON [dbo].[Verrechnungssatz] AFTER INSERT, UPDATE, DELETE AS
 BEGIN
 	SET NOCOUNT ON
 
@@ -2883,7 +2881,11 @@ BEGIN
 		DECLARE @Fehler bigint
 
 		-- stimmt der Wert einer Spalte nicht?
-		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Praktikum_Kategorie() AS F JOIN inserted AS I ON F.ID = I.ID
+		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Verrechnungssatz() AS F JOIN inserted AS I ON F.ID = I.ID
+		EXEC dbo.WerfeFehler @Fehler
+
+		-- stimmt die Platzhalteangabe des Kostensatzes nicht mit der Leistungsart zusammen?
+		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler__Verrechnungssatz_Platzhalter() AS F JOIN inserted AS I ON F.Verrechnungssatz = I.ID
 		EXEC dbo.WerfeFehler @Fehler
 
 		-- archiviere die Änderung
@@ -2895,7 +2897,7 @@ BEGIN
 				*
 			FROM inserted AS I2
 			WHERE I1.ID = I2.ID
-			FOR XML PATH('Praktikum_Kategorie')
+			FOR XML PATH('Verrechnungssatz')
 		)
 		FROM inserted AS I1
 		INSERT INTO dbo.Version(Zeile)
@@ -2906,54 +2908,7 @@ BEGIN
 				ID
 			FROM deleted AS D2
 			WHERE D1.ID = D2.ID
-			FOR XML PATH('Praktikum_Kategorie')
-		)
-		FROM deleted AS D1
-		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
-
-	END TRY
-	BEGIN CATCH
-		EXEC dbo.BerichteFehler
-		ROLLBACK TRANSACTION
-	END CATCH
-END
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TRIGGER [dbo].[TesteStandort] ON [dbo].[Standort] AFTER INSERT, UPDATE, DELETE AS
-BEGIN
-	SET NOCOUNT ON
-
-	BEGIN TRY
-		DECLARE @Fehler bigint
-
-		-- stimmt der Wert einer Spalte nicht?
-		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Standort() AS F JOIN inserted AS I ON F.ID = I.ID
-		EXEC dbo.WerfeFehler @Fehler
-
-		-- archiviere die Änderung
-		INSERT INTO dbo.Version(Zeile)
-		SELECT
-		(
-			SELECT
-				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
-				*
-			FROM inserted AS I2
-			WHERE I1.ID = I2.ID
-			FOR XML PATH('Standort')
-		)
-		FROM inserted AS I1
-		INSERT INTO dbo.Version(Zeile)
-		SELECT
-		(
-			SELECT
-				'Gelöscht' AS [@Aktion],
-				ID
-			FROM deleted AS D2
-			WHERE D1.ID = D2.ID
-			FOR XML PATH('Standort')
+			FOR XML PATH('Verrechnungssatz')
 		)
 		FROM deleted AS D1
 		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
@@ -3048,6 +3003,53 @@ BEGIN
 			FROM deleted AS D2
 			WHERE D1.ID = D2.ID
 			FOR XML PATH('Standort_Bereich')
+		)
+		FROM deleted AS D1
+		WHERE D1.ID NOT IN (SELECT ID FROM inserted)
+
+	END TRY
+	BEGIN CATCH
+		EXEC dbo.BerichteFehler
+		ROLLBACK TRANSACTION
+	END CATCH
+END
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TRIGGER [dbo].[TesteStandort] ON [dbo].[Standort] AFTER INSERT, UPDATE, DELETE AS
+BEGIN
+	SET NOCOUNT ON
+
+	BEGIN TRY
+		DECLARE @Fehler bigint
+
+		-- stimmt der Wert einer Spalte nicht?
+		SELECT TOP(1) @Fehler = F.Fehler FROM dbo.Fehler_Standort() AS F JOIN inserted AS I ON F.ID = I.ID
+		EXEC dbo.WerfeFehler @Fehler
+
+		-- archiviere die Änderung
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				CASE WHEN I1.ID IN (SELECT ID FROM deleted) THEN 'Geändert' ELSE 'Hinzugefügt' END AS [@Aktion],
+				*
+			FROM inserted AS I2
+			WHERE I1.ID = I2.ID
+			FOR XML PATH('Standort')
+		)
+		FROM inserted AS I1
+		INSERT INTO dbo.Version(Zeile)
+		SELECT
+		(
+			SELECT
+				'Gelöscht' AS [@Aktion],
+				ID
+			FROM deleted AS D2
+			WHERE D1.ID = D2.ID
+			FOR XML PATH('Standort')
 		)
 		FROM deleted AS D1
 		WHERE D1.ID NOT IN (SELECT ID FROM inserted)

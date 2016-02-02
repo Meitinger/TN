@@ -2187,6 +2187,20 @@ angular.module('tn', [])
     var ctr = this;
     var cleanup = $q.defer();
 
+    // helper methods for the busy state
+    var beginWork = function () {
+        if (ctr.busy) {
+            throw new InvalidOperationException('Es ist bereits ein Vorgang aktiv.');
+        }
+        ctr.busy = true;
+    };
+    var endWork = function () {
+        if (!ctr.busy) {
+            throw new InvalidOperationException('Es ist kein Vorgang aktiv.');
+        }
+        ctr.busy = false;
+    };
+
     // create the index
     var setData = function (data) {
         var put = function (bag, value) {
@@ -2219,31 +2233,73 @@ angular.module('tn', [])
 
     // get all warnings
     ctr.check = function () {
-        if (ctr.busy) {
-            throw new InvalidOperationException('Es ist bereits ein Vorgang aktiv.');
-        }
-        ctr.busy = true;
+        beginWork();
         sql.query({
             description: 'Überprüfe Rechnung',
             command: 'EXECUTE dbo.ÜberprüfeRechnung @Von, @Bis',
             parameters: { 'Von': ctr.from, 'Bis': ctr.to },
-            cancelOn: cleanup.promise
-        }).then(function (data) {
-            ctr.busy = false;
-            setData(data);
-        });
+            cancelOn: cleanup.promise,
+            allowError: true
+        }).then(
+            function (data) {
+                endWork();
+                setData(data);
+            },
+            function (error) {
+                endWork();
+                UIkit.modal.alert(error.message);
+            }
+        );
     };
 
+    // create a new bill
     ctr.create = function () {
-        if (ctr.busy) {
-            throw new InvalidOperationException('Es ist bereits ein Vorgang aktiv.');
-        }
-        //ctr.busy = true;
-        $scope.main.gotoTab(0);
+        beginWork();
+        sql.batch({
+            description: 'Erstelle Rechnung',
+            command: 'DECLARE @ID int\n' +
+                     'EXECUTE dbo.ÜberprüfeRechnung @Von, @Bis\n' +
+                     'EXECUTE dbo.ErstelleRechnung @Bezeichnung, @Von, @Bis, @ID OUTPUT\n' +
+                     'SELECT @ID as [$id]',
+            parameters: { 'Von': ctr.from, 'Bis': ctr.to, 'Bezeichnung': ctr.description },
+            cancelOn: cleanup.promise,
+            singleSet: false,
+            allowReview: true,
+            allowError: true
+        }).then(
+            function (data) {
+                endWork();
+
+                // check the number of result sets and build the index
+                if (data.length !== 2) {
+                    throw new InvalidDataException('Es wurden nicht zwei Resultsets zurückgegeben sondern ' + data.length + '.');
+                }
+                setData(data[0].Records);
+
+                // get and check the id
+                var idRecords = data[1].Records;
+                if (idRecords.length !== 1) {
+                    throw new InvalidDataException('Das ID-Recordset enthält nich eine sondern ' + idRecords.length + ' Zeilen.');
+                }
+                var $id = idRecords[0].$id;
+                if ($id == void 0 || $id.constructor !== Number) {
+                    throw new InvalidDataException('Das ID ist nicht vorhanden oder nicht numerisch.');
+                }
+
+                // show the bill with that id
+                $scope.main.gotoTab(0);
+                var now = new Date();
+                $scope.$root.$broadcast('showBill', { $id: $id, Bezeichnung: ctr.description, Datum: Date.create(now.getFullYear(), now.getMonth(), now.getDate()) });
+            },
+            function (error) {
+                endWork();
+                UIkit.modal.alert(error.message);
+            }
+        );
     };
 
-    // cancel queries on cleanup
-    $scope.$on('cleanup', function () {
+    // cancel queries when the scope is destroyed
+    $scope.$on('$destroy', function () {
         cleanup.resolve('Die Abfrage wird nicht mehr benötigt.');
     });
 })
@@ -2276,10 +2332,10 @@ angular.module('tn', [])
 
     // delete the currently selected row
     ctr.remove = function () {
-        var row = ctr.current;
-        UIkit.modal.confirm('Möchten Sie die Rechnung "' + row.Bezeichnung + '" vom ' + $filter('date')(row.Datum, 'shortDate') + ' wirklich unwiderruflich löschen?', function () {
+        var bill = ctr.current;
+        UIkit.modal.confirm('Möchten Sie die Rechnung Nummer ' + bill.$id + ' "' + bill.Bezeichnung + '" vom ' + $filter('date')(bill.Datum, 'shortDate') + ' wirklich unwiderruflich löschen?', function () {
             $scope.$apply(function () {
-                rechnung.deleteRow(rechnung.getRowById(row.$id)).then(
+                rechnung.deleteRow(rechnung.getRowById(bill.$id)).then(
                     function () {
                         ctr.current = null;
                         ctr.change();
@@ -2291,6 +2347,12 @@ angular.module('tn', [])
             });
         });
     };
+
+    // set the given bill
+    $scope.$on('showBill', function (event, bill) {
+        ctr.current = bill;
+        ctr.change();
+    });
 })
 
 // define the trainee attendance controller
