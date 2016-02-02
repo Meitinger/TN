@@ -877,6 +877,12 @@ CREATE NONCLUSTERED INDEX [IX_Abrechnung_Rechnung] ON [dbo].[Abrechnung]
 	[Rechnung] ASC
 )WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
 GO
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'250' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Abrechnung', @level2type=N'COLUMN',@level2name=N'Rechnung'
+GO
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'200' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Abrechnung', @level2type=N'COLUMN',@level2name=N'Bescheid'
+GO
+EXEC sys.sp_addextendedproperty @name=N'width', @value=N'200' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Abrechnung', @level2type=N'COLUMN',@level2name=N'Kostensatz'
+GO
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -972,14 +978,14 @@ BEGIN
 			(Austritt IS NULL OR Austritt >= @Von)
 	)
 	SELECT
+		W.Warnung,
 		E.Name AS Einrichtung,
 		T.Nachname + N', ' + Vorname AS Teilnehmer,
-		W.Datum,
-		W.Warnung
+		W.Datum
 	FROM
 		(
 			SELECT
-				'Nicht ' + CASE WHEN Überprüft >= @Von THEN 'vollständig ' ELSE '' END + 'überprüfte Zeitspanne' AS Warnung,
+				'Nicht überprüfte Zeitspanne' AS Warnung,
 				Einrichtung,
 				Teilnehmer,
 				CASE WHEN Überprüft >= @Von THEN DATEADD(dd, 1, Überprüft) ELSE CASE WHEN @Von < Eintritt THEN Eintritt ELSE @Von END END AS Datum
@@ -989,41 +995,107 @@ BEGIN
 				(Überprüft IS NULL OR Überprüft < CASE WHEN Austritt < @Bis THEN Austritt ELSE @Bis END)
 		UNION
 			SELECT
-				'Fehlender Bescheid/Satz:' +
-					CASE WHEN W.KeinGanztags = 1 THEN ' Vormittags+Nachmittags' ELSE '' END +
-					CASE WHEN W.KeinVormittags = 1 THEN ' Vormittags' ELSE '' END +
-					CASE WHEN W.KeinNachmittags = 1 THEN ' Nachmittags' ELSE '' END +
-					CASE WHEN W.KeinNachts = 1 THEN ' Nachts' ELSE '' END +
-					CASE WHEN W.KeinZusatz = 1 THEN ' Zusatz' ELSE '' END
-				AS Warnung,
-				Einrichtung,
-				Teilnehmer,
-				Datum
+				'Ganztags ohne Bescheid/Satz' AS Warnung,
+				Z.Einrichtung,
+				Z.Teilnehmer,
+				A.Datum
 			FROM
-				(
-					SELECT
-						Z.Einrichtung,
-						Z.Teilnehmer,
-						A.Datum,
-						CASE WHEN A.Vormittags = 1 AND A.Nachmittags = 1 AND MAX(CAST(V.Vormittags AS int) + CAST(V.Nachmittags AS int)) < 2 THEN 1 ELSE 0 END AS KeinGanztags,
-						CASE WHEN A.Vormittags = 1 AND A.Nachmittags = 0 AND MAX(CAST(V.Vormittags AS int)) < 1 THEN 1 ELSE 0 END AS KeinVormittags,
-						CASE WHEN A.Vormittags = 0 AND A.Nachmittags = 1 AND MAX(CAST(V.Nachmittags AS int)) < 1 THEN 1 ELSE 0 END AS KeinNachmittags,
-						CASE WHEN A.Nachts = 1 AND MAX(CAST(V.Nachts AS int)) < 1 THEN 1 ELSE 0 END AS KeinNachts,
-						CASE WHEN A.Zusatz <> 0 AND MAX(CAST(V.Zusatz AS int)) < 1 THEN 1 ELSE 0 END AS KeinZusatz
-					FROM
-						AktiveZeitspannen AS Z JOIN
-						dbo.Anwesenheit AS A ON A.Zeitspanne = Z.ID AND A.Datum BETWEEN @Von AND @Bis AND A.Datum <= Z.Überprüft JOIN
-						dbo.Bescheid AS B ON B.Einrichtung = Z.Einrichtung AND B.Teilnehmer = Z.Teilnehmer AND A.Datum BETWEEN B.Beginn AND B.Ende JOIN
-						dbo.Verrechnungssatz AS V ON V.Leistungsart = B.Leistungsart AND V.Jahr = CASE WHEN MONTH(A.Datum) = 1 THEN YEAR(A.Datum) - 1 ELSE YEAR(A.Datum) END
-					GROUP BY
-						A.ID, Z.Einrichtung, Z.Teilnehmer, A.Datum, A.Vormittags, A.Nachmittags, A.Nachts, A.Zusatz
-				) AS W
+				AktiveZeitspannen AS Z JOIN
+				dbo.Anwesenheit AS A ON A.Zeitspanne = Z.ID AND A.Datum BETWEEN @Von AND @Bis AND A.Datum <= Z.Überprüft
 			WHERE
-				W.KeinGanztags = 1 OR
-				W.KeinVormittags = 1 OR
-				W.KeinNachmittags = 1 OR
-				W.KeinNachts = 1 OR
-				W.KeinZusatz = 1
+				A.Vormittags = 1 AND
+				A.Nachmittags = 1 AND
+				NOT EXISTS
+				(
+					SELECT *
+					FROM
+						dbo.Bescheid AS B,
+						dbo.Verrechnungssatz AS V
+					WHERE
+						B.Einrichtung = Z.Einrichtung AND
+						B.Teilnehmer = Z.Teilnehmer AND
+						A.Datum BETWEEN B.Beginn AND B.Ende AND
+						V.Leistungsart = B.Leistungsart AND
+						V.Jahr = CASE WHEN MONTH(A.Datum) = 1 THEN YEAR(A.Datum) - 1 ELSE YEAR(A.Datum) END AND
+						V.Vormittags = 1 AND
+						V.Nachmittags = 1
+				)
+		UNION
+			SELECT
+				'Halbtags ohne Bescheid/Satz' AS Warnung,
+				Z.Einrichtung,
+				Z.Teilnehmer,
+				A.Datum
+			FROM
+				AktiveZeitspannen AS Z JOIN
+				dbo.Anwesenheit AS A ON A.Zeitspanne = Z.ID AND A.Datum BETWEEN @Von AND @Bis AND A.Datum <= Z.Überprüft
+			WHERE
+				A.Vormittags ^ A.Nachmittags = 1 AND
+				NOT EXISTS
+				(
+					SELECT *
+					FROM
+						dbo.Bescheid AS B,
+						dbo.Verrechnungssatz AS V
+					WHERE
+						B.Einrichtung = Z.Einrichtung AND
+						B.Teilnehmer = Z.Teilnehmer AND
+						A.Datum BETWEEN B.Beginn AND B.Ende AND
+						V.Leistungsart = B.Leistungsart AND
+						V.Jahr = CASE WHEN MONTH(A.Datum) = 1 THEN YEAR(A.Datum) - 1 ELSE YEAR(A.Datum) END AND
+						V.Vormittags = A.Vormittags AND
+						V.Nachmittags = A.Nachmittags
+				)
+		UNION
+			SELECT
+				'Nachts ohne Bescheid/Satz' AS Warnung,
+				Z.Einrichtung,
+				Z.Teilnehmer,
+				A.Datum
+			FROM
+				AktiveZeitspannen AS Z JOIN
+				dbo.Anwesenheit AS A ON A.Zeitspanne = Z.ID AND A.Datum BETWEEN @Von AND @Bis AND A.Datum <= Z.Überprüft
+			WHERE
+				A.Nachts = 1 AND
+				NOT EXISTS
+				(
+					SELECT *
+					FROM
+						dbo.Bescheid AS B,
+						dbo.Verrechnungssatz AS V
+					WHERE
+						B.Einrichtung = Z.Einrichtung AND
+						B.Teilnehmer = Z.Teilnehmer AND
+						A.Datum BETWEEN B.Beginn AND B.Ende AND
+						V.Leistungsart = B.Leistungsart AND
+						V.Jahr = CASE WHEN MONTH(A.Datum) = 1 THEN YEAR(A.Datum) - 1 ELSE YEAR(A.Datum) END AND
+						V.Nachts = 1
+				)
+		UNION
+			SELECT
+				'Zusatzstunden ohne Bescheid/Satz' AS Warnung,
+				Z.Einrichtung,
+				Z.Teilnehmer,
+				A.Datum
+			FROM
+				AktiveZeitspannen AS Z JOIN
+				dbo.Anwesenheit AS A ON A.Zeitspanne = Z.ID AND A.Datum BETWEEN @Von AND @Bis AND A.Datum <= Z.Überprüft
+			WHERE
+				A.Zusatz <> 0 AND
+				NOT EXISTS
+				(
+					SELECT *
+					FROM
+						dbo.Bescheid AS B,
+						dbo.Verrechnungssatz AS V
+					WHERE
+						B.Einrichtung = Z.Einrichtung AND
+						B.Teilnehmer = Z.Teilnehmer AND
+						A.Datum BETWEEN B.Beginn AND B.Ende AND
+						V.Leistungsart = B.Leistungsart AND
+						V.Jahr = CASE WHEN MONTH(A.Datum) = 1 THEN YEAR(A.Datum) - 1 ELSE YEAR(A.Datum) END AND
+						V.Zusatz = 1
+				)
 		UNION
 			SELECT
 				'Begleitetes Praktikum ohne Bescheid/Satz' AS Warnung,
@@ -1062,14 +1134,14 @@ BEGIN
 		) AS W JOIN
 		dbo.Einrichtung AS E ON E.ID = W.Einrichtung JOIN
 		dbo.Teilnehmer AS T ON T.ID = W.Teilnehmer
-	ORDER BY E.Name, T.Nachname, T.Vorname, W.Datum
+	ORDER BY W.Warnung, E.Name, T.Nachname, T.Vorname, W.Datum
 END
 GO
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE PROCEDURE [dbo].[DownloadRechnung] @Rechnung int AS
+CREATE PROCEDURE [dbo].[DownloadRechnung] @ID int AS
 BEGIN
 	SET NOCOUNT ON
 
@@ -1079,13 +1151,13 @@ BEGIN
 	DECLARE @RechnungDatum datetime
 	DECLARE @Zeilen int
 
-	IF NOT EXISTS(SELECT * FROM dbo.Rechnung WHERE ID = @Rechnung) RETURN
+	IF NOT EXISTS(SELECT * FROM dbo.Rechnung WHERE ID = @ID) RETURN
 
 	SELECT
 		@RechnungBezeichnung = R.Bezeichnung,
 		@RechnungDatum = R.Datum
 	FROM dbo.Rechnung AS R
-	WHERE R.ID = @Rechnung
+	WHERE R.ID = @ID
 
 	SELECT
 		@RechnungBezeichnung + N'.zip' AS [FileName],
@@ -1105,7 +1177,7 @@ BEGIN
 					dbo.Abrechnung AS A ON A.Bescheid = B.ID
 				WHERE
 					B.Typ = T.ID AND
-					A.Rechnung = @Rechnung
+					A.Rechnung = @ID
 			)
 
 	OPEN Typen
@@ -1121,7 +1193,7 @@ BEGIN
 			CAST(1 AS BIT) AS [Header]
 
 		SELECT
-			@Rechnung AS [re_nr],
+			@ID AS [re_nr],
 			'AUFBAUWERK' AS [l_erbringer],
 			T.Klientennummer AS [klient_nr_tlr],
 			T.ID AS [klient_nr_le],
@@ -1148,7 +1220,7 @@ BEGIN
 			dbo.Einheit AS E ON E.ID = L.Einheit
 		WHERE
 			B.Typ = @Typ AND
-			A.Rechnung = @Rechnung
+			A.Rechnung = @ID
 		GROUP BY
 			B.ID, B.Geschäftszahl, L.Kürzel, L.Bezeichnung, E.Kürzel, T.ID, T.Klientennummer, S.Standortnummer,
 			YEAR(A.Datum), MONTH(A.Datum),
@@ -1164,7 +1236,7 @@ BEGIN
 			CAST(1 AS BIT) AS [Header]
 
 		SELECT
-			@Rechnung AS [re_nr],
+			@ID AS [re_nr],
 			'AUFBAUWERK' AS [ktr],
 			@RechnungDatum AS [re_datum],
 			SUM(A.Preis*CAST(A.Menge AS money)) AS [summe_netto_file],
@@ -1182,7 +1254,7 @@ BEGIN
 			Abrechnung AS A ON A.Bescheid = B.ID
 		WHERE
 			B.Typ = @Typ AND
-			A.Rechnung = @Rechnung
+			A.Rechnung = @ID
 
 		FETCH NEXT FROM Typen INTO @Typ, @TypBezeichnung
 	END
@@ -3583,8 +3655,6 @@ GO
 GRANT UPDATE ON [dbo].[Praktikum_Kategorie] TO [Sekretariat]
 GO
 GRANT DELETE ON [dbo].[Rechnung] TO [Rechnungswesen]
-GO
-GRANT INSERT ON [dbo].[Rechnung] TO [Rechnungswesen]
 GO
 GRANT SELECT ON [dbo].[Rechnung] TO [Rechnungswesen]
 GO

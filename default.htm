@@ -50,23 +50,49 @@
             <form name="form" class="uk-form uk-form-stacked" data-ng-switch-when="newBills" data-ng-controller="NewBillsController as bill">
                 <div class="uk-panel uk-panel-box uk-panel-box-primary">
                     <div class="uk-flex uk-flex-bottom">
-                        <div style="margin-right:4px;">
+                        <div class="uk-margin-small-right">
                             <label class="uk-form-label" for="from">Von:</label>
                             <input id="from" name="from" type="date" required="" data-ng-model="bill.from" data-ng-class="form.from.$pristine ? '' : form.from.$valid ? 'uk-form-success' : 'uk-form-danger'" data-uk-datepicker="{{bill.datepicker}}" />
                         </div>
-                        <div style="margin-right:4px;">
+                        <div class="uk-margin-small-right">
                             <label class="uk-form-label" for="to">Bis:</label>
                             <input id="to" name="to" type="date" required="" data-ng-model="bill.to" data-ng-class="form.to.$pristine ? '' : form.to.$valid ? 'uk-form-success' : 'uk-form-danger'" data-uk-datepicker="{{bill.datepicker}}" />
                         </div>
-                        <div style="margin-right:16px;">
-                            <button class="uk-button uk-button-primary" type="button" data-ng-click="bill.check()" data-ng-disabled="!form.from.$valid || !form.to.$valid">Überprüfen</button>
+                        <div class="uk-margin-large-right">
+                            <button class="uk-button uk-button-primary" type="button" data-ng-click="bill.check()" data-ng-disabled="!form.from.$valid || !form.to.$valid || bill.busy">Überprüfen</button>
                         </div>
-                        <div style="margin-right:4px;">
+                        <div class="uk-margin-small-right">
                             <label class="uk-form-label" for="description">Beschreibung:</label>
                             <input id="description" name="description" type="text" required="" data-ng-model="bill.description" data-ng-class="form.description.$pristine ? '' : form.description.$valid ? 'uk-form-success' : 'uk-form-danger'" />
                         </div>
                         <div>
-                            <button class="uk-button uk-button-success" type="button" data-ng-click="bill.create()" data-ng-disabled="!form.$valid">Erstellen</button>
+                            <button class="uk-button uk-button-success" type="button" data-ng-click="bill.create()" data-ng-disabled="!form.$valid || bill.busy">Erstellen</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="uk-grid uk-grid-small">
+                    <div class="uk-width-4-10">
+                        <div class="uk-panel uk-panel-box uk-panel-box-primary-hover">
+                            <h3 class="uk-panel-title">Warnung</h3>
+                            <select size="2" style="height:calc(70vh - 231px); width:100%;" data-ng-model="bill.warnung" data-ng-options="warnung for warnung in bill.data.all"></select>
+                        </div>
+                    </div>
+                    <div class="uk-width-2-10">
+                        <div class="uk-panel uk-panel-box uk-panel-box-primary-hover">
+                            <h3 class="uk-panel-title">Einrichtung</h3>
+                            <select size="2" style="height:calc(70vh - 231px); width:100%;" data-ng-model="bill.einrichtung" data-ng-options="einrichtung for einrichtung in bill.data.map[bill.warnung].all"></select>
+                        </div>
+                    </div>
+                    <div class="uk-width-2-10">
+                        <div class="uk-panel uk-panel-box uk-panel-box-primary-hover">
+                            <h3 class="uk-panel-title">Teilnehmer</h3>
+                            <select size="2" style="height:calc(70vh - 231px); width:100%;" data-ng-model="bill.teilnehmer" data-ng-options="teilnehmer for teilnehmer in bill.data.map[bill.warnung].map[bill.einrichtung].all"></select>
+                        </div>
+                    </div>
+                    <div class="uk-width-2-10">
+                        <div class="uk-panel uk-panel-box uk-panel-box-primary-hover">
+                            <h3 class="uk-panel-title">Datum</h3>
+                            <select size="2" style="height:calc(70vh - 231px); width:100%;" data-ng-model="bill.datum" data-ng-options="datum for datum in bill.data.map[bill.warnung].map[bill.einrichtung].map[bill.teilnehmer].all"></select>
                         </div>
                     </div>
                 </div>
@@ -74,12 +100,12 @@
             <form class="uk-form" data-ng-switch-when="existingBills" data-ng-controller="ExistingBillsController as bill">
                 <div class="uk-button-group" style="width:100%; white-space:nowrap;">
                     <div style="width:calc(100% - 50px);" class="uk-button uk-button-small uk-form-select">
-                        <span>{{bill.current ? (bill.current.Bezeichnung + ' (erstellt am ' + (bill.current.Datum | date: 'shortDate') + ')') : '(Rechnung auswählen)'}}</span>
+                        <span>{{bill.current ? (bill.current.Bezeichnung + ' (Nummer ' + bill.current.$id + ', erstellt am ' + (bill.current.Datum | date: 'shortDate') + ')') : '(Rechnung auswählen)'}}</span>
                         <i class="uk-icon-caret-down"></i>
                         <select data-ng-model="bill.current" data-ng-change="bill.change()" data-ng-options="({$id: row.$id, Bezeichnung: row.Bezeichnung, Datum: row.Datum}) as row.Bezeichnung for row in bill.all | orderBy: 'Datum':true track by row.$id"></select>
                     </div>
-                    <button style="width:25px;" class="uk-button uk-button-small uk-button-primary" type="button" data-ng-click="bill.download()" data-uk-tooltip="data-uk-tooltip" title="Rechnung downloaden" data-ng-disabled="!bill.current"><i class="uk-icon-download"></i></button>
-                    <button style="width:25px;" class="uk-button uk-button-small uk-button-danger" type="button" data-ng-click="bill.remove()" data-uk-tooltip="data-uk-tooltip" title="Rechnung löschen" data-ng-disabled="!bill.current || bill.current.$action"><i class="uk-icon-remove"></i></button>
+                    <button style="width:25px; padding:0;" class="uk-button uk-button-small uk-button-primary" type="button" data-ng-click="bill.download()" data-uk-tooltip="data-uk-tooltip" title="Rechnung downloaden" data-ng-disabled="!bill.current"><i class="uk-icon-download"></i></button>
+                    <button style="width:25px; padding:0;" class="uk-button uk-button-small uk-button-danger" type="button" data-ng-click="bill.remove()" data-uk-tooltip="data-uk-tooltip" title="Rechnung löschen" data-ng-disabled="!bill.current || bill.current.$action"><i class="uk-icon-remove"></i></button>
                 </div>
                 <div data-ng-controller="TableController as tbl">
                     <div style="width:100%; height:calc(70vh - 102px); overflow:hidden;"></div>
@@ -109,7 +135,6 @@
         <ul class="uk-tab uk-tab-bottom" data-uk-tab="" data-ng-if="main.currentNav &gt; -1">
             <li data-ng-class="main.currentTab == $index ? 'uk-active' : ''" data-ng-repeat="tab in main.tabs"><a data-ng-click="main.gotoTab($index)">{{tab.name}}</a></li>
         </ul>
-        <div style="clear:right;"></div>
     </div>
     <div class="uk-panel uk-panel-box" data-ng-controller="LogController as log" style="box-sizing:border-box; height:30vh;">
     	<div data-ng-if="!log.notification.lastSyncTime &amp;&amp; !log.notification.error" class="uk-panel-badge uk-badge">Initialisierung</div>

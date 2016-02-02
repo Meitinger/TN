@@ -2183,11 +2183,69 @@ angular.module('tn', [])
 })
 
 // define the controller that creates new bills
-.controller('NewBillsController', function ($scope) {
+.controller('NewBillsController', function ($scope, $q, sql) {
     var ctr = this;
+    var cleanup = $q.defer();
 
+    // create the index
+    var setData = function (data) {
+        var put = function (bag, value) {
+            if (!(value in bag.map)) {
+                bag.all.push(value);
+                bag.map[value] = { all: [], map: {} };
+            }
+            return bag.map[value];
+        };
+        ctr.data.all = [];
+        ctr.data.map = {};
+        for (var i = 0; i < data.length; i++) {
+            var row = data[i];
+            var warnung = put(put(put(ctr.data, row.Warnung), row.Einrichtung), row.Teilnehmer);
+            warnung.all.push(row.Datum.localeDateString);
+        }
+    };
+
+    // specify the variables
+    ctr.busy = false;
+    ctr.from = null;
+    ctr.to = null;
+    ctr.description = null;
+    ctr.einrichtung = null;
+    ctr.teilnehmer = null;
+    ctr.warnung = null;
+    ctr.datum = null;
+    ctr.data = {};
     ctr.datepicker = '{i18n:{months:["Jänner","Feber","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"],weekdays:["So","Mo","Di","Mi","Do","Fr","Sa"]}}';
 
+    // get all warnings
+    ctr.check = function () {
+        if (ctr.busy) {
+            throw new InvalidOperationException('Es ist bereits ein Vorgang aktiv.');
+        }
+        ctr.busy = true;
+        sql.query({
+            description: 'Überprüfe Rechnung',
+            command: 'EXECUTE dbo.ÜberprüfeRechnung @Von, @Bis',
+            parameters: { 'Von': ctr.from, 'Bis': ctr.to },
+            cancelOn: cleanup.promise
+        }).then(function (data) {
+            ctr.busy = false;
+            setData(data);
+        });
+    };
+
+    ctr.create = function () {
+        if (ctr.busy) {
+            throw new InvalidOperationException('Es ist bereits ein Vorgang aktiv.');
+        }
+        //ctr.busy = true;
+        $scope.main.gotoTab(0);
+    };
+
+    // cancel queries on cleanup
+    $scope.$on('cleanup', function () {
+        cleanup.resolve('Die Abfrage wird nicht mehr benötigt.');
+    });
 })
 
 // define the controller that handles existing bills
@@ -2213,7 +2271,7 @@ angular.module('tn', [])
 
     // download the currently selected bill
     ctr.download = function () {
-        window.location.href = 'download.ashx?@=Rechnung&Rechnung=' + ctr.current.$id;
+        window.location.href = 'download.ashx?@=Rechnung&ID=' + ctr.current.$id;
     };
 
     // delete the currently selected row
