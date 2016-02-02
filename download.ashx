@@ -100,7 +100,7 @@ public class DownloadHandler : IHttpHandler
                 {
                     // get the archive description and set the headers
                     if (!reader.Read())
-                        throw new HttpException(404, "not found");
+                        throw new HttpException(404, "file not found");
                     var disposition = new StringBuilder("attachment");
                     if (!reader.IsDBNull(reader.GetOrdinal("LastModified")))
                     {
@@ -110,12 +110,12 @@ public class DownloadHandler : IHttpHandler
                     }
                     disposition.Append("; filename=");
                     disposition.Append(reader.GetString(reader.GetOrdinal("FileName")));
-                    context.Response.HeaderEncoding = Encoding.GetEncoding(reader.GetString(reader.GetOrdinal("Encoding")));
+                    context.Response.HeaderEncoding = Encoding.GetEncoding("windows-1252");
                     context.Response.Headers["Content-Disposition"] = disposition.ToString();
                     context.Response.ContentType = reader.GetString(reader.GetOrdinal("ContentType"));
 
                     // add all files to the archive
-                    using (var zipArchive = new ZipArchive(new ZipOutputStream(context.Response.OutputStream), ZipArchiveMode.Create, true, context.Response.HeaderEncoding))
+                    using (var zipArchive = new ZipArchive(new ZipOutputStream(context.Response.OutputStream), ZipArchiveMode.Create, true, Encoding.GetEncoding("ibm437")))
                     {
                         while (reader.NextResult())
                         {

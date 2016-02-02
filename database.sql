@@ -986,7 +986,6 @@ BEGIN
 	SELECT
 		@RechnungBezeichnung + N'.zip' AS [FileName],
 		@RechnungDatum AS [LastModified],
-		'utf-8' AS [Encoding],
 		'application/x-zip-compressed' AS [ContentType]
 
 	DECLARE Typen CURSOR LOCAL FAST_FORWARD FOR
