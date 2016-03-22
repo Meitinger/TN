@@ -150,7 +150,8 @@ public class SqlHandler : IHttpHandler
                 using (var transaction = connection.BeginTransaction(System.Data.IsolationLevel.Serializable))
                 using (var command = new SqlCommand(commandString, connection, transaction))
                 {
-                    // add all parameters
+                    // increase the timeout and add all parameters
+                    command.CommandTimeout = 5 * 60;
                     foreach (var parameterName in context.Request.Form.AllKeys)
                     {
                         var parameterValue = context.Request.Form[parameterName];

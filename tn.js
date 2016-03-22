@@ -2628,7 +2628,7 @@ angular.module('tn', [])
         var weekDay = (coords.col - lastOrdinaryColumn) % 7;
         var pos = event.clientX;
         for (var parent = event.target; parent; parent = parent.offsetParent) {
-            pos -= parent.offsetLeft;
+            pos -= parent.offsetLeft - parent.scrollLeft;
         }
 
         // change the Anwesenheit depending on the click position
