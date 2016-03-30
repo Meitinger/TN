@@ -2364,13 +2364,13 @@ angular.module('tn', [])
     var lastOrdinaryColumn = 2;
     var checkedDateProp = 'Überprüft';
     var getDateFromWeekDay = function (weekDay) {
-        return Date.create(ctr.monday.getTime() + (((weekDay + 6) % 7) * (24 * 60 * 60 * 1000)));
+        return Date.create(ctr.monday.getFullYear(), ctr.monday.getMonth(), ctr.monday.getDate() + ((weekDay + 6) % 7));
     };
     var getMondayByWeekOffset = function (offset) {
-        return Date.create(ctr.monday.getTime() + (offset * 7 * 24 * 60 * 60 * 1000));
+        return Date.create(ctr.monday.getFullYear(), ctr.monday.getMonth(), ctr.monday.getDate() + (offset * 7));
     };
     var getSundayByWeekOffset = function (offset) {
-        return Date.create(ctr.monday.getTime() + (((offset * 7) + 6) * 24 * 60 * 60 * 1000));
+        return Date.create(ctr.monday.getFullYear(), ctr.monday.getMonth(), ctr.monday.getDate() + ((offset * 7) + 6));
     };
     var formatTime = function (time) {
         // formats a date object into a 00:00 time string
