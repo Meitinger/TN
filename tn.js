@@ -1685,7 +1685,7 @@ angular.module('tn', [])
                 this.sourceRow = sourceRow;
                 if (sourceRow) {
                     // set the read only state and call the actual cells function
-                    this.readOnly = sourceRow.$action || prop in columnIndex && columnIndex[prop].readOnly;
+                    this.readOnly = sourceRow.$action || settings.columns[col].readOnly;
                     if (actualCells !== void 0) {
                         actualCells(instance, sourceRow, row, col, prop, this);
                     }
@@ -2361,7 +2361,7 @@ angular.module('tn', [])
     var hot = null;
 
     // helper functions
-    var lastOrdinaryColumn = 2;
+    var lastOrdinaryColumn = 3;
     var checkedDateProp = 'Überprüft';
     var getDateFromWeekDay = function (weekDay) {
         return Date.create(ctr.monday.getFullYear(), ctr.monday.getMonth(), ctr.monday.getDate() + ((weekDay + 6) % 7));
@@ -2550,6 +2550,7 @@ angular.module('tn', [])
             case 0: return 'Einrichtung';
             case 1: return 'Teilnehmer';
             case 2: return 'Kontrolliert bis';
+            case 3: return 'Kommentar';
             default:
                 // return either the holiday name or the formatted day string
                 var weekDay = (col - lastOrdinaryColumn) % 7;
@@ -2689,7 +2690,8 @@ angular.module('tn', [])
         var columns = [
             { data: 'Einrichtung', readOnly: true },
             { data: 'Teilnehmer', readOnly: true },
-            { data: checkedDateProp }
+            { data: checkedDateProp },
+            { data: 'Kommentar', readOnly: true },
         ];
         for (var i = 1; i <= 7; i++) {
             columns.push({
